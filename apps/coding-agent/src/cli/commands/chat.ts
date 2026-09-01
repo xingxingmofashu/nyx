@@ -3,7 +3,7 @@
  *
  * Usage:
  *   nyx chat --message "你好"
- *   nyx chat --model "onnx-community/Qwen2.5-0.5B-Instruct" --message "你好"
+ *   nyx chat --model "<id>" --message "你好"
  */
 
 import { cmd } from "../utils/cmd";

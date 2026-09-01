@@ -54,11 +54,14 @@ curl -L -o onnx/model.onnx "https://huggingface.co/Xenova/bge-small-zh-v1.5/reso
 ## Commands
 
 ```bash
-nyx chat --message "Hello"                    # one-shot local chat
-nyx chat --model "<id>" --message "Hello"     # chat with a specific model
-nyx server                                    # local HTTP server (default 3848)
-nyx embed <text> [--compare <other>]          # one-shot local embedding
+nyx chat                              # interactive TUI (requires a terminal)
+nyx chat --message "Hello"            # one-shot local chat
+nyx chat --model "<id>" --message "Hello"  # chat with a specific model
+nyx server                            # local HTTP server (default 3848)
+nyx embed <text> [--compare <other>]  # one-shot local embedding
 ```
+
+In the chat TUI: type a message and press Enter to send, `/clear` resets the transcript, `/quit` (or Ctrl+C) exits. Replies stream in as markdown.
 
 ## Server API
 

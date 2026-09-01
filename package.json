@@ -24,11 +24,10 @@
     }
   },
   "scripts": {
-    "build": "bun run --filter='@nyx/*' build",
+    "dev": "bun --cwd apps/coding-agent src/index.ts",
     "typecheck": "bun run --filter='@nyx/*' typecheck",
     "lint": "bun run --filter='@nyx/*' lint",
-    "test": "bun run --filter='@nyx/*' test",
-    "cli": "bun run --filter='@nyx/cli' start"
+    "test": "bun run --filter='@nyx/*' test"
   },
   "engines": {
     "node": ">=20"

@@ -32,6 +32,19 @@ export class Agent {
    * No persistence, no history, no tools.
    */
   async chat(userText: string): Promise<ChatResult> {
+    return this.chatStream(userText, () => {});
+  }
+
+  /**
+   * One-shot chat with streaming deltas.
+   *
+   * `onDelta` is called with each chunk of generated text as it arrives,
+   * so UIs can render progressively. Returns the full reply.
+   */
+  async chatStream(
+    userText: string,
+    onDelta: (delta: string) => void,
+  ): Promise<ChatResult> {
     const messages = [
       { role: "system" as const, content: this.systemPrompt },
       { role: "user" as const, content: userText },
@@ -43,6 +56,7 @@ export class Agent {
       switch (event.type) {
         case "text-delta":
           text += event.delta;
+          onDelta(event.delta);
           break;
         case "error":
           throw new Error(event.message);

@@ -54,11 +54,14 @@ curl -L -o onnx/model.onnx "https://huggingface.co/Xenova/bge-small-zh-v1.5/reso
 ## 命令
 
 ```bash
-nyx chat --message "你好"                          # 一次性本地对话
-nyx chat --model "<id>" --message "你好"           # 指定模型
-nyx server                                         # 本地 HTTP 服务（默认 3848）
-nyx embed <text> [--compare <other>]               # 一次性本地 embedding
+nyx chat                              # 交互式 TUI（需要终端）
+nyx chat --message "你好"             # 一次性本地对话
+nyx chat --model "<id>" --message "你好"  # 指定模型
+nyx server                            # 本地 HTTP 服务（默认 3848）
+nyx embed <text> [--compare <other>]  # 一次性本地 embedding
 ```
+
+chat TUI 中：输入消息回车发送，`/clear` 清空对话，`/quit`（或 Ctrl+C）退出。回复以 markdown 流式显示。
 
 ## Server API
 
