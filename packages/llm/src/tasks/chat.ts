@@ -1,11 +1,13 @@
 /**
- * Local chat provider — text → text, fully local.
+ * Local chat provider — text → text, fully local, true token streaming.
  *
  * Runs a small ONNX instruct model (Qwen2.5-0.5B-Instruct) via the shared
- * runtime. No cloud, no API keys.
+ * runtime, using transformers.js TextStreamer so each generated token is
+ * emitted as it arrives (not chunked after the fact).
  */
 
 import type { TextGenerationPipeline } from "@huggingface/transformers";
+import { TextStreamer } from "@huggingface/transformers";
 import { loadPipeline } from "../runtime.ts";
 import type { LLMMessage, LLMProvider, LLMEvent, StreamOptions } from "../types.ts";
 
@@ -19,21 +21,6 @@ export interface OnnxLLMOptions {
   /** Quantization dtype. Default "q4" for speed/size. */
   dtype?: "fp32" | "fp16" | "q8" | "q4";
   allowDownload?: boolean;
-}
-
-/** Chat template helper for Qwen2.5-style models. */
-function applyChatTemplate(messages: LLMMessage[]): string {
-  const lines = messages.map((m) => {
-    switch (m.role) {
-      case "system":
-        return `<|im_start|>system\n${m.content}<|im_end|>`;
-      case "user":
-        return `<|im_start|>user\n${m.content}<|im_end|>`;
-      case "assistant":
-        return `<|im_start|>assistant\n${m.content}<|im_end|>`;
-    }
-  });
-  return lines.join("\n") + "\n<|im_start|>assistant\n";
 }
 
 export class OnnxLLMProvider implements LLMProvider {
@@ -57,36 +44,58 @@ export class OnnxLLMProvider implements LLMProvider {
     options: StreamOptions = {},
   ): AsyncIterable<LLMEvent> {
     const pipe = await this.load();
-    const prompt = applyChatTemplate(messages);
     const maxTokens = options.maxTokens ?? this.maxTokens;
 
-    try {
-      const output = await pipe(prompt, {
-        max_new_tokens: maxTokens,
-        do_sample: true,
-        temperature: options.temperature ?? 0.7,
-        return_full_text: false,
-      });
+    // A wakeable queue bridges the synchronous TextStreamer callback to the
+    // async generator: each token pushes text and resolves the waiter.
+    let buffer: string[] = [];
+    let waiter: (() => void) | undefined;
+    let done = false;
+    let error: Error | undefined;
 
-      // With return_full_text:false, generated_text is only the completion.
-      const text = Array.isArray(output)
-        ? (output[0] as { generated_text?: string })?.generated_text ?? ""
-        : String(output);
+    const wake = () => {
+      waiter?.();
+      waiter = undefined;
+    };
 
-      const completion = text.trim();
-      if (completion) {
-        // Emit in chunks so the CLI / server can render progressively.
-        const chunkSize = 8;
-        for (let i = 0; i < completion.length; i += chunkSize) {
-          yield { type: "text-delta", delta: completion.slice(i, i + chunkSize) };
-        }
+    const streamer = new TextStreamer(pipe.tokenizer, {
+      skip_prompt: true,
+      skip_special_tokens: true,
+      callback_function: (text) => {
+        buffer.push(text);
+        wake();
+      },
+    });
+
+    void pipe(messages, {
+      max_new_tokens: maxTokens,
+      do_sample: true,
+      temperature: options.temperature ?? 0.7,
+      streamer,
+    }).then(
+      () => {
+        done = true;
+        wake();
+      },
+      (err: unknown) => {
+        error = err instanceof Error ? err : new Error(String(err));
+        done = true;
+        wake();
+      },
+    );
+
+    for (;;) {
+      while (buffer.length > 0) {
+        const chunk = buffer.shift()!;
+        if (chunk) yield { type: "text-delta", delta: chunk };
       }
-    } catch (error) {
-      yield {
-        type: "error",
-        message: error instanceof Error ? error.message : String(error),
-      };
+      if (done) break;
+      await new Promise<void>((resolve) => {
+        waiter = resolve;
+      });
     }
+
+    if (error) yield { type: "error", message: error.message };
   }
 
   private async load(): Promise<TextGenerationPipeline> {

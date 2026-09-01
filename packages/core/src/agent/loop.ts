@@ -1,12 +1,27 @@
 /**
- * Agent — the minimal chat interface of nyx.
+ * Agent — the minimal chat interface of nyx, event-driven (pi style).
  *
- * v1 is deliberately tiny: one-shot local chat with an ONNX model.
- * No sessions, no tools, no permissions — those layers were cut to keep
- * the core simple. The LLM provider handles everything.
+ * - `prompt(text)` sends a message and emits events as the reply streams in.
+ * - `subscribe(listener)` registers an event listener (returns unsubscribe).
+ * - `abort()` cancels the in-flight run; `waitForIdle()` awaits completion.
+ *
+ * No sessions, no tools, no permissions — kept deliberately small.
  */
 
 import type { LLMProvider } from "@nyx/llm";
+
+export interface AgentMessage {
+  role: "user" | "assistant";
+  text: string;
+}
+
+export type AgentEvent =
+  | { type: "message_start"; message: AgentMessage }
+  | { type: "message_update"; message: AgentMessage }
+  | { type: "message_end"; message: AgentMessage }
+  | { type: "agent_error"; error: Error };
+
+export type AgentEventListener = (event: AgentEvent) => void;
 
 export interface ChatResult {
   /** The model's reply text. */
@@ -16,6 +31,9 @@ export interface ChatResult {
 export class Agent {
   private llm: LLMProvider;
   private systemPrompt: string;
+  private listeners = new Set<AgentEventListener>();
+  private abortController: AbortController | null = null;
+  private idlePromise: Promise<void> | null = null;
 
   constructor(options: {
     llm: LLMProvider;
@@ -27,45 +45,84 @@ export class Agent {
       "You are nyx, a helpful local assistant. Answer concisely.";
   }
 
-  /**
-   * One-shot chat: send a single user message, get the reply.
-   * No persistence, no history, no tools.
-   */
-  async chat(userText: string): Promise<ChatResult> {
-    return this.chatStream(userText, () => {});
+  /** Register an event listener. Returns an unsubscribe function. */
+  subscribe(listener: AgentEventListener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  private emit(event: AgentEvent): void {
+    for (const listener of this.listeners) listener(event);
+  }
+
+  /** Whether a prompt is currently running. */
+  get isBusy(): boolean {
+    return this.abortController !== null;
+  }
+
+  /** Cancel any in-flight prompt. */
+  abort(): void {
+    this.abortController?.abort();
+  }
+
+  /** Resolves when the current prompt finishes (immediately if idle). */
+  async waitForIdle(): Promise<void> {
+    await this.idlePromise;
   }
 
   /**
-   * One-shot chat with streaming deltas.
-   *
-   * `onDelta` is called with each chunk of generated text as it arrives,
-   * so UIs can render progressively. Returns the full reply.
+   * Send a user message and stream the assistant reply via events:
+   *   message_start (assistant, empty) → message_update* (deltas) → message_end
    */
-  async chatStream(
-    userText: string,
-    onDelta: (delta: string) => void,
-  ): Promise<ChatResult> {
+  async prompt(userText: string): Promise<ChatResult> {
+    if (this.isBusy) {
+      throw new Error("Agent is already running. Wait for idle before prompting.");
+    }
+
+    const abortController = new AbortController();
+    this.abortController = abortController;
+    let resolveIdle: () => void;
+    this.idlePromise = new Promise<void>((resolve) => {
+      resolveIdle = resolve;
+    });
+
+    const userMessage: AgentMessage = { role: "user", text: userText };
+    this.emit({ type: "message_start", message: userMessage });
+
     const messages = [
       { role: "system" as const, content: this.systemPrompt },
       { role: "user" as const, content: userText },
     ];
 
     let text = "";
+    const assistantMessage: AgentMessage = { role: "assistant", text: "" };
+    this.emit({ type: "message_start", message: assistantMessage });
 
-    for await (const event of this.llm.stream(messages)) {
-      switch (event.type) {
-        case "text-delta":
-          text += event.delta;
-          onDelta(event.delta);
-          break;
-        case "error":
-          throw new Error(event.message);
-        default:
-          break;
+    try {
+      for await (const event of this.llm.stream(messages)) {
+        if (abortController.signal.aborted) break;
+        switch (event.type) {
+          case "text-delta":
+            text += event.delta;
+            assistantMessage.text = text;
+            this.emit({ type: "message_update", message: assistantMessage });
+            break;
+          case "error":
+            throw new Error(event.message);
+        }
       }
-    }
 
-    if (!text.trim()) text = "(no response)";
-    return { text };
+      if (!text.trim()) text = "(no response)";
+      assistantMessage.text = text;
+      this.emit({ type: "message_end", message: assistantMessage });
+      return { text };
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.emit({ type: "agent_error", error: err });
+      throw err;
+    } finally {
+      this.abortController = null;
+      resolveIdle!();
+    }
   }
 }

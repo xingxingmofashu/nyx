@@ -1,14 +1,6 @@
-/**
- * Embedding engine — text → vector, fully local.
- *
- * Uses a small multilingual ONNX embedding model (bge-small-zh-v1.5) so
- * Chinese + English text both work. Loads through the shared runtime.
- */
-
 import type { FeatureExtractionPipeline } from "@huggingface/transformers";
 import { loadPipeline } from "../runtime.ts";
 
-/** Default multilingual embedding model. ~90MB, good zh+en coverage. */
 export const DEFAULT_EMBEDDING_MODEL = "Xenova/bge-small-zh-v1.5";
 
 export interface EmbeddingOptions {
@@ -18,9 +10,7 @@ export interface EmbeddingOptions {
 }
 
 export interface EmbeddingResult {
-  /** Normalized embedding vector (unit length). */
   vector: number[];
-  /** Dimensionality of the embedding. */
   dim: number;
 }
 
@@ -35,7 +25,6 @@ export class OnnxEmbeddingEngine {
     this.allowDownload = options.allowDownload;
   }
 
-  /** Embed a single text into a normalized vector. */
   async embed(text: string): Promise<EmbeddingResult> {
     const pipe = await this.load();
     const output = await pipe(text, {
@@ -46,7 +35,6 @@ export class OnnxEmbeddingEngine {
     return { vector, dim: vector.length };
   }
 
-  /** Embed many texts into normalized vectors (batched). */
   async embedMany(texts: string[]): Promise<EmbeddingResult[]> {
     const pipe = await this.load();
     const results = await Promise.all(
@@ -68,7 +56,6 @@ export class OnnxEmbeddingEngine {
   }
 }
 
-/** Cosine similarity between two normalized vectors. */
 export function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length) return 0;
   let dot = 0;

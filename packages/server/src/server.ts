@@ -79,7 +79,7 @@ export class NyxServer {
       const body = await c.req.json().catch(() => ({}));
       const message = (body as { message?: string }).message;
       if (!message) return c.json({ error: "message is required" }, 400);
-      const result = await ctx.agent.chat(message);
+      const result = await ctx.agent.prompt(message);
       return c.json(result);
     });
 

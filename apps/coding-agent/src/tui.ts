@@ -1,21 +1,6 @@
-/**
- * Chat TUI — basic interactive chat page for nyx.
- *
- * Modeled on pi's chat UI:
- *   - user messages render in a Box with background
- *   - assistant replies stream into a Markdown component
- *   - a Loader shows while the model is generating
- *   - Editor at the bottom, focusable, Ctrl+C exits
- *
- * Built on @earendil-works/pi-tui (main screen, preserves scrollback).
- */
-
 import {
-  Box,
   Container,
   Editor,
-  Loader,
-  Markdown,
   ProcessTerminal,
   Text,
   TuiMainScreen,
@@ -23,83 +8,55 @@ import {
   Key,
   type TUI,
 } from "@earendil-works/pi-tui";
-import chalk from "chalk";
-import type { Agent } from "@nyx/core";
+import type { Agent, AgentMessage } from "@nyx/core";
+import { UserMessageComponent } from "./components/user-message";
+import { AssistantMessageComponent } from "./components/assistant-message";
+import { WorkingStatusIndicator } from "./components/status-indicator";
+import { editorTheme, mutedColor } from "./theme";
 
-/** Markdown theme for assistant replies. */
-const mdTheme = {
-  heading: (s: string) => chalk.bold.underline(s),
-  link: (s: string) => chalk.blue.underline(s),
-  linkUrl: (s: string) => chalk.gray(s),
-  code: (s: string) => chalk.cyan(s),
-  codeBlock: (s: string) => chalk.cyan(s),
-  codeBlockBorder: (s: string) => chalk.gray(s),
-  quote: (s: string) => chalk.gray(s),
-  quoteBorder: (s: string) => chalk.gray(s),
-  hr: (s: string) => chalk.gray(s),
-  listBullet: (s: string) => chalk.yellow(s),
-  bold: (s: string) => chalk.bold(s),
-  italic: (s: string) => chalk.italic(s),
-  strikethrough: (s: string) => chalk.strikethrough(s),
-  underline: (s: string) => chalk.underline(s),
-};
-
-/** Editor theme. */
-const editorTheme = {
-  borderColor: (s: string) => chalk.gray(s),
-  selectList: {
-    selectedPrefix: (s: string) => chalk.green("> " + s),
-    selectedText: (s: string) => chalk.bold(s),
-    description: (s: string) => chalk.gray(s),
-    scrollInfo: (s: string) => chalk.gray(s),
-    noMatch: (s: string) => chalk.gray(s),
-  },
-};
-
-export interface ChatTuiOptions {
+export interface TuiOptions {
   agent: Agent;
   model: string;
 }
 
-/** Run the interactive chat TUI. Exits via /quit or Ctrl+C. */
-export async function run(options: ChatTuiOptions): Promise<void> {
+export async function run(options: TuiOptions): Promise<void> {
   const terminal = new ProcessTerminal();
   const tui: TUI = new TuiMainScreen(terminal);
+  const chatContainer = new Container();
+  const statusContainer = new Container();
 
-  // --- Transcript ---
-  const transcript = new Container();
+  let streamingReply: AssistantMessageComponent | null = null;
+  let workingIndicator: WorkingStatusIndicator | null = null;
 
-  function addUserMessage(text: string): void {
-    // Box with padding + background, like pi's UserMessageComponent.
-    const box = new Box(1, 1, (content: string) => chalk.bgGray(content));
-    box.addChild(new Markdown(text, 0, 0, mdTheme as never));
-    transcript.addChild(box);
+  function addMessageToChat(message: AgentMessage): void {
+    if (message.role === "user") {
+      chatContainer.addChild(new UserMessageComponent(message.text));
+    } else if (message.role === "assistant") {
+      streamingReply = new AssistantMessageComponent(message.text);
+      chatContainer.addChild(streamingReply);
+    }
     tui.requestRender();
   }
 
-  function addAssistantMessage(): Markdown {
-    const md = new Markdown("", 1, 0, mdTheme as never);
-    transcript.addChild(md);
+  function showWorkingIndicator(): void {
+    if (workingIndicator) return;
+    workingIndicator = new WorkingStatusIndicator(tui);
+    statusContainer.addChild(workingIndicator);
     tui.requestRender();
-    return md;
   }
 
-  // --- Loader (spinner while the model generates) ---
-  // The Loader starts animating on construction, so we only mount it while
-  // a reply is generating.
-  const loader = new Loader(
-    tui,
-    (s) => chalk.cyan(s),
-    (s) => chalk.gray(s),
-    "Thinking…",
-  );
-  loader.stop();
+  function clearWorkingIndicator(): void {
+    if (!workingIndicator) return;
+    workingIndicator.dispose();
+    workingIndicator = null;
+    statusContainer.clear();
+    tui.requestRender();
+  }
 
-  // --- Editor (input) ---
   const editor = new Editor(tui, editorTheme as never);
   let isResponding = false;
 
-  editor.onSubmit = async (text) => {
+  editor.onSubmit = (text) => {
     const trimmed = text.trim();
     if (!trimmed || isResponding) return;
 
@@ -108,49 +65,61 @@ export async function run(options: ChatTuiOptions): Promise<void> {
       process.exit(0);
     }
     if (trimmed === "/clear") {
-      transcript.clear();
+      chatContainer.clear();
       tui.requestRender();
       return;
     }
     if (trimmed.startsWith("/")) {
-      addUserMessage(trimmed);
-      const md = addAssistantMessage();
-      md.setText(`Unknown command: ${trimmed}`);
+      addMessageToChat({ role: "user", text: trimmed });
+      addMessageToChat({ role: "assistant", text: `Unknown command: ${trimmed}` });
       return;
     }
 
-    // Submit: lock input, show user message + loader, stream reply.
     isResponding = true;
     editor.disableSubmit = true;
     editor.setText("");
-    addUserMessage(trimmed);
-    const reply = addAssistantMessage();
-
-    loader.start();
-    tui.addChild(loader);
-    try {
-      await options.agent.chatStream(trimmed, (delta) => {
-        reply.setText(delta);
-        tui.requestRender();
-      });
-    } catch (error) {
-      reply.setText(`Error: ${(error as Error).message}`);
-    } finally {
-      loader.stop();
-      tui.removeChild(loader);
-      isResponding = false;
-      editor.disableSubmit = false;
-      tui.requestRender();
-    }
+    addMessageToChat({ role: "user", text: trimmed });
+    showWorkingIndicator();
+    void options.agent.prompt(trimmed);
   };
 
-  // --- Assemble ---
-  transcript.addChild(new Text(chalk.gray("Type a message. /clear resets, /quit exits.")));
-  tui.addChild(transcript);
+  options.agent.subscribe((event) => {
+    switch (event.type) {
+      case "message_start":
+        if (event.message.role === "assistant") {
+          addMessageToChat(event.message);
+        }
+        break;
+      case "message_update":
+        if (event.message.role === "assistant" && streamingReply) {
+          streamingReply.setText(event.message.text);
+          clearWorkingIndicator();
+          tui.requestRender();
+        }
+        break;
+      case "message_end":
+      case "agent_error": {
+        if (streamingReply) {
+          streamingReply.setText(
+            event.type === "agent_error" ? `Error: ${event.error.message}` : event.message.text,
+          );
+        }
+        streamingReply = null;
+        clearWorkingIndicator();
+        isResponding = false;
+        editor.disableSubmit = false;
+        tui.requestRender();
+        break;
+      }
+    }
+  });
+
+  chatContainer.addChild(new Text(mutedColor("Type a message. /clear resets, /quit exits.")));
+  tui.addChild(chatContainer);
+  tui.addChild(statusContainer);
   tui.addChild(editor);
   tui.setFocus(editor);
 
-  // Raw mode: Ctrl+C doesn't send SIGINT — intercept it.
   tui.addInputListener((data) => {
     if (matchesKey(data, Key.ctrl("c"))) {
       tui.stop();
@@ -160,6 +129,5 @@ export async function run(options: ChatTuiOptions): Promise<void> {
 
   tui.start();
 
-  // Exits happen via /quit or Ctrl+C; keep the event loop alive until then.
   await new Promise<void>(() => {});
 }
