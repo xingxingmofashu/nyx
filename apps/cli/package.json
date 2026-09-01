@@ -1,0 +1,23 @@
+{
+  "name": "@nyx/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "bin": {
+    "nyx": "src/index.ts"
+  },
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nyx/core": "workspace:*",
+    "@nyx/llm": "workspace:*",
+    "@nyx/server": "workspace:*",
+    "@types/yargs": "17.0.35",
+    "yargs": "catalog:"
+  }
+}
