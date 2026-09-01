@@ -8,7 +8,7 @@ import {
   Key,
   type TUI,
 } from "@earendil-works/pi-tui";
-import type { Agent, AgentMessage } from "@nyx/core";
+import type { Agent, AssistantMessage, UserMessage } from "@nyx/core";
 import { UserMessageComponent } from "./components/user-message";
 import { AssistantMessageComponent } from "./components/assistant-message";
 import { WorkingStatusIndicator } from "./components/status-indicator";
@@ -17,6 +17,20 @@ import { getEditorTheme, theme } from "./theme";
 export interface TuiOptions {
   agent: Agent;
   model: string;
+}
+
+function getMessageText(message: UserMessage | AssistantMessage): string {
+  if (message.role === "user") {
+    if (typeof message.content === "string") return message.content;
+    return message.content
+      .filter((c) => c.type === "text")
+      .map((c) => c.text)
+      .join("\n");
+  }
+  return message.content
+    .filter((c) => c.type === "text")
+    .map((c) => c.text)
+    .join("\n");
 }
 
 export async function run(options: TuiOptions): Promise<void> {
@@ -28,11 +42,11 @@ export async function run(options: TuiOptions): Promise<void> {
   let streamingReply: AssistantMessageComponent | null = null;
   let workingIndicator: WorkingStatusIndicator | null = null;
 
-  function addMessageToChat(message: AgentMessage): void {
+  function addMessageToChat(message: UserMessage | AssistantMessage): void {
     if (message.role === "user") {
-      chatContainer.addChild(new UserMessageComponent(message.text));
+      chatContainer.addChild(new UserMessageComponent(getMessageText(message)));
     } else if (message.role === "assistant") {
-      streamingReply = new AssistantMessageComponent(message.text);
+      streamingReply = new AssistantMessageComponent(message);
       chatContainer.addChild(streamingReply);
     }
     tui.requestRender();
@@ -70,15 +84,15 @@ export async function run(options: TuiOptions): Promise<void> {
       return;
     }
     if (trimmed.startsWith("/")) {
-      addMessageToChat({ role: "user", text: trimmed });
-      addMessageToChat({ role: "assistant", text: `Unknown command: ${trimmed}` });
+      addMessageToChat({ role: "user", content: trimmed, timestamp: Date.now() });
+      addMessageToChat({ role: "assistant", content: [{ type: "text", text: `Unknown command: ${trimmed}` }] });
       return;
     }
 
     isResponding = true;
     editor.disableSubmit = true;
     editor.setText("");
-    addMessageToChat({ role: "user", text: trimmed });
+    addMessageToChat({ role: "user", content: trimmed, timestamp: Date.now() });
     showWorkingIndicator();
     void options.agent.prompt(trimmed);
   };
@@ -92,7 +106,7 @@ export async function run(options: TuiOptions): Promise<void> {
         break;
       case "message_update":
         if (event.message.role === "assistant" && streamingReply) {
-          streamingReply.setText(event.message.text);
+          streamingReply.updateContent(event.message);
           clearWorkingIndicator();
           tui.requestRender();
         }
@@ -100,9 +114,9 @@ export async function run(options: TuiOptions): Promise<void> {
       case "message_end":
       case "agent_error": {
         if (streamingReply) {
-          streamingReply.setText(
-            event.type === "agent_error" ? `Error: ${event.error.message}` : event.message.text,
-          );
+          const text =
+            event.type === "agent_error" ? `Error: ${event.error.message}` : getMessageText(event.message);
+          streamingReply.updateContent({ role: "assistant", content: [{ type: "text", text }] });
         }
         streamingReply = null;
         clearWorkingIndicator();
