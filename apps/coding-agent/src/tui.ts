@@ -1,11 +1,12 @@
 import {
   Container,
   Editor,
+  Key,
   ProcessTerminal,
+  Spacer,
   Text,
   TuiMainScreen,
   matchesKey,
-  Key,
   type TUI,
 } from "@earendil-works/pi-tui";
 import type { Agent, AssistantMessage, UserMessage } from "@nyx/core";
@@ -36,11 +37,49 @@ function getMessageText(message: UserMessage | AssistantMessage): string {
 export async function run(options: TuiOptions): Promise<void> {
   const terminal = new ProcessTerminal();
   const tui: TUI = new TuiMainScreen(terminal);
+
+  // Component tree: document (header + chat), status, editor
+  const documentContainer = new Container();
+  const headerContainer = new Container();
   const chatContainer = new Container();
   const statusContainer = new Container();
+  const editorContainer = new Container();
+
+  documentContainer.addChild(headerContainer);
+  documentContainer.addChild(chatContainer);
 
   let streamingReply: AssistantMessageComponent | null = null;
   let workingIndicator: WorkingStatusIndicator | null = null;
+  let isResponding = false;
+  let shuttingDown = false;
+
+  // =========================================================================
+  // Shutdown
+  // =========================================================================
+
+  function shutdown(): void {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    tui.stop(); // restore cooked mode, cursor, and terminal state
+    process.exit(0);
+  }
+
+  // Restore the terminal before dying on any uncaught throw.
+  process.prependListener("uncaughtException", (error) => {
+    if (!shuttingDown) {
+      tui.stop();
+    }
+    console.error(error);
+    process.exit(1);
+  });
+
+  for (const signal of ["SIGTERM", "SIGHUP"] as const) {
+    process.prependListener(signal, () => shutdown());
+  }
+
+  // =========================================================================
+  // Message rendering
+  // =========================================================================
 
   function addMessageToChat(message: UserMessage | AssistantMessage): void {
     if (message.role === "user") {
@@ -67,16 +106,21 @@ export async function run(options: TuiOptions): Promise<void> {
     tui.requestRender();
   }
 
+  // =========================================================================
+  // Editor
+  // =========================================================================
+
   const editor = new Editor(tui, getEditorTheme() as never);
-  let isResponding = false;
+  editorContainer.addChild(editor);
 
   editor.onSubmit = (text) => {
     const trimmed = text.trim();
     if (!trimmed || isResponding) return;
 
     if (trimmed === "/quit" || trimmed === "/exit") {
-      tui.stop();
-      process.exit(0);
+      editor.setText("");
+      shutdown();
+      return;
     }
     if (trimmed === "/clear") {
       chatContainer.clear();
@@ -84,6 +128,7 @@ export async function run(options: TuiOptions): Promise<void> {
       return;
     }
     if (trimmed.startsWith("/")) {
+      editor.setText("");
       addMessageToChat({ role: "user", content: trimmed, timestamp: Date.now() });
       addMessageToChat({ role: "assistant", content: [{ type: "text", text: `Unknown command: ${trimmed}` }] });
       return;
@@ -128,20 +173,45 @@ export async function run(options: TuiOptions): Promise<void> {
     }
   });
 
-  chatContainer.addChild(new Text(theme.fg("muted", "Type a message. /clear resets, /quit exits.")));
-  tui.addChild(chatContainer);
+  // =========================================================================
+  // Header
+  // =========================================================================
+
+  const logo = theme.bold(theme.fg("accent", "nyx")) + theme.fg("dim", ` (${options.model})`);
+  headerContainer.addChild(new Spacer());
+  headerContainer.addChild(new Text(`${logo}\n${theme.fg("muted", "Type a message. /clear resets, /quit exits.")}`));
+  headerContainer.addChild(new Spacer());
+
+  // =========================================================================
+  // Mount & input handling
+  // =========================================================================
+
+  tui.addChild(documentContainer);
   tui.addChild(statusContainer);
-  tui.addChild(editor);
+  tui.addChild(editorContainer);
   tui.setFocus(editor);
 
+  let lastSigintTime = 0;
   tui.addInputListener((data) => {
     if (matchesKey(data, Key.ctrl("c"))) {
-      tui.stop();
-      process.exit(0);
+      const now = Date.now();
+      if (now - lastSigintTime < 500) {
+        shutdown();
+      } else {
+        editor.setText("");
+        lastSigintTime = now;
+        tui.requestRender();
+      }
+      return;
+    }
+    if (matchesKey(data, Key.ctrl("d"))) {
+      if (editor.getText().length === 0) {
+        shutdown();
+      }
+      return;
     }
   });
 
   tui.start();
-
   await new Promise<void>(() => {});
 }
