@@ -12,7 +12,7 @@ import type { Agent, AgentMessage } from "@nyx/core";
 import { UserMessageComponent } from "./components/user-message";
 import { AssistantMessageComponent } from "./components/assistant-message";
 import { WorkingStatusIndicator } from "./components/status-indicator";
-import { editorTheme, mutedColor } from "./theme";
+import { getEditorTheme, theme } from "./theme";
 
 export interface TuiOptions {
   agent: Agent;
@@ -53,7 +53,7 @@ export async function run(options: TuiOptions): Promise<void> {
     tui.requestRender();
   }
 
-  const editor = new Editor(tui, editorTheme as never);
+  const editor = new Editor(tui, getEditorTheme() as never);
   let isResponding = false;
 
   editor.onSubmit = (text) => {
@@ -114,7 +114,7 @@ export async function run(options: TuiOptions): Promise<void> {
     }
   });
 
-  chatContainer.addChild(new Text(mutedColor("Type a message. /clear resets, /quit exits.")));
+  chatContainer.addChild(new Text(theme.fg("muted", "Type a message. /clear resets, /quit exits.")));
   tui.addChild(chatContainer);
   tui.addChild(statusContainer);
   tui.addChild(editor);

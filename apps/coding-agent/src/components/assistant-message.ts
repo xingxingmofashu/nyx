@@ -1,5 +1,5 @@
 import { Container, Markdown, Spacer } from "@earendil-works/pi-tui";
-import { defaultMarkdownTheme } from "../theme";
+import { getMarkdownTheme } from "../theme";
 
 export class AssistantMessageComponent extends Container {
   private contentContainer: Container;
@@ -20,7 +20,7 @@ export class AssistantMessageComponent extends Container {
     const trimmed = text.trim();
     if (trimmed) {
       this.contentContainer.addChild(new Spacer(1));
-      this.markdown = new Markdown(trimmed, 1, 0, defaultMarkdownTheme);
+      this.markdown = new Markdown(trimmed, 1, 0, getMarkdownTheme());
       this.contentContainer.addChild(this.markdown);
       this.contentContainer.addChild(new Spacer(1));
     }
