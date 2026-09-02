@@ -3,7 +3,7 @@
  */
 
 import { cmd } from "../../utils/cmd";
-import { getModelsDir } from "@nyx/config";
+import { getModelsDir, writeModelMeta } from "@nyx/config";
 import { pullModel, type ModelRuntimeOptions, type ProgressInfo } from "@nyx/llm";
 import { log, spinner } from "@clack/prompts";
 
@@ -61,6 +61,7 @@ export const PullCommand = cmd<Record<string, unknown>, PullArgs>({
 
     try {
       await pullModel(task, model, { dtype, onProgress });
+      writeModelMeta(model, { task, dtype, pulledAt: new Date().toISOString() });
       spin.stop("Model ready");
       log.success(`Cached ${task}:${model} in ${getModelsDir()}`);
     } catch (error) {

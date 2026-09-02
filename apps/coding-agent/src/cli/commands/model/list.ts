@@ -1,40 +1,22 @@
 /**
- * `nyx model list` — list locally cached ONNX models.
+ * `nyx model list` — list locally cached ONNX models grouped by task.
  */
 
-import { readdirSync, statSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { cmd } from "../../utils/cmd";
-import { getModelsDir } from "@nyx/config";
+import { getModelsDir, readModelMeta } from "@nyx/config";
 import { log } from "@clack/prompts";
 
-function formatBytes(bytes: number): string {
-  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)}GB`;
-  if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(0)}MB`;
-  if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)}KB`;
-  return `${bytes}B`;
+interface CachedModel {
+  id: string;
+  task: string;
+  dtype?: string;
 }
 
-function dirSize(dir: string): number {
-  let total = 0;
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      total += dirSize(full);
-    } else {
-      try {
-        total += statSync(full).size;
-      } catch {
-        // ignore unreadable files
-      }
-    }
-  }
-  return total;
-}
-
-function getCachedModels(): Array<{ id: string; sizeBytes: number }> {
+function getCachedModels(): CachedModel[] {
   const modelsDir = getModelsDir();
-  const models: Array<{ id: string; sizeBytes: number }> = [];
+  const models: CachedModel[] = [];
 
   let orgs: string[] = [];
   try {
@@ -56,7 +38,9 @@ function getCachedModels(): Array<{ id: string; sizeBytes: number }> {
       continue;
     }
     for (const name of names) {
-      models.push({ id: `${org}/${name}`, sizeBytes: dirSize(join(orgDir, name)) });
+      const id = `${org}/${name}`;
+      const meta = readModelMeta(id);
+      models.push({ id, task: meta?.task ?? "unknown", dtype: meta?.dtype });
     }
   }
 
@@ -74,10 +58,18 @@ export const ModelListCommand = cmd<Record<string, unknown>, Record<string, neve
       return;
     }
 
-    const idWidth = Math.max(...models.map((m) => m.id.length), 4);
-    log.info("Locally cached models:");
+    const byTask = new Map<string, CachedModel[]>();
     for (const model of models) {
-      console.log(`  ${model.id.padEnd(idWidth)}  ${formatBytes(model.sizeBytes).padStart(8)}`);
+      const list = byTask.get(model.task) ?? [];
+      list.push(model);
+      byTask.set(model.task, list);
+    }
+
+    for (const [task, taskModels] of byTask) {
+      log.step(task);
+      for (const model of taskModels) {
+        log.message(`  ${model.id}${model.dtype ? `  (${model.dtype})` : ""}`);
+      }
     }
   },
 });
