@@ -1,8 +1,8 @@
 /**
- * `nyx pull <model>` — pre-download a model into the local ONNX cache.
+ * `nyx model pull <model>` — pre-download a model into the local ONNX cache.
  */
 
-import { cmd } from "../utils/cmd";
+import { cmd } from "../../utils/cmd";
 import { pullModel, type ModelRuntimeOptions, type ProgressInfo } from "@nyx/llm";
 import { log, spinner } from "@clack/prompts";
 
@@ -36,7 +36,7 @@ export const PullCommand = cmd<Record<string, unknown>, PullArgs>({
       }),
   handler: async (args: PullArgs) => {
     if (!args.model) {
-      log.error("Usage: nyx pull <model> --task <text-generation|image-to-image>");
+      log.error("Usage: nyx model pull <model> --task <text-generation|image-to-image>");
       process.exit(1);
     }
     const task = args.task as TaskId;

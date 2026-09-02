@@ -34,8 +34,9 @@ bun run --filter='@nyx/coding-agent' -- src/index.ts --help
 所有模型命令都需显式指定 `--model <id>`（任意 transformers.js 兼容的 ONNX 模型）。
 
 ```bash
-nyx pull <model> --task text-generation   # 预下载文本生成模型
-nyx pull <model> --task image-to-image    # 预下载图生图模型
+nyx model pull <model> --task text-generation   # 预下载文本生成模型
+nyx model pull <model> --task image-to-image    # 预下载图生图模型
+nyx model ls                                     # 列出本地已缓存模型
 
 nyx --model "<id>"                         # 交互式聊天 TUI（需要终端）
 nyx text-generation --model "<id>" --message "你好"     # 一次性文本生成

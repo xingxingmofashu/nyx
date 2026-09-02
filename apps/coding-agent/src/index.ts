@@ -7,7 +7,7 @@ import pkg from "../package.json";
 import { TuiCommand } from "./cli/commands/tui";
 import { TextGenerationCommand } from "./cli/commands/tasks/text-generation";
 import { ImageToImageCommand } from "./cli/commands/tasks/image-to-image";
-import { PullCommand } from "./cli/commands/pull";
+import { ModelCommand } from "./cli/commands/model";
 
 const cli = yargs(hideBin(process.argv))
   .parserConfiguration({ "populate--": true })
@@ -20,7 +20,7 @@ const cli = yargs(hideBin(process.argv))
   .command(TuiCommand)
   .command(TextGenerationCommand)
   .command(ImageToImageCommand)
-  .command(PullCommand)
+  .command(ModelCommand)
   .strict();
 
 try {

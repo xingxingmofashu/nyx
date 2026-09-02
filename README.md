@@ -34,8 +34,9 @@ Models are cached in `~/.nyx/models/` and auto-downloaded from Hugging Face on f
 Every model command takes an explicit `--model <id>` (any transformers.js-compatible ONNX model).
 
 ```bash
-nyx pull <model> --task text-generation   # pre-download a text-generation model
-nyx pull <model> --task image-to-image    # pre-download an image-to-image model
+nyx model pull <model> --task text-generation   # pre-download a text-generation model
+nyx model pull <model> --task image-to-image    # pre-download an image-to-image model
+nyx model ls                                     # list locally cached models
 
 nyx --model "<id>"                         # interactive chat TUI (requires a terminal)
 nyx text-generation --model "<id>" --message "Hello"     # one-shot text generation
