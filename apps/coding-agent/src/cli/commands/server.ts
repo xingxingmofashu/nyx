@@ -3,9 +3,9 @@
  */
 
 import { cmd } from "../utils/cmd";
-import { buildEngine } from "../utils/engine";
+import { Agent } from "@nyx/core";
 import { NyxServer } from "@nyx/server";
-import { DEFAULT_LOCAL_LLM } from "@nyx/llm";
+import { DEFAULT_TEXT_GENERATION_MODEL, OnnxTextGenerationProvider } from "@nyx/llm";
 
 interface ServerArgs {
   port?: number;
@@ -25,17 +25,13 @@ export const ServerCommand = cmd<Record<string, unknown>, ServerArgs>({
       .option("model", {
         alias: "m",
         type: "string",
-        default: DEFAULT_LOCAL_LLM,
+        default: DEFAULT_TEXT_GENERATION_MODEL,
         description: "Local ONNX model id",
       }),
   handler: async (args: ServerArgs) => {
-    const engine = buildEngine({ model: args.model });
-    if (!engine.embedder) {
-      throw new Error("server requires the local ONNX embedder");
-    }
+    const llm = new OnnxTextGenerationProvider({ model: args.model });
     const server = new NyxServer({
-      agent: engine.agent,
-      embedder: engine.embedder,
+      agent: new Agent({ llm }),
       port: args.port ?? 3848,
     });
     await server.start();

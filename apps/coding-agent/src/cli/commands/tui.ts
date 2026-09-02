@@ -3,9 +3,9 @@
  */
 
 import { cmd } from "../utils/cmd";
-import { buildEngine } from "../utils/engine";
+import { Agent } from "@nyx/core";
 import { run } from "../../tui";
-import { DEFAULT_LOCAL_LLM } from "@nyx/llm";
+import { DEFAULT_TEXT_GENERATION_MODEL, OnnxTextGenerationProvider } from "@nyx/llm";
 import { isatty } from "node:tty";
 
 interface TuiArgs {
@@ -18,7 +18,7 @@ export const TuiCommand = cmd<Record<string, unknown>, TuiArgs>({
   builder: (yargs) =>
     yargs.option("model", {
       type: "string",
-      default: DEFAULT_LOCAL_LLM,
+      default: DEFAULT_TEXT_GENERATION_MODEL,
       description: "Local ONNX model id",
     }),
   handler: async (args: TuiArgs) => {
@@ -26,7 +26,7 @@ export const TuiCommand = cmd<Record<string, unknown>, TuiArgs>({
       console.error("nyx tui: interactive mode needs a terminal.");
       process.exit(1);
     }
-    const engine = buildEngine({ model: args.model });
-    await run({ agent: engine.agent, model: engine.llm.model });
+    const llm = new OnnxTextGenerationProvider({ model: args.model });
+    await run({ agent: new Agent({ llm }), model: llm.model });
   },
 });

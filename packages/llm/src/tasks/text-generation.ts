@@ -1,5 +1,5 @@
 /**
- * Local chat provider — text → text, fully local, true token streaming.
+ * Local text-generation provider — text → text, fully local, true token streaming.
  *
  * Runs a small ONNX instruct model (Qwen2.5-0.5B-Instruct) via the shared
  * runtime, using transformers.js TextStreamer so each generated token is
@@ -11,9 +11,9 @@ import { TextStreamer } from "@huggingface/transformers";
 import { loadPipeline } from "../runtime.ts";
 import type { LLMMessage, LLMProvider, LLMEvent, StreamOptions } from "../types.ts";
 
-export const DEFAULT_LOCAL_LLM = "onnx-community/Qwen2.5-0.5B-Instruct";
+export const DEFAULT_TEXT_GENERATION_MODEL = "onnx-community/Qwen2.5-0.5B-Instruct";
 
-export interface OnnxLLMOptions {
+export interface OnnxTextGenerationOptions {
   model?: string;
   cacheDir?: string;
   /** Max tokens to generate per call. Default 512. */
@@ -23,16 +23,16 @@ export interface OnnxLLMOptions {
   allowDownload?: boolean;
 }
 
-export class OnnxLLMProvider implements LLMProvider {
+export class OnnxTextGenerationProvider implements LLMProvider {
   readonly id = "local-onnx";
   readonly model: string;
   private maxTokens: number;
-  private dtype: NonNullable<OnnxLLMOptions["dtype"]>;
+  private dtype: NonNullable<OnnxTextGenerationOptions["dtype"]>;
   private cacheDir?: string;
   private allowDownload?: boolean;
 
-  constructor(options: OnnxLLMOptions = {}) {
-    this.model = options.model ?? DEFAULT_LOCAL_LLM;
+  constructor(options: OnnxTextGenerationOptions = {}) {
+    this.model = options.model ?? DEFAULT_TEXT_GENERATION_MODEL;
     this.maxTokens = options.maxTokens ?? 512;
     this.dtype = options.dtype ?? "q4";
     this.cacheDir = options.cacheDir;

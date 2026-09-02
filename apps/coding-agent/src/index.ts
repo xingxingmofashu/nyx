@@ -3,11 +3,12 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import pkg from "../package.json";
-import { PromptCommand } from "./cli/commands/prompt";
+import { TextGenerationCommand } from "./cli/commands/tasks/text-generation";
 import { TuiCommand } from "./cli/commands/tui";
 import { ServerCommand } from "./cli/commands/server";
-import { EmbedCommand } from "./cli/commands/embed";
-import { buildEngine } from "./cli/utils/engine";
+import { ImageToImageCommand } from "./cli/commands/tasks/image-to-image";
+import { Agent } from "@nyx/core";
+import { OnnxTextGenerationProvider } from "@nyx/llm";
 import { run } from "./tui";
 import { isatty } from "node:tty";
 
@@ -19,10 +20,10 @@ const cli = yargs(hideBin(process.argv))
   .alias("h", ["help"])
   .version("version", pkg.version)
   .alias("v", ["version"])
-  .command(PromptCommand)
+  .command(TextGenerationCommand)
   .command(TuiCommand)
   .command(ServerCommand)
-  .command(EmbedCommand)
+  .command(ImageToImageCommand)
   .strict();
 
 try {
@@ -32,12 +33,12 @@ try {
     if (!isatty(process.stdin.fd)) {
       console.error(
         "nyx: interactive mode needs a terminal. " +
-          "Use `nyx prompt --message <text>` for one-shot output.",
+          "Use `nyx text-generation --message <text>` for one-shot output.",
       );
       process.exit(1);
     }
-    const engine = buildEngine();
-    await run({ agent: engine.agent, model: engine.llm.model });
+    const llm = new OnnxTextGenerationProvider();
+    await run({ agent: new Agent({ llm }), model: llm.model });
   }
 } catch (error) {
   if (error instanceof Error) {
