@@ -1,0 +1,44 @@
+{
+  "name": "@nyx/desktop",
+  "productName": "Nyx",
+  "version": "0.1.0",
+  "description": "Nyx desktop — local AI toolbox (chat + image-to-image)",
+  "author": "xingxingmofashu",
+  "private": true,
+  "main": "./.vite/build/main.js",
+  "scripts": {
+    "dev": "electron-forge start",
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "catalog:",
+    "@nyx/config": "workspace:*",
+    "@nyx/core": "workspace:*",
+    "@nyx/llm": "workspace:*",
+    "lucide-react": "1.39.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "zustand": "5.0.14"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "7.11.2",
+    "@electron-forge/maker-deb": "7.11.2",
+    "@electron-forge/maker-dmg": "7.11.2",
+    "@electron-forge/maker-rpm": "7.11.2",
+    "@electron-forge/maker-squirrel": "7.11.2",
+    "@electron-forge/maker-zip": "7.11.2",
+    "@electron-forge/plugin-auto-unpack-natives": "7.11.2",
+    "@electron-forge/plugin-vite": "7.11.2",
+    "@electron-forge/shared-types": "7.11.2",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.0",
+    "@vitejs/plugin-react": "4.3.4",
+    "electron": "37.2.0",
+    "tailwindcss": "4.3.3",
+    "vite": "7.0.0"
+  }
+}
