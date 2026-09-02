@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { z } from "zod";
 
 const CONFIG_DIR_NAME = ".nyx";
 
@@ -22,26 +23,49 @@ export function getModelDir(modelId: string): string {
   return join(getModelsDir(), modelId);
 }
 
-/** Per-model metadata recorded in ~/.nyx/models.json. */
-export interface ModelMeta {
-  task: string;
-  dtype?: string;
-  pulledAt: string;
-}
+/** Known pipeline tasks with cached model metadata. */
+export const ModelTaskSchema = z.enum(["text-generation", "image-to-image"]);
+export type ModelTask = z.infer<typeof ModelTaskSchema>;
 
-export type ModelMetaMap = Record<string, ModelMeta>;
+/** Per-model metadata recorded in ~/.nyx/models.json. */
+export const ModelMetaSchema = z.object({
+  task: ModelTaskSchema,
+  dtype: z.string().optional(),
+  pulledAt: z.string(),
+});
+export type ModelMeta = z.infer<typeof ModelMetaSchema>;
+
+/** Registry of model id -> metadata. */
+export const ModelMetaMapSchema = z.record(z.string(), ModelMetaSchema);
+export type ModelMetaMap = z.infer<typeof ModelMetaMapSchema>;
 
 function getModelsJsonPath(): string {
   return join(getConfigDir(), "models.json");
 }
 
-/** Read the full model metadata registry (empty object when absent/corrupt). */
+function isNotFoundError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as NodeJS.ErrnoException).code === "ENOENT";
+}
+
+/**
+ * Read the full model metadata registry.
+ * Returns an empty object when no models.json exists yet; throws when the
+ * file exists but cannot be read or fails schema validation (corruption should
+ * not be silently ignored).
+ */
 export function readModelMetaMap(): ModelMetaMap {
+  let raw: string;
   try {
-    const raw = readFileSync(getModelsJsonPath(), "utf-8");
-    return JSON.parse(raw) as ModelMetaMap;
-  } catch {
-    return {};
+    raw = readFileSync(getModelsJsonPath(), "utf-8");
+  } catch (error) {
+    if (isNotFoundError(error)) return {};
+    throw new Error(`Failed to read ${getModelsJsonPath()}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  try {
+    return ModelMetaMapSchema.parse(JSON.parse(raw));
+  } catch (error) {
+    throw new Error(`models.json is corrupted: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -49,11 +73,22 @@ export function readModelMeta(modelId: string): ModelMeta | undefined {
   return readModelMetaMap()[modelId];
 }
 
+// Serialize read-modify-write cycles so concurrent writeModelMeta calls in the
+// same process cannot lose entries. Cross-process pulls are not locked (a
+// single-user CLI trade-off); pi uses proper-lockfile for that case.
+let writeChain: Promise<void> = Promise.resolve();
+
 /** Update the metadata registry entry for one model id. */
-export function writeModelMeta(modelId: string, meta: ModelMeta): void {
-  const all = readModelMetaMap();
-  all[modelId] = meta;
-  const configDir = getConfigDir();
-  mkdirSync(configDir, { recursive: true });
-  writeFileSync(getModelsJsonPath(), JSON.stringify(all, null, 2));
+export function writeModelMeta(modelId: string, meta: ModelMeta): Promise<void> {
+  const validated = ModelMetaSchema.parse(meta);
+  const task = writeChain.then(() => {
+    const all = readModelMetaMap();
+    all[modelId] = validated;
+    const configDir = getConfigDir();
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(getModelsJsonPath(), JSON.stringify(all, null, 2));
+  });
+  // Keep the chain alive even when a write fails; rejections surface to the caller.
+  writeChain = task.catch(() => {});
+  return task;
 }

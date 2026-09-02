@@ -5,7 +5,7 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { cmd } from "../../utils/cmd";
-import { getModelsDir, readModelMeta } from "@nyx/config";
+import { getModelsDir, readModelMetaMap } from "@nyx/config";
 import { log } from "@clack/prompts";
 
 interface CachedModel {
@@ -17,6 +17,7 @@ interface CachedModel {
 function getCachedModels(): CachedModel[] {
   const modelsDir = getModelsDir();
   const models: CachedModel[] = [];
+  const metaMap = readModelMetaMap();
 
   let orgs: string[] = [];
   try {
@@ -39,7 +40,7 @@ function getCachedModels(): CachedModel[] {
     }
     for (const name of names) {
       const id = `${org}/${name}`;
-      const meta = readModelMeta(id);
+      const meta = metaMap[id];
       models.push({ id, task: meta?.task ?? "unknown", dtype: meta?.dtype });
     }
   }
@@ -52,7 +53,13 @@ export const ModelListCommand = cmd<Record<string, unknown>, Record<string, neve
   aliases: ["ls"],
   describe: "List locally cached models",
   handler: () => {
-    const models = getCachedModels();
+    let models: CachedModel[];
+    try {
+      models = getCachedModels();
+    } catch (error) {
+      log.error(error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
     if (models.length === 0) {
       log.info("No models cached yet. Use `nyx model pull <model> --task <task>` to download one.");
       return;
