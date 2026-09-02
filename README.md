@@ -16,7 +16,7 @@ bun monorepo:
 
 - `packages/llm` — model runtime + tasks (`runtime.ts` shared loader, `tasks/text-generation.ts`, `tasks/image-to-image.ts`), built on onnxruntime-node / transformers.js
 - `packages/core` — minimal Agent (one-shot local chat)
-- `apps/cli` — terminal CLI (yargs): `nyx text-generation`, `nyx image-to-image`, `nyx tui`
+- `apps/cli` — terminal CLI (yargs): `nyx` (interactive TUI), `nyx text-generation`, `nyx image-to-image`
 
 ## Quick start
 
@@ -27,20 +27,19 @@ bun run --filter='@nyx/coding-agent' -- src/index.ts --help
 
 ### Local models
 
-Models are cached in `~/.nyx/models/` and auto-downloaded from Hugging Face on first use.
-
-**1. Text-generation model** — `onnx-community/Qwen2.5-0.5B-Instruct` (q4, ~400MB)
-
-**2. Image-to-image model** — `Xenova/4x_APISR_GRL_GAN_generator-onnx` (fp32, 4x super-resolution)
+Models are cached in `~/.nyx/models/` and auto-downloaded from Hugging Face on first use. Use `nyx pull` to pre-download.
 
 ## Commands
 
+Every model command takes an explicit `--model <id>` (any transformers.js-compatible ONNX model).
+
 ```bash
-nyx tui                                # interactive chat TUI (requires a terminal)
-nyx text-generation --message "Hello"  # one-shot text generation
-nyx text-generation --model "<id>" --message "Hello"   # text generation with a specific model
-nyx image-to-image <input> -o out.png  # image-to-image (default: 4x super-resolution)
-nyx image-to-image <input> --model "<id>" -o out.png   # with a specific model
+nyx pull <model> --task text-generation   # pre-download a text-generation model
+nyx pull <model> --task image-to-image    # pre-download an image-to-image model
+
+nyx --model "<id>"                         # interactive chat TUI (requires a terminal)
+nyx text-generation --model "<id>" --message "Hello"     # one-shot text generation
+nyx image-to-image <input> --model "<id>" -o out.png     # image-to-image transform
 ```
 
 In the chat TUI: type a message and press Enter to send, `/clear` resets the transcript, `/quit` (or Ctrl+C) exits. Replies stream in as markdown.

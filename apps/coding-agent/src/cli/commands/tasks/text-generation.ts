@@ -1,6 +1,6 @@
 import { cmd } from "../../utils/cmd";
 import { Agent } from "@nyx/core";
-import { DEFAULT_TEXT_GENERATION_MODEL, OnnxTextGenerationProvider } from "@nyx/llm";
+import { OnnxTextGenerationProvider } from "@nyx/llm";
 import { log } from "@clack/prompts";
 
 interface TextGenerationArgs {
@@ -21,12 +21,12 @@ export const TextGenerationCommand = cmd<Record<string, unknown>, TextGeneration
       })
       .option("model", {
         type: "string",
-        default: DEFAULT_TEXT_GENERATION_MODEL,
+        demandOption: true,
         description: "Local ONNX text-generation model id",
       }),
   handler: async (args: TextGenerationArgs) => {
-    if (!args.message) {
-      log.error("Usage: nyx text-generation --message <text> [--model <id>]");
+    if (!args.message || !args.model) {
+      log.error("Usage: nyx text-generation --message <text> --model <id>");
       process.exit(1);
     }
     const llm = new OnnxTextGenerationProvider({ model: args.model });

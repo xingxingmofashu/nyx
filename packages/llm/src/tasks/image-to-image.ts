@@ -1,10 +1,8 @@
 import type { ImageToImagePipeline, RawImage } from "@huggingface/transformers";
 import { loadPipeline } from "../runtime.ts";
 
-export const DEFAULT_IMAGE_TO_IMAGE_MODEL = "Xenova/4x_APISR_GRL_GAN_generator-onnx";
-
 export interface ImageToImageOptions {
-  model?: string;
+  model: string;
   cacheDir?: string;
   allowDownload?: boolean;
 }
@@ -16,8 +14,8 @@ export class OnnxImageToImageEngine {
   private readonly cacheDir?: string;
   private readonly allowDownload?: boolean;
 
-  constructor(options: ImageToImageOptions = {}) {
-    this.model = options.model ?? DEFAULT_IMAGE_TO_IMAGE_MODEL;
+  constructor(options: ImageToImageOptions) {
+    this.model = options.model;
     this.cacheDir = options.cacheDir;
     this.allowDownload = options.allowDownload;
   }

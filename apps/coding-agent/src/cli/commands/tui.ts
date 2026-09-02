@@ -1,11 +1,12 @@
 /**
- * `nyx tui` — run the interactive chat TUI.
+ * `nyx` (no subcommand) — start the interactive chat TUI.
  */
 
 import { cmd } from "../utils/cmd";
+import { log } from "@clack/prompts";
 import { Agent } from "@nyx/core";
+import { OnnxTextGenerationProvider } from "@nyx/llm";
 import { run } from "../../tui";
-import { DEFAULT_TEXT_GENERATION_MODEL, OnnxTextGenerationProvider } from "@nyx/llm";
 import { isatty } from "node:tty";
 
 interface TuiArgs {
@@ -13,17 +14,23 @@ interface TuiArgs {
 }
 
 export const TuiCommand = cmd<Record<string, unknown>, TuiArgs>({
-  command: "tui",
-  describe: "Run the interactive chat TUI",
+  command: "$0",
+  describe: "Start the interactive chat TUI",
   builder: (yargs) =>
     yargs.option("model", {
       type: "string",
-      default: DEFAULT_TEXT_GENERATION_MODEL,
-      description: "Local ONNX model id",
+      demandOption: true,
+      description: "Local ONNX text-generation model id",
     }),
   handler: async (args: TuiArgs) => {
+    if (!args.model) {
+      log.error("Usage: nyx --model <id>");
+      process.exit(1);
+    }
     if (!isatty(process.stdin.fd)) {
-      console.error("nyx tui: interactive mode needs a terminal.");
+      log.error(
+        "Interactive mode needs a terminal. Use `nyx text-generation --message <text>` for one-shot output.",
+      );
       process.exit(1);
     }
     const llm = new OnnxTextGenerationProvider({ model: args.model });

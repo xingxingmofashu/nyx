@@ -6,7 +6,7 @@
 import { extname } from "node:path";
 import { log, spinner } from "@clack/prompts";
 import { cmd } from "../../utils/cmd";
-import { DEFAULT_IMAGE_TO_IMAGE_MODEL, OnnxImageToImageEngine } from "@nyx/llm";
+import { OnnxImageToImageEngine } from "@nyx/llm";
 
 interface ImageToImageArgs {
   input?: string;
@@ -30,12 +30,12 @@ export const ImageToImageCommand = cmd<Record<string, unknown>, ImageToImageArgs
       })
       .option("model", {
         type: "string",
-        default: DEFAULT_IMAGE_TO_IMAGE_MODEL,
+        demandOption: true,
         description: "Local ONNX image-to-image model id",
       }),
   handler: async (args: ImageToImageArgs) => {
-    if (!args.input) {
-      log.error("Usage: nyx image-to-image <input> [--output <path>] [--model <id>]");
+    if (!args.input || !args.model) {
+      log.error("Usage: nyx image-to-image <input> [--output <path>] --model <id>");
       process.exit(1);
     }
 

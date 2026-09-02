@@ -1,4 +1,10 @@
-import { env, pipeline, type PipelineType } from "@huggingface/transformers";
+import {
+  env,
+  pipeline,
+  type PipelineType,
+  type ProgressCallback,
+  type ProgressInfo,
+} from "@huggingface/transformers";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -6,6 +12,8 @@ export interface ModelRuntimeOptions {
   cacheDir?: string;
   allowDownload?: boolean;
   dtype?: "fp32" | "fp16" | "q8" | "q4" | "int8" | "uint8";
+  /** Receive model load/download progress events (transformers.js ProgressInfo). */
+  onProgress?: ProgressCallback;
 }
 
 const pipelines = new Map<string, Promise<unknown>>();
@@ -27,11 +35,39 @@ export function loadPipeline<T>(
   if (!pending) {
     pending = pipeline(task, model, {
       ...(options.dtype ? { dtype: options.dtype } : {}),
+      ...(options.onProgress ? { progress_callback: options.onProgress } : {}),
     }) as Promise<T>;
     pipelines.set(key, pending);
   }
   return pending;
 }
+
+/**
+ * Download (and cache) the files needed to run a pipeline task without keeping
+ * the loaded model in memory. Resolves when all files are cached locally.
+ */
+export async function pullModel(
+  task: PipelineType,
+  model: string,
+  options: ModelRuntimeOptions = {},
+): Promise<void> {
+  const cacheDir = options.cacheDir ?? join(homedir(), ".nyx", "models");
+  const allowDownload = options.allowDownload ?? true;
+
+  env.cacheDir = cacheDir;
+  env.allowRemoteModels = allowDownload;
+  env.allowLocalModels = true;
+
+  // Constructing the pipeline triggers downloads for config, tokenizer,
+  // processor, and weights. The instance is discarded after loading.
+  await pipeline(task, model, {
+    ...(options.dtype ? { dtype: options.dtype } : {}),
+    ...(options.onProgress ? { progress_callback: options.onProgress } : {}),
+  });
+}
+
+/** Convenience: re-export ProgressInfo for CLI progress rendering. */
+export type { ProgressInfo };
 
 export function clearModelCache(): void {
   pipelines.clear();

@@ -1,9 +1,8 @@
 /**
  * Local text-generation provider — text → text, fully local, true token streaming.
  *
- * Runs a small ONNX instruct model (Qwen2.5-0.5B-Instruct) via the shared
- * runtime, using transformers.js TextStreamer so each generated token is
- * emitted as it arrives (not chunked after the fact).
+ * Runs an ONNX instruct model via the shared runtime, using transformers.js
+ * TextStreamer so each generated token is emitted as it arrives.
  */
 
 import type { TextGenerationPipeline } from "@huggingface/transformers";
@@ -11,10 +10,8 @@ import { TextStreamer } from "@huggingface/transformers";
 import { loadPipeline } from "../runtime.ts";
 import type { LLMMessage, LLMProvider, LLMEvent, StreamOptions } from "../types.ts";
 
-export const DEFAULT_TEXT_GENERATION_MODEL = "onnx-community/Qwen2.5-0.5B-Instruct";
-
 export interface OnnxTextGenerationOptions {
-  model?: string;
+  model: string;
   cacheDir?: string;
   /** Max tokens to generate per call. Default 512. */
   maxTokens?: number;
@@ -31,8 +28,8 @@ export class OnnxTextGenerationProvider implements LLMProvider {
   private cacheDir?: string;
   private allowDownload?: boolean;
 
-  constructor(options: OnnxTextGenerationOptions = {}) {
-    this.model = options.model ?? DEFAULT_TEXT_GENERATION_MODEL;
+  constructor(options: OnnxTextGenerationOptions) {
+    this.model = options.model;
     this.maxTokens = options.maxTokens ?? 512;
     this.dtype = options.dtype ?? "q4";
     this.cacheDir = options.cacheDir;
