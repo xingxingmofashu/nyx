@@ -3,6 +3,7 @@
  */
 
 import { cmd } from "../../utils/cmd";
+import { getModelsDir } from "@nyx/config";
 import { pullModel, type ModelRuntimeOptions, type ProgressInfo } from "@nyx/llm";
 import { log, spinner } from "@clack/prompts";
 
@@ -61,7 +62,7 @@ export const PullCommand = cmd<Record<string, unknown>, PullArgs>({
     try {
       await pullModel(task, model, { dtype, onProgress });
       spin.stop("Model ready");
-      log.success(`Cached ${task}:${model} in ~/.nyx/models`);
+      log.success(`Cached ${task}:${model} in ${getModelsDir()}`);
     } catch (error) {
       spin.stop("Pull failed");
       log.error(error instanceof Error ? error.message : String(error));

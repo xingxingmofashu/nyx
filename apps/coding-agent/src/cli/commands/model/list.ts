@@ -1,16 +1,12 @@
 /**
- * `nyx model ls` — list locally cached ONNX models.
+ * `nyx model list` — list locally cached ONNX models.
  */
 
 import { readdirSync, statSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { cmd } from "../../utils/cmd";
+import { getModelsDir } from "@nyx/config";
 import { log } from "@clack/prompts";
-
-function getModelsDir(): string {
-  return join(homedir(), ".nyx", "models");
-}
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)}GB`;
@@ -67,8 +63,9 @@ function getCachedModels(): Array<{ id: string; sizeBytes: number }> {
   return models.sort((a, b) => a.id.localeCompare(b.id));
 }
 
-export const ModelLsCommand = cmd<Record<string, unknown>, Record<string, never>>({
-  command: "ls",
+export const ModelListCommand = cmd<Record<string, unknown>, Record<string, never>>({
+  command: "list",
+  aliases: ["ls"],
   describe: "List locally cached models",
   handler: () => {
     const models = getCachedModels();

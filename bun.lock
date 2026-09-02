@@ -20,12 +20,17 @@
       "dependencies": {
         "@clack/prompts": "1.7.0",
         "@earendil-works/pi-tui": "0.84.4",
+        "@nyx/config": "workspace:*",
         "@nyx/core": "workspace:*",
         "@nyx/llm": "workspace:*",
         "@types/yargs": "17.0.35",
         "chalk": "6.0.0",
         "yargs": "catalog:",
       },
+    },
+    "packages/config": {
+      "name": "@nyx/config",
+      "version": "0.1.0",
     },
     "packages/core": {
       "name": "@nyx/core",
@@ -39,6 +44,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@huggingface/transformers": "catalog:",
+        "@nyx/config": "workspace:*",
         "onnxruntime-node": "catalog:",
       },
     },
@@ -118,6 +124,8 @@
     "@isaacs/fs-minipass": ["@isaacs/fs-minipass@4.0.1", "", { "dependencies": { "minipass": "^7.0.4" } }, "sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w=="],
 
     "@nyx/coding-agent": ["@nyx/coding-agent@workspace:apps/coding-agent"],
+
+    "@nyx/config": ["@nyx/config@workspace:packages/config"],
 
     "@nyx/core": ["@nyx/core@workspace:packages/core"],
 

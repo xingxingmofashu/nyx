@@ -5,8 +5,7 @@ import {
   type ProgressCallback,
   type ProgressInfo,
 } from "@huggingface/transformers";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { getModelsDir } from "@nyx/config";
 
 export interface ModelRuntimeOptions {
   cacheDir?: string;
@@ -23,7 +22,7 @@ export function loadPipeline<T>(
   model: string,
   options: ModelRuntimeOptions = {},
 ): Promise<T> {
-  const cacheDir = options.cacheDir ?? join(homedir(), ".nyx", "models");
+  const cacheDir = options.cacheDir ?? getModelsDir();
   const allowDownload = options.allowDownload ?? true;
 
   env.cacheDir = cacheDir;
@@ -51,7 +50,7 @@ export async function pullModel(
   model: string,
   options: ModelRuntimeOptions = {},
 ): Promise<void> {
-  const cacheDir = options.cacheDir ?? join(homedir(), ".nyx", "models");
+  const cacheDir = options.cacheDir ?? getModelsDir();
   const allowDownload = options.allowDownload ?? true;
 
   env.cacheDir = cacheDir;

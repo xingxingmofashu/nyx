@@ -4,11 +4,11 @@
 
 import { cmd } from "../../utils/cmd";
 import { PullCommand } from "./pull";
-import { ModelLsCommand } from "./ls";
+import { ModelListCommand } from "./list";
 
 export const ModelCommand = cmd<Record<string, unknown>, Record<string, unknown>>({
   command: "model",
   describe: "Manage locally cached ONNX models",
-  builder: (yargs) => yargs.command(PullCommand).command(ModelLsCommand).demandCommand(1, "Specify a subcommand"),
+  builder: (yargs) => yargs.command(PullCommand).command(ModelListCommand).demandCommand(1, "Specify a subcommand"),
   handler: async () => {},
 });
