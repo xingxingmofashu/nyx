@@ -4,72 +4,46 @@
 
 ## 定位
 
-nyx 是一个本地 ONNX 推理工具：
+nyx 通过 transformers.js 本地运行 ONNX 模型：
 
-- **本地对话**：ONNX 小模型做文本生成（Qwen2.5-0.5B-Instruct）
-- **本地 embedding**：语义向量、相似度计算（bge-small-zh-v1.5）
-- **极简核心**：只保留 Agent（一次性对话），无会话/工具/权限
+- **文本生成**：ONNX 小模型（Qwen2.5-0.5B-Instruct），支持一次性提示与交互式 TUI
+- **图生图**：超分等图像变换（默认 4x_APISR_GRL_GAN）
+- **极简核心**：只保留 Agent（一次性对话），无会话/工具
 
 ## 架构
 
 bun monorepo：
 
-- `packages/llm` — 模型运行时 + 任务（`runtime.ts` 共享加载器、`tasks/chat.ts`、`tasks/embedding.ts`），基于 onnxruntime-node / transformers.js
+- `packages/llm` — 模型运行时 + 任务（`runtime.ts` 共享加载器、`tasks/text-generation.ts`、`tasks/image-to-image.ts`），基于 onnxruntime-node / transformers.js
 - `packages/core` — 极简 Agent（一次性本地对话）
-- `packages/server` — Hono HTTP 服务（health / chat / embed）
-- `apps/cli` — 终端 CLI（yargs）
+- `apps/cli` — 终端 CLI（yargs）：`nyx text-generation`、`nyx image-to-image`、`nyx tui`
 
 ## 快速开始
 
 ```bash
 bun install
-bun run cli -- --help
+bun run --filter='@nyx/coding-agent' -- src/index.ts --help
 ```
 
 ### 本地模型
 
-模型缓存在 `~/.nyx/models/`，需要两个：
+模型缓存在 `~/.nyx/models/`，首次使用自动从 Hugging Face 下载。
 
-**1. 对话模型** — `onnx-community/Qwen2.5-0.5B-Instruct`（量化，~400MB）
+**1. 文本生成模型** — `onnx-community/Qwen2.5-0.5B-Instruct`（q4，~400MB）
 
-```bash
-mkdir -p ~/.nyx/models/onnx-community/Qwen2.5-0.5B-Instruct
-cd ~/.nyx/models/onnx-community/Qwen2.5-0.5B-Instruct
-# 需要: config.json, tokenizer.json, tokenizer_config.json, generation_config.json,
-#       onnx/model_q4.onnx (或 q8/fp16 变体)
-# 可从 https://huggingface.co/onnx-community/Qwen2.5-0.5B-Instruct 下载
-```
-
-**2. Embedding 模型** — `Xenova/bge-small-zh-v1.5`（512 维中英，~95MB）
-
-```bash
-mkdir -p ~/.nyx/models/Xenova/bge-small-zh-v1.5/onnx
-cd ~/.nyx/models/Xenova/bge-small-zh-v1.5
-for f in config.json tokenizer.json tokenizer_config.json special_tokens_map.json vocab.txt; do
-  curl -L -o "$f" "https://huggingface.co/Xenova/bge-small-zh-v1.5/resolve/main/$f?download=true"
-done
-curl -L -o onnx/model.onnx "https://huggingface.co/Xenova/bge-small-zh-v1.5/resolve/main/onnx/model.onnx?download=true"
-```
+**2. 图生图模型** — `Xenova/4x_APISR_GRL_GAN_generator-onnx`（fp32，4x 超分）
 
 ## 命令
 
 ```bash
-nyx chat                              # 交互式 TUI（需要终端）
-nyx chat --message "你好"             # 一次性本地对话
-nyx chat --model "<id>" --message "你好"  # 指定模型
-nyx server                            # 本地 HTTP 服务（默认 3848）
-nyx embed <text> [--compare <other>]  # 一次性本地 embedding
+nyx tui                                # 交互式聊天 TUI（需要终端）
+nyx text-generation --message "你好"   # 一次性文本生成
+nyx text-generation --model "<id>" --message "你好"   # 指定模型的文本生成
+nyx image-to-image <input> -o out.png  # 图生图（默认 4x 超分）
+nyx image-to-image <input> --model "<id>" -o out.png  # 指定模型
 ```
 
 chat TUI 中：输入消息回车发送，`/clear` 清空对话，`/quit`（或 Ctrl+C）退出。回复以 markdown 流式显示。
-
-## Server API
-
-```bash
-GET  /api/health          # 健康检查
-POST /api/chat            # { message } -> { text }  本地对话
-POST /api/embed           # { texts }   -> number[][] 本地向量
-```
 
 ## 开发
 

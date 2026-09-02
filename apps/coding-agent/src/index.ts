@@ -5,7 +5,6 @@ import { hideBin } from "yargs/helpers";
 import pkg from "../package.json";
 import { TextGenerationCommand } from "./cli/commands/tasks/text-generation";
 import { TuiCommand } from "./cli/commands/tui";
-import { ServerCommand } from "./cli/commands/server";
 import { ImageToImageCommand } from "./cli/commands/tasks/image-to-image";
 import { Agent } from "@nyx/core";
 import { OnnxTextGenerationProvider } from "@nyx/llm";
@@ -22,7 +21,6 @@ const cli = yargs(hideBin(process.argv))
   .alias("v", ["version"])
   .command(TextGenerationCommand)
   .command(TuiCommand)
-  .command(ServerCommand)
   .command(ImageToImageCommand)
   .strict();
 

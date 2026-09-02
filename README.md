@@ -4,72 +4,46 @@ A local ONNX inference tool — fully local, no cloud, your data never leaves yo
 
 ## What it is
 
-nyx runs ONNX models locally:
+nyx runs ONNX models locally via transformers.js:
 
-- **Local chat** — small ONNX model for text generation (Qwen2.5-0.5B-Instruct)
-- **Local embedding** — semantic vectors and similarity (bge-small-zh-v1.5)
-- **Minimal core** — a single Agent for one-shot chat; no sessions, tools, or permissions yet
+- **Text generation** — small ONNX instruct model (Qwen2.5-0.5B-Instruct), streamed one-shot prompt or interactive TUI
+- **Image-to-image** — super-resolution and other image transforms (4x_APISR_GRL_GAN by default)
+- **Minimal core** — a single Agent for one-shot chat; no sessions or tools yet
 
 ## Architecture
 
 bun monorepo:
 
-- `packages/llm` — model runtime + tasks (`runtime.ts` shared loader, `tasks/chat.ts`, `tasks/embedding.ts`), built on onnxruntime-node / transformers.js
+- `packages/llm` — model runtime + tasks (`runtime.ts` shared loader, `tasks/text-generation.ts`, `tasks/image-to-image.ts`), built on onnxruntime-node / transformers.js
 - `packages/core` — minimal Agent (one-shot local chat)
-- `packages/server` — Hono HTTP service (health / chat / embed)
-- `apps/cli` — terminal CLI (yargs)
+- `apps/cli` — terminal CLI (yargs): `nyx text-generation`, `nyx image-to-image`, `nyx tui`
 
 ## Quick start
 
 ```bash
 bun install
-bun run cli -- --help
+bun run --filter='@nyx/coding-agent' -- src/index.ts --help
 ```
 
 ### Local models
 
-Models are cached in `~/.nyx/models/`. Two are needed:
+Models are cached in `~/.nyx/models/` and auto-downloaded from Hugging Face on first use.
 
-**1. Chat model** — `onnx-community/Qwen2.5-0.5B-Instruct` (quantized, ~400MB)
+**1. Text-generation model** — `onnx-community/Qwen2.5-0.5B-Instruct` (q4, ~400MB)
 
-```bash
-mkdir -p ~/.nyx/models/onnx-community/Qwen2.5-0.5B-Instruct
-cd ~/.nyx/models/onnx-community/Qwen2.5-0.5B-Instruct
-# Needed: config.json, tokenizer.json, tokenizer_config.json, generation_config.json,
-#         onnx/model_q4.onnx (or q8/fp16 variant)
-# Download from: https://huggingface.co/onnx-community/Qwen2.5-0.5B-Instruct
-```
-
-**2. Embedding model** — `Xenova/bge-small-zh-v1.5` (512-dim zh+en, ~95MB)
-
-```bash
-mkdir -p ~/.nyx/models/Xenova/bge-small-zh-v1.5/onnx
-cd ~/.nyx/models/Xenova/bge-small-zh-v1.5
-for f in config.json tokenizer.json tokenizer_config.json special_tokens_map.json vocab.txt; do
-  curl -L -o "$f" "https://huggingface.co/Xenova/bge-small-zh-v1.5/resolve/main/$f?download=true"
-done
-curl -L -o onnx/model.onnx "https://huggingface.co/Xenova/bge-small-zh-v1.5/resolve/main/onnx/model.onnx?download=true"
-```
+**2. Image-to-image model** — `Xenova/4x_APISR_GRL_GAN_generator-onnx` (fp32, 4x super-resolution)
 
 ## Commands
 
 ```bash
-nyx chat                              # interactive TUI (requires a terminal)
-nyx chat --message "Hello"            # one-shot local chat
-nyx chat --model "<id>" --message "Hello"  # chat with a specific model
-nyx server                            # local HTTP server (default 3848)
-nyx embed <text> [--compare <other>]  # one-shot local embedding
+nyx tui                                # interactive chat TUI (requires a terminal)
+nyx text-generation --message "Hello"  # one-shot text generation
+nyx text-generation --model "<id>" --message "Hello"   # text generation with a specific model
+nyx image-to-image <input> -o out.png  # image-to-image (default: 4x super-resolution)
+nyx image-to-image <input> --model "<id>" -o out.png   # with a specific model
 ```
 
 In the chat TUI: type a message and press Enter to send, `/clear` resets the transcript, `/quit` (or Ctrl+C) exits. Replies stream in as markdown.
-
-## Server API
-
-```bash
-GET  /api/health          # health check
-POST /api/chat            # { message } -> { text }  local chat
-POST /api/embed           # { texts }   -> number[][] local vectors
-```
 
 ## Development
 
