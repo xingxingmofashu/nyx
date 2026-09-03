@@ -1,8 +1,27 @@
 import { serve } from "@hono/node-server"
-import { createApp } from "./app"
+import { Hono } from "hono"
+import { auth } from "./middleware/auth"
+import { textGenerationRoutes } from "./routes/text-generation"
+import { imageToImageRoutes } from "./routes/image-to-image"
+import { modelsRoutes } from "./routes/models"
 
-export { createApp } from "./app"
-export * from "./services"
+/** Assemble the app: auth middleware + mounted v1 routes. */
+export function createApp(options: { token?: string } = {}): Hono {
+  const app = new Hono()
+  const { token } = options
+
+  // Bearer token auth when a token is configured (spawned by the desktop app).
+  if (token) {
+    app.use("*", auth(token))
+  }
+
+  app.get("/v1/health", (c) => c.json({ ok: true }))
+  app.route("/v1/models", modelsRoutes)
+  app.route("/v1/text-generation", textGenerationRoutes)
+  app.route("/v1/image-to-image", imageToImageRoutes)
+
+  return app
+}
 
 export interface NyxServerHandle {
   url: string

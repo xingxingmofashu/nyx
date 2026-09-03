@@ -42,10 +42,11 @@ export function loadPipeline<T>(
 }
 
 /**
- * Download (and cache) the files needed to run a pipeline task without keeping
- * the loaded model in memory. Resolves when all files are cached locally.
+ * Low-level download: cache the files needed to run a pipeline task without
+ * keeping the loaded model in memory. Prefer the higher-level `pull` from
+ * ./models.ts (which also records model metadata).
  */
-export async function pullModel(
+export async function downloadModel(
   task: PipelineType,
   model: string,
   options: ModelRuntimeOptions = {},

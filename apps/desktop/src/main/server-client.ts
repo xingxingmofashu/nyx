@@ -58,7 +58,7 @@ export class ServerClient {
     },
     signal?: AbortSignal,
   ): Promise<void> {
-    const res = await fetch(`${this.baseUrl}/v1/chat`, {
+    const res = await fetch(`${this.baseUrl}/v1/text-generation`, {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify({ model: modelId, message }),

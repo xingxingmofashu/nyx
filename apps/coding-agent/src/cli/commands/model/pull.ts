@@ -3,15 +3,11 @@
  */
 
 import { cmd } from "../../utils/cmd";
-import { getModelsDir, ModelTaskSchema, writeModelMeta, type ModelTask } from "@nyx/config";
-import { pullModel, type ModelRuntimeOptions, type ProgressInfo } from "@nyx/llm";
+import { getModelsDir, ModelTaskSchema, type ModelTask } from "@nyx/config";
+import { pull, type ProgressInfo } from "@nyx/llm";
 import { log, spinner } from "@clack/prompts";
 
-/** transformers.js dtype per pipeline task (mirrors each engine's loader). */
-const TASK_DTYPES: Record<ModelTask, NonNullable<ModelRuntimeOptions["dtype"]>> = {
-  "text-generation": "q4",
-  "image-to-image": "fp32",
-};
+const TASK_CHOICES = ["text-generation", "image-to-image"] as const;
 
 interface PullArgs {
   model?: string;
@@ -29,7 +25,7 @@ export const PullCommand = cmd<Record<string, unknown>, PullArgs>({
       })
       .option("task", {
         type: "string",
-        choices: Object.keys(TASK_DTYPES),
+        choices: TASK_CHOICES,
         demandOption: true,
         description: "Pipeline task: text-generation or image-to-image",
       }),
@@ -43,11 +39,10 @@ export const PullCommand = cmd<Record<string, unknown>, PullArgs>({
       log.error("--task must be one of: text-generation, image-to-image");
       process.exit(1);
     }
-    const task = parsedTask.data;
+    const task = parsedTask.data as ModelTask;
     const model = args.model;
-    const dtype = TASK_DTYPES[task];
 
-    log.info(`Pulling ${task}:${model} (dtype ${dtype})`);
+    log.info(`Pulling ${task}:${model}`);
 
     const spin = spinner();
     spin.start("Downloading model...");
@@ -63,8 +58,7 @@ export const PullCommand = cmd<Record<string, unknown>, PullArgs>({
     };
 
     try {
-      await pullModel(task, model, { dtype, onProgress });
-      await writeModelMeta(model, { task, dtype, pulledAt: new Date().toISOString() });
+      await pull(model, task, onProgress);
       spin.stop("Model ready");
       log.success(`Cached ${task}:${model} in ${getModelsDir()}`);
     } catch (error) {
