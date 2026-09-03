@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ImageIcon, Loader2, Sparkles, Upload, X } from "lucide-react"
+import { ImageIcon, Sparkles, Upload, X } from "lucide-react"
 import { useModelsStore } from "../store/models"
 import type { ImageResult } from "../../../shared/types"
 import { Button } from "./ui/button"
+import { Spinner } from "./ui/spinner"
 import { cn } from "../lib/utils"
 
 function toObjectUrl(result: ImageResult): string {
@@ -140,16 +141,16 @@ export function ImageToolsView() {
         )}
         <div className="ml-auto flex gap-2">
           <Button variant="secondary" onClick={clearSource} disabled={!source}>
-            <X /> Clear
+            <X data-icon="inline-start" /> Clear
           </Button>
           <Button onClick={() => void run()} disabled={!source || !selectedModel || busy}>
             {busy ? (
               <>
-                <Loader2 className="animate-spin" /> Running…
+                <Spinner data-icon="inline-start" /> Running…
               </>
             ) : (
               <>
-                <Sparkles /> Run
+                <Sparkles data-icon="inline-start" /> Run
               </>
             )}
           </Button>

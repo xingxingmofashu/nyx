@@ -6,6 +6,8 @@ import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Separator } from "./ui/separator"
 import { Badge } from "./ui/badge"
+import { Progress } from "./ui/progress"
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from "./ui/field"
 import { cn } from "../lib/utils"
 
 const TASK_LABELS: Record<ModelTask, string> = {
@@ -31,8 +33,8 @@ export function ModelSidebar() {
     <aside className="flex w-64 shrink-0 flex-col border-r bg-card">
       <div className="flex items-center justify-between px-3 py-2.5">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Models</h2>
-        <Button variant="ghost" size="icon" className="size-6 text-muted-foreground" onClick={refresh} aria-label="Refresh model list">
-          <RefreshCw className="size-3.5" />
+        <Button variant="ghost" size="icon-sm" className="text-muted-foreground" onClick={refresh} aria-label="Refresh model list">
+          <RefreshCw />
         </Button>
       </div>
 
@@ -66,14 +68,7 @@ export function ModelSidebar() {
                               </Badge>
                             )}
                           </div>
-                          {progress !== undefined && (
-                            <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-muted">
-                              <div
-                                className="h-full bg-primary transition-all"
-                                style={{ width: `${progress}%` }}
-                              />
-                            </div>
-                          )}
+                          {progress !== undefined && <Progress value={progress} className="mt-1 h-1" />}
                         </button>
                       </li>
                     )
@@ -123,32 +118,48 @@ function PullForm({ onPulled }: { onPulled: () => void }) {
 
   return (
     <div className="space-y-2 px-1">
-      <p className="text-xs font-medium text-muted-foreground">Pull model</p>
-      <select
-        value={task}
-        onChange={(e) => setTask(e.target.value as ModelTask)}
-        className="no-drag w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus-visible:border-ring"
-      >
-        {TASK_GROUPS.map((t) => (
-          <option key={t} value={t}>
-            {TASK_LABELS[t]}
-          </option>
-        ))}
-      </select>
-      <div className="flex gap-1.5">
-        <Input
-          value={modelId}
-          onChange={(e) => setModelId(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && void submit()}
-          placeholder="org/model-id"
-          className="h-8 min-w-0 flex-1 text-xs"
-        />
-        <Button size="sm" className="h-8 gap-1" onClick={() => void submit()} disabled={busy || !modelId.trim()}>
-          <Download />
-          {busy ? "…" : "Pull"}
-        </Button>
-      </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      <FieldGroup>
+        <Field orientation="horizontal" className="items-center gap-2">
+          <FieldLabel className="shrink-0 text-xs text-muted-foreground">Task</FieldLabel>
+          <FieldContent>
+            <select
+              value={task}
+              onChange={(e) => setTask(e.target.value as ModelTask)}
+              className="no-drag w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus-visible:border-ring"
+            >
+              {TASK_GROUPS.map((t) => (
+                <option key={t} value={t}>
+                  {TASK_LABELS[t]}
+                </option>
+              ))}
+            </select>
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="model-id" className="sr-only">
+            Model id
+          </FieldLabel>
+          <FieldContent>
+            <div className="flex gap-1.5">
+              <Input
+                id="model-id"
+                value={modelId}
+                onChange={(e) => setModelId(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && void submit()}
+                placeholder="org/model-id"
+                aria-invalid={error ? true : undefined}
+                className="h-8 min-w-0 flex-1 text-xs"
+              />
+              <Button size="sm" className="h-8 gap-1" onClick={() => void submit()} disabled={busy || !modelId.trim()}>
+                <Download data-icon="inline-start" />
+                {busy ? "…" : "Pull"}
+              </Button>
+            </div>
+            {error && <FieldDescription className="text-xs text-destructive">{error}</FieldDescription>}
+          </FieldContent>
+        </Field>
+      </FieldGroup>
     </div>
   )
 }

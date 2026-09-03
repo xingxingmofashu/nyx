@@ -4,7 +4,17 @@ import { useChatStore } from "../store/chat"
 import { useModelsStore } from "../store/models"
 import { Button } from "./ui/button"
 import { Textarea } from "./ui/textarea"
-import { cn } from "../lib/utils"
+import {
+  MessageScroller,
+  MessageScrollerButton,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerProvider,
+  MessageScrollerViewport,
+} from "./ui/message-scroller"
+import { Message, MessageContent } from "./ui/message"
+import { Bubble, BubbleContent } from "./ui/bubble"
+import { Spinner } from "./ui/spinner"
 
 /** Minimal markdown-ish renderer for assistant replies (v1: code fences only). */
 function renderMarkdown(text: string): string {
@@ -18,7 +28,6 @@ export function ChatView() {
   const { messages, appendMessage, updateMessage, setStreaming, isStreaming } = useChatStore()
   const selectedModel = useModelsStore((s) => s.selected["text-generation"])
   const [input, setInput] = useState("")
-  const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   // Subscribe to agent streaming events once.
@@ -60,11 +69,6 @@ export function ChatView() {
     return unsubscribe
   }, [appendMessage, updateMessage, setStreaming])
 
-  // Keep the transcript scrolled to the bottom.
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
-  }, [messages])
-
   const send = () => {
     const text = input.trim()
     if (!text || isStreaming || !selectedModel) return
@@ -78,37 +82,58 @@ export function ChatView() {
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-        {messages.length === 0 && (
-          <p className="mt-8 text-center text-sm text-muted-foreground">
-            {selectedModel
-              ? `Chatting with ${selectedModel}. Type a message to start.`
-              : "Select a text-generation model in the sidebar to start chatting."}
-          </p>
-        )}
-        {messages.map((m) => (
-          <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
-            <div
-              className={cn(
-                "max-w-[80%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm leading-relaxed [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-muted [&_pre]:p-2",
-                m.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : m.error
-                    ? "bg-destructive/10 text-destructive"
-                    : "bg-card text-card-foreground border",
+      <MessageScrollerProvider autoScroll>
+        <MessageScroller className="min-h-0 flex-1">
+          <MessageScrollerViewport>
+            <MessageScrollerContent>
+              {messages.length === 0 && (
+                <p className="mt-8 px-4 text-center text-sm text-muted-foreground">
+                  {selectedModel
+                    ? `Chatting with ${selectedModel}. Type a message to start.`
+                    : "Select a text-generation model in the sidebar to start chatting."}
+                </p>
               )}
-              dangerouslySetInnerHTML={{ __html: m.role === "assistant" && !m.error ? renderMarkdown(m.text) : m.text }}
-            />
-          </div>
-        ))}
-        {isStreaming && (
-          <div className="flex justify-start">
-            <span className="flex gap-1 rounded-lg border bg-card px-3 py-2">
-              <Dot /> <Dot /> <Dot />
-            </span>
-          </div>
-        )}
-      </div>
+              {messages.map((m) => (
+                <MessageScrollerItem key={m.id} messageId={m.id} scrollAnchor={m.role === "user"}>
+                  <Message align={m.role === "user" ? "end" : "start"}>
+                    <MessageContent>
+                      <Bubble
+                        variant={m.role === "user" ? "default" : m.error ? "destructive" : "muted"}
+                        align={m.role === "user" ? "end" : "start"}
+                      >
+                        <BubbleContent>
+                          {m.role === "assistant" && !m.error ? (
+                            <div
+                              className="whitespace-pre-wrap [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-background/60 [&_pre]:p-2"
+                              dangerouslySetInnerHTML={{ __html: renderMarkdown(m.text) }}
+                            />
+                          ) : (
+                            <p className="whitespace-pre-wrap">{m.text}</p>
+                          )}
+                        </BubbleContent>
+                      </Bubble>
+                    </MessageContent>
+                  </Message>
+                </MessageScrollerItem>
+              ))}
+              {isStreaming && (
+                <MessageScrollerItem messageId="streaming">
+                  <Message align="start">
+                    <MessageContent>
+                      <Bubble variant="muted" align="start">
+                        <BubbleContent>
+                          <Spinner data-icon="inline-start" className="text-muted-foreground" />
+                        </BubbleContent>
+                      </Bubble>
+                    </MessageContent>
+                  </Message>
+                </MessageScrollerItem>
+              )}
+            </MessageScrollerContent>
+          </MessageScrollerViewport>
+          <MessageScrollerButton />
+        </MessageScroller>
+      </MessageScrollerProvider>
 
       <div className="flex items-end gap-2 border-t bg-card px-4 py-3">
         <Textarea
@@ -133,18 +158,14 @@ export function ChatView() {
             onClick={() => void window.nyx.chat.abort()}
             aria-label="Stop generating"
           >
-            <Square />
+            <Square data-icon="inline-start" />
           </Button>
         ) : (
           <Button size="icon" onClick={send} disabled={!input.trim() || !selectedModel} aria-label="Send message">
-            <SendHorizonal />
+            <SendHorizonal data-icon="inline-start" />
           </Button>
         )}
       </div>
     </div>
   )
-}
-
-function Dot() {
-  return <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground" />
 }
