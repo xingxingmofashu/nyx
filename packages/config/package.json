@@ -10,7 +10,9 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
+    "@huggingface/hub": "2.16.3",
     "@huggingface/transformers": "catalog:",
+    "defu": "6.1.7",
     "zod": "catalog:"
   }
 }

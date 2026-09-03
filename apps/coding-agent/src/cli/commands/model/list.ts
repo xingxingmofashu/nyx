@@ -3,7 +3,8 @@
  */
 
 import { cmd } from "../../utils/cmd";
-import { list, type ModelInfo } from "@nyx/llm";
+import { list } from "@nyx/llm";
+import type { ModelInfo } from "@nyx/config";
 import { log } from "@clack/prompts";
 
 export const ModelListCommand = cmd<Record<string, unknown>, Record<string, never>>({

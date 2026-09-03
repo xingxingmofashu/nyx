@@ -3,7 +3,7 @@
  */
 
 import { cmd } from "../../utils/cmd";
-import { getModelsDir, ModelTaskSchema, type ModelTask } from "@nyx/config";
+import { getModelsDir } from "@nyx/config";
 import { pull, type ProgressInfo } from "@nyx/llm";
 import { log, spinner } from "@clack/prompts";
 
@@ -34,13 +34,8 @@ export const PullCommand = cmd<Record<string, unknown>, PullArgs>({
       log.error("Usage: nyx model pull <model> --task <text-generation|image-to-image>");
       process.exit(1);
     }
-    const parsedTask = ModelTaskSchema.safeParse(args.task);
-    if (!parsedTask.success) {
-      log.error("--task must be one of: text-generation, image-to-image");
-      process.exit(1);
-    }
-    const task = parsedTask.data as ModelTask;
     const model = args.model;
+    const task = args.task as (typeof TASK_CHOICES)[number];
 
     log.info(`Pulling ${task}:${model}`);
 
