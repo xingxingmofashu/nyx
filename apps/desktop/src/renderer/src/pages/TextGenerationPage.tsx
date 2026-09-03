@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react"
 import { SendHorizonal, Square } from "lucide-react"
 import { useChatStore } from "../store/chat"
 import { useModelsStore } from "../store/models"
-import { Button } from "./ui/button"
-import { Textarea } from "./ui/textarea"
+import { Button } from "../components/ui/button"
+import { Textarea } from "../components/ui/textarea"
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -11,10 +11,10 @@ import {
   MessageScrollerItem,
   MessageScrollerProvider,
   MessageScrollerViewport,
-} from "./ui/message-scroller"
-import { Message, MessageContent } from "./ui/message"
-import { Bubble, BubbleContent } from "./ui/bubble"
-import { Spinner } from "./ui/spinner"
+} from "../components/ui/message-scroller"
+import { Message, MessageContent } from "../components/ui/message"
+import { Bubble, BubbleContent } from "../components/ui/bubble"
+import { Spinner } from "../components/ui/spinner"
 
 /** Minimal markdown-ish renderer for assistant replies (v1: code fences only). */
 function renderMarkdown(text: string): string {
@@ -24,7 +24,7 @@ function renderMarkdown(text: string): string {
   return escaped.replace(/```(\w*)\n?([\s\S]*?)```/g, (_m, _lang, code) => `<pre>${code.trim()}</pre>`)
 }
 
-export function ChatView() {
+export function TextGenerationPage() {
   const { messages, appendMessage, updateMessage, setStreaming, isStreaming } = useChatStore()
   const selectedModel = useModelsStore((s) => s.selected["text-generation"])
   const [input, setInput] = useState("")

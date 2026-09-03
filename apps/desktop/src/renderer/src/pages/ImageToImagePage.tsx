@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { ImageIcon, Sparkles, Upload, X } from "lucide-react"
 import { useModelsStore } from "../store/models"
 import type { ImageResult } from "../../../shared/types"
-import { Button } from "./ui/button"
-import { Spinner } from "./ui/spinner"
+import { Button } from "../components/ui/button"
+import { Spinner } from "../components/ui/spinner"
 import { cn } from "../lib/utils"
 
 function toObjectUrl(result: ImageResult): string {
@@ -16,7 +16,7 @@ interface SourceImage {
   url: string
 }
 
-export function ImageToolsView() {
+export function ImageToImagePage() {
   const selectedModel = useModelsStore((s) => s.selected["image-to-image"])
   const [source, setSource] = useState<SourceImage | null>(null)
   const [result, setResult] = useState<{ url: string; width: number; height: number } | null>(null)
