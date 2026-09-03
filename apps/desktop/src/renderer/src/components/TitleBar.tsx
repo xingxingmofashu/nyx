@@ -1,55 +1,50 @@
 import { Minus, Square, X } from "lucide-react"
+import { Button } from "./ui/button"
+import { cn } from "../lib/utils"
 
 export type ToolTab = "chat" | "image"
 
+const TABS: Array<{ id: ToolTab; label: string }> = [
+  { id: "chat", label: "Chat" },
+  { id: "image", label: "Image Tools" },
+]
+
+/** Frameless title bar: drag region + tool tabs + window controls. */
 export function TitleBar({ tab, onTabChange }: { tab: ToolTab; onTabChange: (tab: ToolTab) => void }) {
   return (
-    <div className="drag-region flex h-10 shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-900 pl-3">
-      <div className="flex items-center gap-1">
-        <span className="mr-2 text-sm font-semibold text-zinc-300">Nyx</span>
+    <div className="drag flex h-11 shrink-0 items-center justify-between border-b bg-card pl-3">
+      <div className="flex items-center gap-3">
+        <span className="text-sm font-semibold">Nyx</span>
         <div className="no-drag flex gap-1">
-          {(
-            [
-              { id: "chat", label: "Chat" },
-              { id: "image", label: "Image Tools" },
-            ] as const
-          ).map((t) => (
-            <button
+          {TABS.map((t) => (
+            <Button
               key={t.id}
+              variant="ghost"
+              size="sm"
               onClick={() => onTabChange(t.id)}
-              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-                tab === t.id
-                  ? "bg-zinc-700 text-white"
-                  : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
-              }`}
+              className={cn("text-muted-foreground", tab === t.id && "bg-muted text-foreground")}
             >
               {t.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
       <div className="no-drag flex">
-        <button
-          className="flex h-9 w-11 items-center justify-center text-zinc-400 hover:bg-zinc-800 hover:text-white"
-          onClick={() => window.nyx.window.minimize()}
-          aria-label="Minimize"
-        >
-          <Minus size={15} />
-        </button>
-        <button
-          className="flex h-9 w-11 items-center justify-center text-zinc-400 hover:bg-zinc-800 hover:text-white"
-          onClick={() => window.nyx.window.toggleMaximize()}
-          aria-label="Maximize"
-        >
-          <Square size={13} />
-        </button>
-        <button
-          className="flex h-9 w-11 items-center justify-center text-zinc-400 hover:bg-red-500 hover:text-white"
+        <Button variant="ghost" size="icon" className="size-9 rounded-none text-muted-foreground" onClick={() => window.nyx.window.minimize()} aria-label="Minimize">
+          <Minus />
+        </Button>
+        <Button variant="ghost" size="icon" className="size-9 rounded-none text-muted-foreground" onClick={() => window.nyx.window.toggleMaximize()} aria-label="Maximize">
+          <Square />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-9 rounded-none text-muted-foreground hover:bg-destructive hover:text-white"
           onClick={() => window.nyx.window.close()}
           aria-label="Close"
         >
-          <X size={16} />
-        </button>
+          <X />
+        </Button>
       </div>
     </div>
   )

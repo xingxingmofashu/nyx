@@ -19,11 +19,11 @@ export default function App() {
   }, [])
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-zinc-950">
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
       <TitleBar tab={tab} onTabChange={setTab} />
       <div className="flex min-h-0 flex-1">
         <ModelSidebar />
-        <main className="flex min-w-0 flex-1 flex-col bg-zinc-950">
+        <main className="flex min-w-0 flex-1 flex-col bg-background">
           {tab === "chat" ? <ChatView /> : <ImageToolsView />}
         </main>
       </div>

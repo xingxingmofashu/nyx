@@ -47,12 +47,13 @@ export interface ImageResult {
 
 export type ModelTask = "text-generation" | "image-to-image"
 
+/** Installed model as reported by the server's /v1/models. */
 export interface ModelInfo {
   id: string
-  task: ModelTask | "unknown"
+  name: string
+  task: string
   dtype?: string
-  /** Present when the model has been pulled through nyx. */
-  pulledAt?: string
+  createdAt?: string
 }
 
 export interface ModelPullProgress {

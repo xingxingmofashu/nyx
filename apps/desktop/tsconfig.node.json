@@ -15,5 +15,5 @@
     "allowImportingTsExtensions": true,
     "types": ["node"]
   },
-  "include": ["src/main", "src/preload", "src/shared", "forge.config.ts", "vite.main.config.ts", "vite.renderer.config.ts"]
+  "include": ["src/main", "src/preload", "src/shared", "forge.config.ts", "vite.main.config.ts", "vite.renderer.config.ts", "forge-env.d.ts"]
 }
