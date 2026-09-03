@@ -30,7 +30,10 @@ export function ChatView() {
         case "message_update": {
           const msgs = useChatStore.getState().messages
           const last = msgs[msgs.length - 1]
-          if (last && last.role === "assistant") updateMessage(last.id, { text: event.text })
+          if (last && last.role === "assistant") {
+            // Delta chunks accumulate onto the current assistant text.
+            updateMessage(last.id, (m) => ({ text: m.text + event.text }))
+          }
           break
         }
         case "message_end": {

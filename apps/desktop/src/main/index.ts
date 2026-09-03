@@ -3,6 +3,8 @@ import { join } from "node:path"
 import { registerIpc } from "./ipc"
 import { AgentService } from "./agent-service"
 import { ImageService } from "./image-service"
+import { ServerClient } from "./server-client"
+import { ServerManager } from "./server-manager"
 import { IPC } from "../shared/ipc"
 
 // Single instance: local model cache is a single set of files.
@@ -19,9 +21,7 @@ if (!gotLock) {
   })
 }
 
-/** Model selected by the user per tool; set via IPC before first use. */
-const agentService = new AgentService("")
-const imageService = new ImageService("")
+const serverManager = new ServerManager()
 const windows = new Set<BrowserWindow>()
 
 function createWindow(): BrowserWindow {
@@ -44,7 +44,6 @@ function createWindow(): BrowserWindow {
 
   windows.add(win)
   win.on("closed", () => windows.delete(win))
-  agentService.attachWindow(win)
 
   // Open external links in the system browser, never in-app.
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -73,15 +72,35 @@ function createWindow(): BrowserWindow {
   return win
 }
 
-app.whenReady().then(() => {
-  registerIpc({ agent: agentService, image: imageService, windows })
-  createWindow()
+app.whenReady().then(async () => {
+  // Start the inference server before any window can issue model calls.
+  try {
+    await serverManager.start()
+  } catch (error) {
+    console.error("failed to start nyx server:", error)
+  }
+
+  const client = new ServerClient(serverManager)
+  const agentService = new AgentService(client)
+  const imageService = new ImageService(client)
+  registerIpc({ agent: agentService, image: imageService, client })
+
+  const win = createWindow()
+  agentService.attachWindow(win)
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) {
+      const w = createWindow()
+      agentService.attachWindow(w)
+    }
   })
 })
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit()
+})
+
+// Stop the inference server when the app quits.
+app.on("will-quit", () => {
+  void serverManager.stop()
 })

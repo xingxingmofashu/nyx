@@ -6,7 +6,8 @@ interface ChatState {
   isStreaming: boolean
   /** Append a message and return its id. */
   appendMessage: (role: "user" | "assistant") => string
-  updateMessage: (id: string, patch: Partial<ChatDisplayMessage>) => void
+  /** Update a message; patch.text may be a function receiving the current text. */
+  updateMessage: (id: string, patch: Partial<ChatDisplayMessage> | ((m: ChatDisplayMessage) => Partial<ChatDisplayMessage>)) => void
   setStreaming: (streaming: boolean) => void
   reset: () => void
 }
@@ -24,7 +25,11 @@ export const useChatStore = create<ChatState>((set) => ({
   },
   updateMessage: (id, patch) =>
     set((state) => ({
-      messages: state.messages.map((m) => (m.id === id ? { ...m, ...patch } : m)),
+      messages: state.messages.map((m) => {
+        if (m.id !== id) return m
+        const resolved = typeof patch === "function" ? patch(m) : patch
+        return { ...m, ...resolved }
+      }),
     })),
   setStreaming: (streaming) => set({ isStreaming: streaming }),
   reset: () => set({ messages: [], isStreaming: false }),
