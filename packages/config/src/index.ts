@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { z } from "zod";
+import { ModelMetaMapSchema, ModelMetaSchema, type ModelMeta, type ModelMetaMap } from "./schema.ts";
 
 const CONFIG_DIR_NAME = ".nyx";
 
@@ -22,22 +22,6 @@ export function getModelsDir(): string {
 export function getModelDir(modelId: string): string {
   return join(getModelsDir(), modelId);
 }
-
-/** Known pipeline tasks with cached model metadata. */
-export const ModelTaskSchema = z.enum(["text-generation", "image-to-image"]);
-export type ModelTask = z.infer<typeof ModelTaskSchema>;
-
-/** Per-model metadata recorded in ~/.nyx/models.json. */
-export const ModelMetaSchema = z.object({
-  task: ModelTaskSchema,
-  dtype: z.string().optional(),
-  pulledAt: z.string(),
-});
-export type ModelMeta = z.infer<typeof ModelMetaSchema>;
-
-/** Registry of model id -> metadata. */
-export const ModelMetaMapSchema = z.record(z.string(), ModelMetaSchema);
-export type ModelMetaMap = z.infer<typeof ModelMetaMapSchema>;
 
 function getModelsJsonPath(): string {
   return join(getConfigDir(), "models.json");
@@ -92,3 +76,5 @@ export function writeModelMeta(modelId: string, meta: ModelMeta): Promise<void> 
   writeChain = task.catch(() => {});
   return task;
 }
+
+export * from "./schema.ts";

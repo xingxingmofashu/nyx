@@ -64,6 +64,7 @@
       "name": "@nyx/config",
       "version": "0.1.0",
       "dependencies": {
+        "@huggingface/transformers": "catalog:",
         "zod": "catalog:",
       },
     },
