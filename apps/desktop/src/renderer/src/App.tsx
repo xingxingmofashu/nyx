@@ -1,6 +1,7 @@
 import { useEffect } from "react"
 import { HashRouter, Navigate, Route, Routes, useLocation } from "react-router-dom"
 import { AppSidebar } from "./components/Sidebar"
+import { ThemeToggle } from "./components/ThemeToggle"
 import { TextGenerationPage } from "./pages/TextGenerationPage"
 import { ImageToImagePage } from "./pages/ImageToImagePage"
 import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar"
@@ -34,6 +35,9 @@ function Shell() {
             <header className="flex h-10 shrink-0 items-center gap-1.5 border-b bg-card px-2">
               <SidebarTrigger />
               <span className="text-xs font-medium text-muted-foreground">{title}</span>
+              <div className="ms-auto">
+                <ThemeToggle />
+              </div>
             </header>
             <div className="flex min-h-0 flex-1 flex-col">
               <Routes>
