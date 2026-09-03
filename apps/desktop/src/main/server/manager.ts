@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from "node:child_process"
 import { randomBytes } from "node:crypto"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
+import { NyxServerClient } from "@nyx/server/client"
 
 /**
  * Manages the @nyx/server child process that runs inference.
@@ -16,6 +17,7 @@ export class ServerManager {
   private token = ""
   private baseUrl = ""
   private readyResolvers: Array<() => void> = []
+  private serverClient: NyxServerClient | null = null
 
   /** Resolved server location; throws when the server has not started. */
   get url(): string {
@@ -25,6 +27,12 @@ export class ServerManager {
 
   get authToken(): string {
     return this.token
+  }
+
+  /** Typed HTTP client bound to the running server; created on first use. */
+  get client(): NyxServerClient {
+    if (!this.serverClient) this.serverClient = new NyxServerClient(this.url, this.token)
+    return this.serverClient
   }
 
   /** Spawn the server process and wait until it reports ready. */

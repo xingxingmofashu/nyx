@@ -2,19 +2,19 @@ import { BrowserWindow, ipcMain } from "electron"
 import { getModelsDir } from "@nyx/config"
 import { IPC } from "../shared/ipc"
 import type { ImagePayload, ModelTask } from "../shared/types"
-import { AgentService } from "./agent-service"
-import { ImageService } from "./image-service"
-import type { ServerClient } from "./server-client"
+import { AgentService } from "./services/agent"
+import { ImageService } from "./services/image"
+import type { ServerManager } from "./server/manager"
 
 interface Services {
   agent: AgentService
   image: ImageService
-  client: ServerClient
+  manager: ServerManager
 }
 
 /** Register all ipcMain handlers. Must run after app is ready. */
 export function registerIpc(services: Services): void {
-  const { agent, image, client } = services
+  const { agent, image, manager } = services
 
   // --- Chat ---
   ipcMain.handle(IPC.chat.send, (_e, text: string) => agent.send(text))
@@ -29,8 +29,8 @@ export function registerIpc(services: Services): void {
   ipcMain.handle(IPC.image.setModel, (_e, modelId: string) => image.setModel(modelId))
 
   // --- Models ---
-  ipcMain.handle(IPC.models.list, () => client.listModels())
-  ipcMain.handle(IPC.models.pull, (_e, modelId: string, task: ModelTask) => client.pullModel(modelId, task))
+  ipcMain.handle(IPC.models.list, () => manager.client.listModels())
+  ipcMain.handle(IPC.models.pull, (_e, modelId: string, task: ModelTask) => manager.client.pullModel(modelId, task))
 
   // --- Config ---
   ipcMain.handle(IPC.config.getModelsDir, () => getModelsDir())

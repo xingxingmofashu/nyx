@@ -1,10 +1,9 @@
 import { app, BrowserWindow, shell } from "electron"
 import { join } from "node:path"
 import { registerIpc } from "./ipc"
-import { AgentService } from "./agent-service"
-import { ImageService } from "./image-service"
-import { ServerClient } from "./server-client"
-import { ServerManager } from "./server-manager"
+import { AgentService } from "./services/agent"
+import { ImageService } from "./services/image"
+import { ServerManager } from "./server/manager"
 import { IPC } from "../shared/ipc"
 
 // Single instance: local model cache is a single set of files.
@@ -80,10 +79,9 @@ app.whenReady().then(async () => {
     console.error("failed to start nyx server:", error)
   }
 
-  const client = new ServerClient(serverManager)
-  const agentService = new AgentService(client)
-  const imageService = new ImageService(client)
-  registerIpc({ agent: agentService, image: imageService, client })
+  const agentService = new AgentService(serverManager)
+  const imageService = new ImageService(serverManager)
+  registerIpc({ agent: agentService, image: imageService, manager: serverManager })
 
   const win = createWindow()
   agentService.attachWindow(win)

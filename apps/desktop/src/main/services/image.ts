@@ -1,15 +1,15 @@
-import type { ServerClient } from "./server-client"
-import type { ImagePayload, ImageResult } from "../shared/types"
+import type { ServerManager } from "../server/manager"
+import type { ImagePayload, ImageResult } from "../../shared/types"
 
 /**
  * Bridges the image-to-image tool to the inference server.
  */
 export class ImageService {
-  private client: ServerClient
+  private readonly manager: ServerManager
   private modelId = ""
 
-  constructor(client: ServerClient) {
-    this.client = client
+  constructor(manager: ServerManager) {
+    this.manager = manager
   }
 
   get currentModel(): string {
@@ -22,6 +22,6 @@ export class ImageService {
 
   async run(input: ImagePayload): Promise<ImageResult> {
     if (!this.modelId) throw new Error("No image-to-image model selected. Pick a model first.")
-    return this.client.imageToImage(this.modelId, input)
+    return this.manager.client.imageToImage(this.modelId, input)
   }
 }

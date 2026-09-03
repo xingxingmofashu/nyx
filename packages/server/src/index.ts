@@ -50,3 +50,6 @@ export function startServer(options: { token?: string; port?: number; host?: str
     server.on("error", reject)
   })
 }
+
+export * from "./types"
+export * from "./client"

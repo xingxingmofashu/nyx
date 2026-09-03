@@ -1,7 +1,7 @@
 import type { BrowserWindow } from "electron"
-import type { ServerClient } from "./server-client"
-import { IPC } from "../shared/ipc"
-import type { ChatEvent } from "../shared/types"
+import type { ServerManager } from "../server/manager"
+import { IPC } from "../../shared/ipc"
+import type { ChatEvent } from "../../shared/types"
 
 /**
  * Bridges the chat tool to the inference server.
@@ -10,14 +10,14 @@ import type { ChatEvent } from "../shared/types"
  * renderer as serialized ChatEvents.
  */
 export class AgentService {
-  private client: ServerClient
+  private readonly manager: ServerManager
   private modelId = ""
   private windows = new Set<BrowserWindow>()
   private busy = false
   private abortController: AbortController | null = null
 
-  constructor(client: ServerClient) {
-    this.client = client
+  constructor(manager: ServerManager) {
+    this.manager = manager
   }
 
   attachWindow(win: BrowserWindow): void {
@@ -49,7 +49,7 @@ export class AgentService {
     this.abortController = new AbortController()
     this.broadcast({ type: "message_start", role: "assistant" })
     try {
-      await this.client.chat(
+      await this.manager.client.chat(
         this.modelId,
         text,
         {

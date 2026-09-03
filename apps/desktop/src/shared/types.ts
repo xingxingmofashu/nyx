@@ -6,6 +6,10 @@
  * `{ message }`).
  */
 
+// Wire types shared with the inference server live in @nyx/server/types.
+import type { ImagePayload, ImageResult, ModelInfo, ModelTask } from "@nyx/server/types"
+export type { ImagePayload, ImageResult, ModelInfo, ModelTask }
+
 // --- Chat ---
 
 /** A chat message as displayed in the UI (role + text accumulation). */
@@ -28,33 +32,7 @@ export type ChatEvent =
   | { type: "message_end"; text: string }
   | { type: "agent_error"; message: string }
 
-// --- Image-to-image ---
-
-export interface ImagePayload {
-  /** Raw encoded image bytes (png/jpeg/webp). */
-  data: Uint8Array
-  mimeType: string
-}
-
-export interface ImageResult {
-  data: Uint8Array
-  mimeType: string
-  width: number
-  height: number
-}
-
-// --- Models ---
-
-export type ModelTask = "text-generation" | "image-to-image"
-
-/** Installed model as reported by the server's /v1/models. */
-export interface ModelInfo {
-  id: string
-  name: string
-  task: string
-  dtype?: string
-  createdAt?: string
-}
+// --- Model pull progress (IPC events; the pull endpoint itself is opaque) ---
 
 export interface ModelPullProgress {
   modelId: string

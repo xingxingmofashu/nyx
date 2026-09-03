@@ -1,29 +1,19 @@
-import type { ServerManager } from "./server-manager"
-import type { ChatEvent, ImagePayload, ImageResult, ModelInfo, ModelTask } from "../shared/types"
+import type { ImagePayload, ImageResult, ModelInfo, ModelTask } from "./types"
 
 /**
- * HTTP client for @nyx/server. Runs in the Electron main process and forwards
- * renderer IPC calls to the spawned inference server.
+ * HTTP client for the nyx inference server.
+ *
+ * Same-process clients (e.g. the Electron main process) construct this with
+ * the server's base URL + bearer token and call the typed methods below.
  */
-
-export class ServerClient {
-  constructor(private readonly server: ServerManager) {}
+export class NyxServerClient {
+  constructor(
+    private readonly baseUrl: string,
+    private readonly token: string,
+  ) {}
 
   private headers(): Record<string, string> {
-    return { Authorization: `Bearer ${this.server.authToken}`, "Content-Type": "application/json" }
-  }
-
-  private get baseUrl(): string {
-    return this.server.url
-  }
-
-  async health(): Promise<boolean> {
-    try {
-      const res = await fetch(`${this.baseUrl}/v1/health`, { headers: this.headers() })
-      return res.ok
-    } catch {
-      return false
-    }
+    return { Authorization: `Bearer ${this.token}`, "Content-Type": "application/json" }
   }
 
   async listModels(): Promise<ModelInfo[]> {
@@ -134,7 +124,7 @@ export class ServerClient {
       const body = (await res.json().catch(() => ({}))) as { error?: string }
       throw new Error(body.error ?? `image-to-image failed: ${res.status}`)
     }
-    // Response is the encoded image stream; width/height ride in headers.
+    // Response is the image stream; width/height ride in headers.
     const buf = await res.arrayBuffer()
     const width = Number(res.headers.get("x-image-width"))
     const height = Number(res.headers.get("x-image-height"))
@@ -146,5 +136,3 @@ export class ServerClient {
     }
   }
 }
-
-export type { ChatEvent }
