@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { ImageIcon, Sparkles, Upload, X } from "lucide-react"
 import { useModelsStore } from "../store/models"
 import type { ImageResult } from "../../../shared/types"
+import { ModelPicker } from "../components/ModelPicker"
 import { Button } from "../components/ui/button"
 import { Spinner } from "../components/ui/spinner"
 import { cn } from "../lib/utils"
@@ -132,13 +133,7 @@ export function ImageToImagePage() {
       </div>
 
       <div className="flex items-center gap-3 border-t bg-card px-4 py-3">
-        {!selectedModel ? (
-          <p className="text-sm text-muted-foreground">Select an image-to-image model in the sidebar.</p>
-        ) : (
-          <p className="min-w-0 truncate text-xs text-muted-foreground">
-            Model: <span className="text-foreground">{selectedModel}</span>
-          </p>
-        )}
+        <ModelPicker task="image-to-image" />
         <div className="ml-auto flex gap-2">
           <Button variant="secondary" onClick={clearSource} disabled={!source}>
             <X data-icon="inline-start" /> Clear

@@ -1,6 +1,5 @@
 import { useEffect } from "react"
 import { HashRouter, Navigate, Route, Routes, useLocation } from "react-router-dom"
-import { TitleBar } from "./components/TitleBar"
 import { AppSidebar } from "./components/Sidebar"
 import { TextGenerationPage } from "./pages/TextGenerationPage"
 import { ImageToImagePage } from "./pages/ImageToImagePage"
@@ -8,8 +7,8 @@ import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar"
 import { useModelsStore } from "./store/models"
 
 const PAGE_TITLES: Record<string, string> = {
-  "/text-generation": "Chat",
-  "/image-to-image": "Image tools",
+  "/text-generation": "Text generation",
+  "/image-to-image": "Image to image",
 }
 
 function Shell() {

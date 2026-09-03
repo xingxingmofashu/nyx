@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { SendHorizonal, Square } from "lucide-react"
 import { useChatStore } from "../store/chat"
 import { useModelsStore } from "../store/models"
+import { ModelPicker } from "../components/ModelPicker"
 import { Button } from "../components/ui/button"
 import { Textarea } from "../components/ui/textarea"
 import {
@@ -136,21 +137,26 @@ export function TextGenerationPage() {
       </MessageScrollerProvider>
 
       <div className="flex items-end gap-2 border-t bg-card px-4 py-3">
-        <Textarea
-          ref={inputRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault()
-              send()
-            }
-          }}
-          placeholder={selectedModel ? "Message… (Enter to send)" : "Select a model first"}
-          disabled={!selectedModel || isStreaming}
-          className="min-h-9 max-h-40 flex-1 resize-none"
-          rows={1}
-        />
+        <div className="flex flex-1 flex-col gap-1.5 rounded-lg border bg-background px-2 py-2 focus-within:border-ring">
+          <div className="flex items-center justify-between gap-2 px-1">
+            <ModelPicker task="text-generation" className="h-6 border-0 px-1 text-xs text-muted-foreground shadow-none" />
+          </div>
+          <Textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault()
+                send()
+              }
+            }}
+            placeholder={selectedModel ? "Message… (Enter to send)" : "Select a model first"}
+            disabled={!selectedModel || isStreaming}
+            className="min-h-9 max-h-40 resize-none border-0 bg-transparent p-1 shadow-none focus-visible:ring-0"
+            rows={1}
+          />
+        </div>
         {isStreaming ? (
           <Button
             size="icon"
