@@ -3,21 +3,15 @@
  */
 
 import { cmd } from "../../utils/cmd";
-import { list } from "@nyx/llm";
+import { list, type ModelInfo } from "@nyx/llm";
 import { log } from "@clack/prompts";
-
-interface CachedModel {
-  id: string;
-  task: string;
-  dtype?: string;
-}
 
 export const ModelListCommand = cmd<Record<string, unknown>, Record<string, never>>({
   command: "list",
   aliases: ["ls"],
   describe: "List locally cached models",
   handler: () => {
-    let models: CachedModel[];
+    let models: ModelInfo[];
     try {
       models = list();
     } catch (error) {
@@ -29,7 +23,7 @@ export const ModelListCommand = cmd<Record<string, unknown>, Record<string, neve
       return;
     }
 
-    const byTask = new Map<string, CachedModel[]>();
+    const byTask = new Map<string, ModelInfo[]>();
     for (const model of models) {
       const group = byTask.get(model.task) ?? [];
       group.push(model);

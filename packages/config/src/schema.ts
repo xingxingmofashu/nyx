@@ -11,24 +11,15 @@ import type { DataType, PipelineType } from "@huggingface/transformers"
  * flags the drift.
  */
 
-/** All quantization dtypes transformers.js understands. */
-const DATA_TYPE_VALUES = ["auto", "fp32", "fp16", "q8", "int8", "uint8", "q4", "bnb4", "q4f16"] as const satisfies readonly DataType[]
-
-/** Dtypes nyx actually supports for local ONNX inference. */
+/** Dtypes nyx supports for local ONNX inference. */
 export const DTYPE_VALUES = ["fp32", "fp16", "q8", "q4", "int8", "uint8"] as const satisfies readonly DataType[]
 
-/** Pipeline tasks nyx currently supports. */
+/** Pipeline tasks nyx supports. */
 export const TASK_VALUES = ["text-generation", "image-to-image"] as const satisfies readonly PipelineType[]
 
-export const DataTypeSchema = z.enum(DATA_TYPE_VALUES)
-export type ConfigDataType = z.infer<typeof DataTypeSchema>
-
-export const TaskSchema = z.enum(TASK_VALUES)
-export type Task = z.infer<typeof TaskSchema>
-
-/** Pipeline task as used in model metadata (nyx-supported subset). */
-export const ModelTaskSchema = TaskSchema
-export type ModelTask = Task
+/** Pipeline task as used in model metadata. */
+export const ModelTaskSchema = z.enum(TASK_VALUES)
+export type ModelTask = z.infer<typeof ModelTaskSchema>
 
 /** Per-model metadata recorded in ~/.nyx/models.json. */
 export const ModelMetaSchema = z.object({

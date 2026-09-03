@@ -12,9 +12,6 @@
   },
   "dependencies": {
     "@hono/node-server": "catalog:",
-    "@huggingface/transformers": "catalog:",
-    "@nyx/config": "workspace:*",
-    "@nyx/core": "workspace:*",
     "@nyx/llm": "workspace:*",
     "hono": "catalog:"
   },

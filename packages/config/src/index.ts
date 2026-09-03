@@ -61,7 +61,6 @@ export function readModelMeta(modelId: string): ModelMeta | undefined {
 // same process cannot lose entries. Cross-process pulls are not locked (a
 // single-user CLI trade-off); pi uses proper-lockfile for that case.
 let writeChain: Promise<void> = Promise.resolve();
-
 /** Update the metadata registry entry for one model id. */
 export function writeModelMeta(modelId: string, meta: ModelMeta): Promise<void> {
   const validated = ModelMetaSchema.parse(meta);

@@ -7,7 +7,7 @@
 
 import type { TextGenerationPipeline } from "@huggingface/transformers";
 import { TextStreamer } from "@huggingface/transformers";
-import { loadPipeline } from "../runtime.ts";
+import { loadPipeline, type Dtype } from "../runtime.ts";
 import type { LLMMessage, LLMProvider, LLMEvent, StreamOptions } from "../types.ts";
 
 export interface OnnxTextGenerationOptions {
@@ -16,7 +16,7 @@ export interface OnnxTextGenerationOptions {
   /** Max tokens to generate per call. Default 512. */
   maxTokens?: number;
   /** Quantization dtype. Default "q4" for speed/size. */
-  dtype?: "fp32" | "fp16" | "q8" | "q4";
+  dtype?: Dtype;
   allowDownload?: boolean;
 }
 

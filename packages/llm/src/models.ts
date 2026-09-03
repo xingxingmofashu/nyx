@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs"
 import { join } from "node:path"
-import { getModelsDir, readModelMetaMap, writeModelMeta } from "@nyx/config"
-import { downloadModel } from "./runtime.ts"
+import { getModelsDir, readModelMetaMap, writeModelMeta, type ModelTask } from "@nyx/config"
+import { downloadModel, type Dtype } from "./runtime.ts"
 import type { ProgressInfo } from "./runtime.ts"
 
 /**
@@ -15,15 +15,15 @@ export type { ModelTask } from "@nyx/config"
 
 export interface ModelInfo {
   id: string
-  task: "text-generation" | "image-to-image" | "unknown"
-  dtype?: string
+  task: ModelTask | "unknown"
+  dtype?: Dtype
   pulledAt?: string
 }
 
 const TASK_DTYPES = {
   "text-generation": "q4",
   "image-to-image": "fp32",
-} as const
+} as const satisfies Record<ModelTask, Dtype>
 
 /** List cached models by scanning the models dir and merging metadata. */
 export function list(): ModelInfo[] {
@@ -67,7 +67,7 @@ export function list(): ModelInfo[] {
 /** Download a model into the cache and record its metadata. */
 export async function pull(
   modelId: string,
-  task: "text-generation" | "image-to-image",
+  task: ModelTask,
   onProgress?: (info: ProgressInfo) => void,
 ): Promise<void> {
   const dtype = TASK_DTYPES[task]
