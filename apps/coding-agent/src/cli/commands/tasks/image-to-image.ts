@@ -47,7 +47,8 @@ export const ImageToImageCommand = cmd<Record<string, unknown>, ImageToImageArgs
     const spin = spinner();
     spin.start("Loading local ONNX model (first run downloads)...");
     const engine = new OnnxImageToImageEngine({ model: args.model });
-    const image = await engine.generateToFile(input, output);
+    const image = await engine.generate(input);
+    await image.save(output);
     spin.stop("Done");
 
     log.success(`Image-to-image ${input} -> ${output} (${image.width}x${image.height})`);

@@ -134,12 +134,15 @@ export class ServerClient {
       const body = (await res.json().catch(() => ({}))) as { error?: string }
       throw new Error(body.error ?? `image-to-image failed: ${res.status}`)
     }
-    const out = (await res.json()) as { data: string; mimeType: string; width: number; height: number }
+    // Response is the encoded image stream; width/height ride in headers.
+    const buf = await res.arrayBuffer()
+    const width = Number(res.headers.get("x-image-width"))
+    const height = Number(res.headers.get("x-image-height"))
     return {
-      data: new Uint8Array(Buffer.from(out.data, "base64")),
-      mimeType: out.mimeType,
-      width: out.width,
-      height: out.height,
+      data: new Uint8Array(buf),
+      mimeType: res.headers.get("content-type") ?? "image/png",
+      width: Number.isFinite(width) ? width : 0,
+      height: Number.isFinite(height) ? height : 0,
     }
   }
 }
