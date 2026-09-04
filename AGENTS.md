@@ -2,39 +2,41 @@
 
 ## Project
 
-`nyx` — a fully local ONNX inference tool, no cloud. Bun monorepo. See `README.md` (English) / `README.zh_CN.md` (Chinese) for model setup and CLI usage.
+`nyx` — a fully local ONNX inference tool, no cloud. Bun monorepo. `README.md` / `README.zh_CN.md` describe model setup and CLI usage but lag the code (they mention an `apps/cli`, `nyx pull`, etc.); trust the source tree.
 
 ## Commands
 
-Run everything with bun, never npm. Exact versions are pinned via the workspace `catalog` in the root `package.json` (see `bunfig.toml` `exact = true`) — add new deps as `catalog:` entries, not inline versions.
+Run everything with bun, never npm. Versions are pinned via the workspace `catalog` in the root `package.json` (`bunfig.toml` `exact = true`) — add new deps as `catalog:` entries, never inline versions.
 
 ```bash
 bun install
-bun run typecheck            # tsc --noEmit for all @nyx/* packages
-bun run dev                  # run the CLI directly (root script)
+bun run typecheck             # tsc --noEmit for every @nyx/* package
+bun run dev                   # run the CLI directly (root script)
 bun --cwd apps/coding-agent run src/index.ts --help
+bun --cwd packages/server run build   # emit dist/server.cjs for the desktop app
 ```
 
-- `build` is an alias for `typecheck` (`tsc --noEmit`) in every package except `@nyx/server`, whose `build` also runs `vite build` to emit `dist/server.cjs` for the desktop app. No other package emits `dist/`.
-- Root `lint` and `test` scripts exist but NO package defines a `lint` or `test` script, so they fail with "No packages matched the filter". Verification = `bun run typecheck`.
-- `tsc` is only in `node_modules/.bin`; use the bun-script form above, not bare `tsc`.
+- Focused check after touching one package: `bun --cwd packages/<pkg> run typecheck`.
+- `build` == `typecheck` (`tsc --noEmit`) in every package except `@nyx/server`, whose `build` also runs `vite build` to emit `dist/server.cjs`. No other package emits `dist/`.
+- Root `lint`/`test` scripts exist but NO package defines a `lint` or `test` script, so they fail with "No packages matched the filter". Verification is `bun run typecheck`.
+- `tsc` lives only in `node_modules/.bin`; use the bun-script forms above, never bare `tsc`. `@nyx/desktop` typecheck runs two passes (`tsconfig.json` + `tsconfig.node.json` for main/preload).
+- All packages are `"type": "module"`; sources import each other with explicit `.ts` extensions (e.g. `../runtime.ts`) — required for bun's TS resolution here, keep it.
 
 ## Architecture
 
-Dependency direction: `@nyx/config` ← `@nyx/llm` ← `@nyx/core` ← `apps/*` (all `workspace:*`). `@nyx/server` sits alongside core, depending on `@nyx/llm`; `apps/desktop` depends only on `@nyx/config` and spawns `@nyx/server` as a child process.
+Dependency direction: `@nyx/config` ← `@nyx/llm` ← `@nyx/core` ← `apps/*` (all `workspace:*`). `@nyx/server` depends on `@nyx/llm`.
 
-- `packages/config` — paths (`~/.nyx`), model-cache directory, and zod schemas for model metadata aligned with transformers.js types (`schema.ts`).
-- `packages/llm` — ONNX runtime + tasks. `src/runtime.ts` is the single shared loader (transformers.js `env.cacheDir`, memoized per `task:model` pipeline). `src/models.ts` is the shared model registry (`list`/`pull`). `src/tasks/text-generation.ts` and `src/tasks/image-to-image.ts` are thin wrappers. Exports `LLMProvider`/`LLMEvent` and dtype/task types derived from `@nyx/config`.
-- `packages/core` — `Agent` class (one-shot chat, no sessions/tools). Reads a `LLMProvider` via `stream()`. Only used by the CLI/TUI today.
-- `packages/server` — Hono HTTP inference service (routes under `/v1`), spawned as a plain-Node child by the desktop app. onnxruntime-node crashes inside Electron's Node runtime (SIGTRAP), so inference must live in this external process.
-- `apps/coding-agent` — yargs CLI: bare `nyx` starts the interactive TUI; `nyx text-generation`, `nyx image-to-image`, and `nyx model {pull,list}` are subcommands. Command modules live in `src/cli/commands/`; `src/cli/utils/cmd.ts` is the yargs typing helper.
-- `apps/desktop` — Electron shell (forge + vite + React). Talks to inference only over HTTP/SSE to the spawned server via `server-manager` + `server-client`.
+- `packages/config` — `~/.nyx` paths (`getModelsDir`, overridable via `NYX_MODELS_DIR`) and the model registry persisted at `~/.nyx/models.json` as `{ provider: { <org>: { models: { <name>: ModelInfo } } } }` (`read()`/`write()` with defu deep-merge). `ModelInfo.task`/`dtype` use transformers.js `PipelineType`/`DataType` directly — no zod.
+- `packages/llm` — ONNX runtime + tasks. `src/runtime.ts` is the single shared loader (`configureEnv` sets `env.cacheDir` + remote/local download; `loadPipeline` memoizes per `task:model`). `src/models.ts` is the registry (`list` filters to entries still on disk, `pull` records into the config; default dtype `q4` text-generation / `fp32` image-to-image). `src/tasks/*` are provider classes, one per task: `OnnxTextGenerationProvider.stream()` (TextStreamer) and `OnnxImageToImageProvider.generate()`; both implement the shared `LLMProvider` surface (`id`/`model`/`task`). Types come from `@huggingface/transformers`, not `@nyx/config`.
+- `packages/core` — `Agent` (one-shot streaming chat via events, no sessions/tools), consumed by the CLI. Server-side chat also composes an `OnnxTextGenerationProvider`.
+- `packages/server` — Hono inference service under `/v1` (models / text-generation / image-to-image). Spawned by the desktop app as a plain-`node` child: onnxruntime-node crashes inside Electron's Node runtime (SIGTRAP), so inference must live in this external process. Standalone entry `src/server.ts` reads `NYX_SERVER_TOKEN` (required — exits without it), `NYX_SERVER_PORT` (default 0 = ephemeral), `NYX_SERVER_HOST` (default 127.0.0.1), prints `nyx-server-ready <url>` on stdout. Bearer-token auth middleware when a token is set. Text-generation providers are cached per model id (weights load once per process).
+- `apps/coding-agent` — yargs CLI: bare `nyx` (`$0`) is the interactive TUI; subcommands `text-generation`, `image-to-image`, and `model` (`pull` requires `--task`; `list`/`ls`). Modules in `src/cli/commands/`; `src/cli/utils/cmd.ts` is the yargs typing helper. yargs is `.strict()`, so unknown flags reject.
+- `apps/desktop` — Electron shell (forge + vite + React), single instance (shared model cache). Package.json declares `@nyx/{config,core,llm,server}` but `src/` imports only `@nyx/config`; inference runs solely in the spawned server child, reached via `src/main/server/manager.ts` (ServerManager) + `client.ts` (typed SSE/HTTP client). Renderer uses path aliases `#components`/`#lib`/`#hooks` (from package.json `imports`) with shadcn/base-ui components in `src/renderer/src/components/ui/` (see `components.json`, `.claude/skills/shadcn/`).
 
 ## Gotchas
 
-- Models live in `~/.nyx/models/` and are downloaded to cache lazily on first use (transformers.js `env.allowRemoteModels` defaults to `true`); use `nyx model pull <model> --task <text-generation|image-to-image>` to pre-download. Code changes don't re-trigger downloads; missing model files surface as pipeline load errors.
-- Every model command requires an explicit `--model`; text-generation defaults to dtype `q4`, image-to-image to `fp32`. First load of a large model is slow; pipeline is memoized so it's loaded once per process.
-- `packages/llm/src/tasks/text-generation.ts` passes messages to the transformers.js pipeline, which applies the model's chat template internally.
-- Desktop dev needs the server bundle first: `bun --cwd packages/server run build` (the server-manager spawns `dist/server.cjs`).
-- The interactive TUI relies on the event loop staying alive; yargs `.strict()` rejects unknown flags.
-- Source files import with explicit `.ts` extensions (e.g. `../runtime.ts`) — keep this convention, it's required for bun's TS resolution here.
+- Models cache in `~/.nyx/models/` and download lazily on first use (`allowRemoteModels`/`allowLocalModels` default on); pre-download with `nyx model pull <model> --task <text-generation|image-to-image>`. Code changes never re-trigger downloads; a missing model surfaces as a pipeline load error.
+- Every model command requires an explicit `--model`; TUI also needs a TTY (`isatty` guard rejects non-interactive stdin). First load of a large model is slow — pipelines/providers are memoized per process.
+- Desktop dev needs the server bundle first: `bun --cwd packages/server run build`; ServerManager resolves `packages/server/dist/server.cjs` (dev) or a packaged `resources/server.cjs`.
+- text-generation passes the raw message array to the transformers.js pipeline, which applies the model's chat template internally.
+- `packageManager` is pinned (`bun@1.3.14`); root `engines.node >= 20`.
