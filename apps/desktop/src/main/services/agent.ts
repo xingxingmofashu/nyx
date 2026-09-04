@@ -6,14 +6,13 @@ import type { ChatEvent, ChatMessage } from "../../shared/types"
 /**
  * Bridges the chat tool to the inference server.
  *
- * Streaming events from the server's SSE stream are forwarded to the
- * renderer as serialized ChatEvents.
+ * Stateless proxy: model selection and busy state live in the renderer; each
+ * turn passes its model + full transcript. The server's SSE events are
+ * forwarded to windows verbatim (delta/end/error).
  */
 export class AgentService {
   private readonly manager: ServerManager
-  private modelId = ""
   private windows = new Set<BrowserWindow>()
-  private busy = false
   private abortController: AbortController | null = null
 
   constructor(manager: ServerManager) {
@@ -25,42 +24,25 @@ export class AgentService {
     win.on("closed", () => this.windows.delete(win))
   }
 
-  get currentModel(): string {
-    return this.modelId
-  }
-
-  get isBusy(): boolean {
-    return this.busy
-  }
-
-  setModel(modelId: string): void {
-    this.modelId = modelId
-  }
-
   abort(): void {
     this.abortController?.abort()
   }
 
-  /** Start a streaming chat turn over the full transcript; SSE events are pushed to windows. */
-  async send(messages: ChatMessage[]): Promise<void> {
-    if (!this.modelId) throw new Error("No text-generation model selected. Pick a model first.")
-    if (this.busy) return
-    this.busy = true
+  /** Start a streaming chat turn; SSE events are pushed to windows. */
+  async send(modelId: string, messages: ChatMessage[]): Promise<void> {
     this.abortController = new AbortController()
-    this.broadcast({ type: "message_start", role: "assistant" })
     try {
       await this.manager.client.chat(
-        this.modelId,
+        modelId,
         messages,
         {
-          onDelta: (delta) => this.broadcast({ type: "message_update", text: delta }),
-          onEnd: (fullText) => this.broadcast({ type: "message_end", text: fullText }),
-          onError: (message) => this.broadcast({ type: "agent_error", message }),
+          onDelta: (text) => this.broadcast({ type: "delta", text }),
+          onEnd: (text) => this.broadcast({ type: "end", text }),
+          onError: (message) => this.broadcast({ type: "error", message }),
         },
         this.abortController.signal,
       )
     } finally {
-      this.busy = false
       this.abortController = null
     }
   }

@@ -26,11 +26,6 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
 
   select: async (task, modelId) => {
     set((state) => ({ selected: { ...state.selected, [task]: modelId } }))
-    if (task === "text-generation") {
-      await window.nyx.chat.setModel(modelId)
-    } else {
-      await window.nyx.image.setModel(modelId)
-    }
   },
 
   startPull: async (modelId, task) => {

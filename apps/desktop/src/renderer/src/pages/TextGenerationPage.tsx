@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useReducer, useRef, useState } from "react"
 import { flushSync } from "react-dom"
 import { MessageCircleDashedIcon, SendHorizonal, Square } from "lucide-react"
-import { useChatStore } from "../store/chat"
 import { useModelsStore } from "../store/models"
-import type { ChatMessage } from "../../../shared/types"
+import type { ChatDisplayMessage, ChatEvent, ChatMessage } from "../../../shared/types"
 import { ModelPicker } from "../components/ModelPicker"
 import {
   Card,
@@ -45,58 +44,111 @@ function renderMarkdown(text: string): string {
   return escaped.replace(/```(\w*)\n?([\s\S]*?)```/g, (_m, _lang, code) => `<pre>${code.trim()}</pre>`)
 }
 
+interface ChatState {
+  messages: ChatDisplayMessage[]
+  streaming: boolean
+}
+
+let nextMessageId = 1
+
+/** The plain-text transcript sent to the server, mirroring the message list. */
+function toTranscript(messages: ChatDisplayMessage[]): ChatMessage[] {
+  return messages.map((m) => ({ role: m.role, content: m.text }))
+}
+
+type ChatAction =
+  | { type: "start" }
+  | { type: "user"; text: string }
+  | { type: "assistant" }
+  | { type: "delta"; text: string }
+  | { type: "end"; text: string }
+  | { type: "error"; message: string }
+
+function chatReducer(state: ChatState, action: ChatAction): ChatState {
+  switch (action.type) {
+    case "start":
+      return { ...state, streaming: true }
+    case "user":
+      return {
+        messages: [...state.messages, { id: `msg-${nextMessageId++}`, role: "user", text: action.text }],
+        streaming: state.streaming,
+      }
+    case "assistant":
+      return {
+        messages: [...state.messages, { id: `msg-${nextMessageId++}`, role: "assistant", text: "", streaming: true }],
+        streaming: true,
+      }
+    case "delta": {
+      const messages = state.messages.map((m, i) =>
+        i === state.messages.length - 1 && m.role === "assistant" ? { ...m, text: m.text + action.text } : m,
+      )
+      return { ...state, messages }
+    }
+    case "end":
+      return { messages: replaceLastAssistant(state.messages, { text: action.text, streaming: false }), streaming: false }
+    case "error":
+      return { messages: replaceLastAssistant(state.messages, { text: action.message, streaming: false, error: true }), streaming: false }
+  }
+}
+
+/** Patch the trailing assistant message (no-op when there is none). */
+function replaceLastAssistant(
+  messages: ChatDisplayMessage[],
+  patch: Partial<ChatDisplayMessage>,
+): ChatDisplayMessage[] {
+  const i = messages.length - 1
+  if (i < 0 || messages[i]!.role !== "assistant") return messages
+  const next = [...messages]
+  next[i] = { ...next[i]!, ...patch }
+  return next
+}
+
 export function TextGenerationPage() {
-  const { messages, appendMessage, updateMessage, setStreaming, isStreaming } = useChatStore()
+  const [state, dispatch] = useReducer(chatReducer, { messages: [], streaming: false })
+  const messages = state.messages
+  const isStreaming = state.streaming
   const selectedModel = useModelsStore((s) => s.selected["text-generation"])
   const [input, setInput] = useState("")
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Subscribe to agent streaming events once.
+  // Mirror the message list so stream events and send() can read the latest
+  // state without re-subscribing.
+  const messagesRef = useRef(messages)
+  messagesRef.current = messages
+
+  // Subscribe to streaming events once (dispatch is stable).
   useEffect(() => {
-    const unsubscribe = window.nyx.chat.onEvent((event) => {
+    const unsubscribe = window.nyx.chat.onEvent((event: ChatEvent) => {
       switch (event.type) {
-        case "message_start": {
-          setStreaming(true)
-          appendMessage("assistant")
+        case "delta":
+          dispatch({ type: "delta", text: event.text })
           break
-        }
-        case "message_update": {
-          const msgs = useChatStore.getState().messages
-          const last = msgs[msgs.length - 1]
-          if (last && last.role === "assistant") {
-            updateMessage(last.id, (m) => ({ text: m.text + event.text }))
-          }
+        case "end":
+          dispatch({ type: "end", text: event.text })
           break
-        }
-        case "message_end": {
-          const msgs = useChatStore.getState().messages
-          const last = msgs[msgs.length - 1]
-          if (last && last.role === "assistant") updateMessage(last.id, { text: event.text, streaming: false })
-          setStreaming(false)
+        case "error":
+          dispatch({ type: "error", message: event.message })
           break
-        }
-        case "agent_error": {
-          const msgs = useChatStore.getState().messages
-          const last = msgs[msgs.length - 1]
-          if (last && last.role === "assistant") {
-            updateMessage(last.id, { text: event.message, streaming: false, error: true })
-          }
-          setStreaming(false)
-          break
-        }
       }
     })
     return unsubscribe
-  }, [appendMessage, updateMessage, setStreaming])
+  }, [])
 
   const send = () => {
     const text = input.trim()
     if (!text || isStreaming || !selectedModel) return
     // Clear synchronously so the re-render happens before we restore focus.
     flushSync(() => setInput(""))
-    // Append with its text in one write; the transcript mirrors the new state.
-    const { transcript } = useChatStore.getState().appendUserMessage(text)
-    void window.nyx.chat.send(transcript)
+    // Build the transcript from everything before this turn plus the new user
+    // message (the empty assistant bubble is added for the UI only).
+    const history = messagesRef.current
+    const transcript: ChatMessage[] = [
+      ...toTranscript(history),
+      { role: "user", content: text },
+    ]
+    dispatch({ type: "user", text })
+    dispatch({ type: "assistant" })
+    void window.nyx.chat.send(selectedModel, transcript)
     // Keep the composer focused so the user can keep typing.
     inputRef.current?.focus()
   }

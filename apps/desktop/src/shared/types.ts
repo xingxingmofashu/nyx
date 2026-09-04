@@ -23,14 +23,13 @@ export interface ChatDisplayMessage {
 }
 
 /**
- * Serialized chat events pushed main → renderer (errors collapsed to a
- * message string; mirrors the server's SSE wire events).
+ * Streaming chat events pushed main → renderer as the server SSE stream is
+ * read. Mirrors the server's /v1/text-generation SSE wire events.
  */
 export type ChatEvent =
-  | { type: "message_start"; role: "user" | "assistant" }
-  | { type: "message_update"; text: string }
-  | { type: "message_end"; text: string }
-  | { type: "agent_error"; message: string }
+  | { type: "delta"; text: string }
+  | { type: "end"; text: string }
+  | { type: "error"; message: string }
 
 // --- Model pull progress (IPC events; the pull endpoint itself is opaque) ---
 
@@ -48,16 +47,14 @@ export interface ModelPullProgress {
 
 export interface NyxApi {
   chat: {
-    /** Send the full transcript; the server runs one stateless turn on it. */
-    send: (messages: ChatMessage[]) => Promise<void>
+    /** Stream a chat turn over the full transcript using the given model. */
+    send: (modelId: string, messages: ChatMessage[]) => Promise<void>
     abort: () => Promise<void>
-    setModel: (modelId: string) => Promise<void>
     /** Subscribe to streaming events. Returns an unsubscribe fn. */
     onEvent: (cb: (e: ChatEvent) => void) => () => void
   }
   image: {
-    run: (input: ImagePayload, modelId: string) => Promise<ImageResult>
-    setModel: (modelId: string) => Promise<void>
+    run: (modelId: string, input: ImagePayload) => Promise<ImageResult>
   }
   models: {
     list: () => Promise<ModelInfo[]>

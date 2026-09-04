@@ -17,16 +17,11 @@ export function registerIpc(services: Services): void {
   const { agent, image, manager } = services
 
   // --- Chat ---
-  ipcMain.handle(IPC.chat.send, (_e, messages: ChatMessage[]) => agent.send(messages))
+  ipcMain.handle(IPC.chat.send, (_e, modelId: string, messages: ChatMessage[]) => agent.send(modelId, messages))
   ipcMain.handle(IPC.chat.abort, () => agent.abort())
-  ipcMain.handle(IPC.chat.setModel, (_e, modelId: string) => agent.setModel(modelId))
 
   // --- Image-to-image ---
-  ipcMain.handle(IPC.image.run, (_e, input: ImagePayload, modelId: string) => {
-    if (modelId) image.setModel(modelId)
-    return image.run(input)
-  })
-  ipcMain.handle(IPC.image.setModel, (_e, modelId: string) => image.setModel(modelId))
+  ipcMain.handle(IPC.image.run, (_e, modelId: string, input: ImagePayload) => image.run(modelId, input))
 
   // --- Models ---
   ipcMain.handle(IPC.models.list, () => manager.client.listModels())
