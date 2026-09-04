@@ -1,5 +1,4 @@
 import { cmd } from "../../utils/cmd";
-import { Agent } from "@nyx/core";
 import { OnnxTextGenerationProvider } from "@nyx/llm";
 import { log } from "@clack/prompts";
 
@@ -29,8 +28,16 @@ export const TextGenerationCommand = cmd<Record<string, unknown>, TextGeneration
       log.error("Usage: nyx text-generation --message <text> --model <id>");
       process.exit(1);
     }
-    const llm = new OnnxTextGenerationProvider({ model: args.model });
-    const result = await new Agent({ llm }).prompt(args.message);
-    console.log(result.text);
+    const provider = new OnnxTextGenerationProvider({ model: args.model });
+    let text = "";
+    for await (const event of provider.stream([{ role: "user", content: args.message }])) {
+      if (event.type === "text-delta") {
+        text += event.delta;
+      } else {
+        log.error(event.message);
+        process.exit(1);
+      }
+    }
+    console.log(text.trim() ? text : "(no response)");
   },
 });

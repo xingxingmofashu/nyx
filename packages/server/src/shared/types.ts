@@ -1,6 +1,6 @@
 /** Wire types for the nyx inference server HTTP API (shared server/client). */
 
-import type { LlmTask } from "@nyx/llm"
+import type { LLMMessage, LlmTask } from "@nyx/llm"
 
 export type { LlmTask }
 
@@ -41,20 +41,13 @@ export interface ModelInfo {
 
 // --- Text generation ---
 
-/** Chat roles understood by the text-generation endpoint. */
-export type ChatRole = "system" | "user" | "assistant"
-
 /**
- * One turn of conversation history.
+ * One message of conversation history sent over the wire.
  *
- * Transcript contract enforced by the server's stateless text-generation turn:
- * the transcript must end in a `user` message — that is the prompt the model
- * answers — and `system` content is honored only as a leading prefix (each
- * `system` message seeds the engine's system prompt, in order; a `system`
- * message placed after the first `user` is ignored). Message bodies are plain
- * text only.
+ * Transcript contract: plain-text `{ role, content }` turns, fed straight to
+ * the transformers.js text pipeline, which applies the model's chat template
+ * to the whole array (so system messages should lead, and the final user
+ * message is the prompt the model answers). No session is stored server-side —
+ * each request carries the full transcript.
  */
-export interface ChatMessage {
-  role: ChatRole
-  content: string
-}
+export type ChatMessage = LLMMessage

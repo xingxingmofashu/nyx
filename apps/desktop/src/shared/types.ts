@@ -23,8 +23,8 @@ export interface ChatDisplayMessage {
 }
 
 /**
- * Serialized agent events pushed main → renderer (mirrors @nyx/core AgentEvent
- * with Error collapsed to a message string).
+ * Serialized chat events pushed main → renderer (errors collapsed to a
+ * message string; mirrors the server's SSE wire events).
  */
 export type ChatEvent =
   | { type: "message_start"; role: "user" | "assistant" }

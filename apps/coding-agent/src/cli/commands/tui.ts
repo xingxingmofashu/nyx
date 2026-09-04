@@ -4,7 +4,6 @@
 
 import { cmd } from "../utils/cmd";
 import { log } from "@clack/prompts";
-import { Agent } from "@nyx/core";
 import { OnnxTextGenerationProvider } from "@nyx/llm";
 import { run } from "../../tui";
 import { isatty } from "node:tty";
@@ -34,6 +33,6 @@ export const TuiCommand = cmd<Record<string, unknown>, TuiArgs>({
       process.exit(1);
     }
     const llm = new OnnxTextGenerationProvider({ model: args.model });
-    await run({ agent: new Agent({ llm }), model: llm.model });
+    await run({ llm, model: llm.model });
   },
 });

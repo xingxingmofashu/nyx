@@ -21,7 +21,6 @@
         "@clack/prompts": "1.7.0",
         "@earendil-works/pi-tui": "0.84.4",
         "@nyx/config": "workspace:*",
-        "@nyx/core": "workspace:*",
         "@nyx/llm": "workspace:*",
         "@types/yargs": "17.0.35",
         "chalk": "6.0.0",
@@ -35,7 +34,6 @@
         "@base-ui/react": "1.7.0",
         "@huggingface/transformers": "catalog:",
         "@nyx/config": "workspace:*",
-        "@nyx/core": "workspace:*",
         "@nyx/llm": "workspace:*",
         "@nyx/server": "workspace:*",
         "@radix-ui/react-slot": "1.3.3",
@@ -79,13 +77,6 @@
         "zod": "catalog:",
       },
     },
-    "packages/core": {
-      "name": "@nyx/core",
-      "version": "0.1.0",
-      "dependencies": {
-        "@nyx/llm": "workspace:*",
-      },
-    },
     "packages/llm": {
       "name": "@nyx/llm",
       "version": "0.1.0",
@@ -100,7 +91,6 @@
       "version": "0.1.0",
       "dependencies": {
         "@hono/node-server": "catalog:",
-        "@nyx/core": "workspace:*",
         "@nyx/llm": "workspace:*",
         "hono": "catalog:",
       },
@@ -420,8 +410,6 @@
     "@nyx/coding-agent": ["@nyx/coding-agent@workspace:apps/coding-agent"],
 
     "@nyx/config": ["@nyx/config@workspace:packages/config"],
-
-    "@nyx/core": ["@nyx/core@workspace:packages/core"],
 
     "@nyx/desktop": ["@nyx/desktop@workspace:apps/desktop"],
 

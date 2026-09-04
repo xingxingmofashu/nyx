@@ -1,8 +1,6 @@
-import { Agent, messageText } from "@nyx/core"
-import type { AgentEvent, Message } from "@nyx/core"
 import { RawImage } from "@huggingface/transformers"
 import { list, pull, OnnxImageToImageProvider, OnnxTextGenerationProvider } from "@nyx/llm"
-import type { LLMEvent } from "@nyx/llm"
+import type { LLMEvent, LLMMessage } from "@nyx/llm"
 import type { ChatMessage, ModelInfo, ModelTask } from "../shared/types"
 
 /** Raw RGBA/RGB pixels of an image output, ready to stream back. */
@@ -15,13 +13,13 @@ export interface ImageOutput {
 
 /**
  * Inference service: the process-scoped host that owns model weights and
- * runs chat turns.
+ * runs inference.
  *
  * One instance exists per server process. It caches providers (and, via
  * @nyx/llm, the underlying pipelines) per model id, so weights load once.
  * Text generation is stateless multi-turn: each request carries the full
- * transcript and a fresh core Agent is seeded + discarded per turn — no
- * session is stored here.
+ * transcript and is forwarded straight to the text provider — no session
+ * is stored here.
  */
 export class InferenceService {
   private readonly textProviders = new Map<string, OnnxTextGenerationProvider>()
@@ -46,49 +44,18 @@ export class InferenceService {
   }
 
   /**
-   * Run one chat turn over a transcript carried in `messages`. The final
-   * `user` message is the prompt; everything before it (plus any leading
-   * `system`) seeds the Agent. Emits token-granular text-delta events and a
-   * terminal error on failure.
+   * Run one chat turn over a transcript carried in `messages`, streaming the
+   * provider's token deltas straight through. The transformers.js pipeline
+   * applies the model's chat template to the message array internally.
+   * Empty assistant turns are dropped (they carry no content for the model).
    */
   async *streamTextGeneration(modelId: string, messages: ChatMessage[]): AsyncIterable<LLMEvent> {
-    const promptIndex = lastIndexOfRole(messages, "user")
-    if (promptIndex === -1) {
-      yield { type: "error", message: "messages must include a user message" }
-      return
-    }
-
-    const { systemPrompt, history } = partitionMessages(messages, promptIndex)
-    const agent = new Agent({
-      llm: this.textProviderFor(modelId),
-      ...(systemPrompt !== undefined ? { systemPrompt } : {}),
-      history,
-    })
-
-    const queue = new EventQueue<LLMEvent>()
-    let previousText = ""
-    const unsubscribe = agent.subscribe((event) => {
-      const mapped = toLLMEvent(event, previousText)
-      if (mapped?.type === "text-delta") previousText += mapped.delta
-      if (mapped) queue.push(mapped)
-      if (event.type === "agent_error" || event.type === "message_end") {
-        queue.close()
-      }
-    })
-
-    try {
-      const run = agent.prompt(messages[promptIndex]!.content)
-      // Drain events, but never hang the wire: if the turn ends without a
-      // terminal event the generator still resolves.
-      for (let ended = false; !ended; ) {
-        for await (const event of queue.stream()) {
-          ended = true
-          yield event
-        }
-      }
-      await run
-    } finally {
-      unsubscribe()
+    const provider = this.textProviderFor(modelId)
+    const input: LLMMessage[] = messages.filter(
+      (m) => !(m.role === "assistant" && m.content.trim() === ""),
+    )
+    for await (const event of provider.stream(input)) {
+      yield event
     }
   }
 
@@ -115,75 +82,5 @@ export class InferenceService {
   /** Download a model into the local cache. */
   async pullModel(modelId: string, task: ModelTask): Promise<void> {
     await pull(modelId, task)
-  }
-}
-
-function lastIndexOfRole(messages: ChatMessage[], role: ChatMessage["role"]): number {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i]!.role === role) return i
-  }
-  return -1
-}
-
-function partitionMessages(
-  messages: ChatMessage[],
-  promptIndex: number,
-): { systemPrompt?: string; history: Message[] } {
-  let systemPrompt: string | undefined
-  const history: Message[] = []
-
-  for (let i = 0; i < promptIndex; i++) {
-    const msg = messages[i]!
-    if (msg.role === "system") {
-      // System content rides in the Agent's systemPrompt, not its history.
-      systemPrompt = systemPrompt === undefined ? msg.content : `${systemPrompt}\n${msg.content}`
-    } else if (msg.role === "user") {
-      history.push({ role: "user", content: msg.content, timestamp: 0 })
-    } else {
-      history.push({ role: "assistant", content: [{ type: "text", text: msg.content }] })
-    }
-  }
-  return { systemPrompt, history }
-}
-
-/** Derive the incremental delta from a cumulative assistant message text. */
-function toLLMEvent(event: AgentEvent, previousText: string): LLMEvent | null {
-  switch (event.type) {
-    case "message_update": {
-      const text = messageText(event.message)
-      const delta = text.startsWith(previousText) ? text.slice(previousText.length) : text
-      return delta ? { type: "text-delta", delta } : null
-    }
-    case "agent_error":
-      return { type: "error", message: event.error.message }
-    default:
-      return null
-  }
-}
-
-/** Minimal wakeable queue: push synchronously, drain asynchronously. */
-class EventQueue<T> {
-  private items: T[] = []
-  private waiters: Array<() => void> = []
-  private closed = false
-
-  push(item: T): void {
-    this.items.push(item)
-    this.waiters.splice(0).forEach((wake) => wake())
-  }
-
-  close(): void {
-    this.closed = true
-    this.waiters.splice(0).forEach((wake) => wake())
-  }
-
-  async *stream(): AsyncGenerator<T> {
-    for (;;) {
-      while (this.items.length > 0) {
-        yield this.items.shift()!
-      }
-      if (this.closed) return
-      await new Promise<void>((resolve) => this.waiters.push(resolve))
-    }
   }
 }

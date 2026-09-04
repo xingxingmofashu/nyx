@@ -9,34 +9,33 @@ import {
   matchesKey,
   type TUI,
 } from "@earendil-works/pi-tui";
-import type { Agent, AssistantMessage, UserMessage } from "@nyx/core";
+import type { LLMMessage, TextProvider } from "@nyx/llm";
 import { UserMessageComponent } from "./components/user-message";
 import { AssistantMessageComponent } from "./components/assistant-message";
 import { WorkingStatusIndicator } from "./components/status-indicator";
 import { getEditorTheme, theme } from "./theme";
 
 export interface TuiOptions {
-  agent: Agent;
+  /** Text-generation provider backing the chat. */
+  llm: TextProvider;
   model: string;
-}
-
-function getMessageText(message: UserMessage | AssistantMessage): string {
-  if (message.role === "user") {
-    if (typeof message.content === "string") return message.content;
-    return message.content
-      .filter((c) => c.type === "text")
-      .map((c) => c.text)
-      .join("\n");
-  }
-  return message.content
-    .filter((c) => c.type === "text")
-    .map((c) => c.text)
-    .join("\n");
 }
 
 export async function run(options: TuiOptions): Promise<void> {
   const terminal = new ProcessTerminal();
   const tui: TUI = new TuiMainScreen(terminal);
+
+  // Local transcript for the conversation. Each turn replays the whole
+  // history to the provider (stateless multi-turn — a future server-backed
+  // client sends the same array over HTTP).
+  const transcript: LLMMessage[] = [];
+  const assistantText = (message: string): void => {
+    if (transcript[transcript.length - 1]?.role === "assistant") {
+      transcript[transcript.length - 1]!.content = message;
+    } else {
+      transcript.push({ role: "assistant", content: message });
+    }
+  };
 
   // Component tree: document (header + chat), status, editor
   const documentContainer = new Container();
@@ -81,13 +80,30 @@ export async function run(options: TuiOptions): Promise<void> {
   // Message rendering
   // =========================================================================
 
-  function addMessageToChat(message: UserMessage | AssistantMessage): void {
-    if (message.role === "user") {
-      chatContainer.addChild(new UserMessageComponent(getMessageText(message)));
-    } else if (message.role === "assistant") {
-      streamingReply = new AssistantMessageComponent(message);
-      chatContainer.addChild(streamingReply);
+  function addUserMessage(text: string): void {
+    chatContainer.addChild(new UserMessageComponent(text));
+    tui.requestRender();
+  }
+
+  function startAssistantMessage(): void {
+    streamingReply = new AssistantMessageComponent("");
+    chatContainer.addChild(streamingReply);
+    tui.requestRender();
+  }
+
+  function updateAssistantMessage(text: string): void {
+    if (streamingReply) {
+      streamingReply.updateText(text);
+      clearWorkingIndicator();
+      tui.requestRender();
     }
+  }
+
+  function endAssistantMessage(): void {
+    streamingReply = null;
+    clearWorkingIndicator();
+    isResponding = false;
+    editor.disableSubmit = false;
     tui.requestRender();
   }
 
@@ -123,55 +139,50 @@ export async function run(options: TuiOptions): Promise<void> {
       return;
     }
     if (trimmed === "/clear") {
+      transcript.length = 0;
       chatContainer.clear();
       tui.requestRender();
       return;
     }
     if (trimmed.startsWith("/")) {
       editor.setText("");
-      addMessageToChat({ role: "user", content: trimmed, timestamp: Date.now() });
-      addMessageToChat({ role: "assistant", content: [{ type: "text", text: `Unknown command: ${trimmed}` }] });
+      addUserMessage(trimmed);
+      assistantText(`Unknown command: ${trimmed}`);
+      updateAssistantMessage(`Unknown command: ${trimmed}`);
+      endAssistantMessage();
       return;
     }
 
     isResponding = true;
     editor.disableSubmit = true;
     editor.setText("");
-    addMessageToChat({ role: "user", content: trimmed, timestamp: Date.now() });
+    addUserMessage(trimmed);
+    transcript.push({ role: "user", content: trimmed });
+    startAssistantMessage();
     showWorkingIndicator();
-    void options.agent.prompt(trimmed);
-  };
 
-  options.agent.subscribe((event) => {
-    switch (event.type) {
-      case "message_start":
-        if (event.message.role === "assistant") {
-          addMessageToChat(event.message);
+    void (async () => {
+      let full = "";
+      let errorText: string | null = null;
+      try {
+        for await (const event of options.llm.stream(transcript)) {
+          if (event.type === "text-delta") {
+            full += event.delta;
+            updateAssistantMessage(full);
+          } else {
+            errorText = `Error: ${event.message}`;
+            updateAssistantMessage(errorText);
+            break;
+          }
         }
-        break;
-      case "message_update":
-        if (event.message.role === "assistant" && streamingReply) {
-          streamingReply.updateContent(event.message);
-          clearWorkingIndicator();
-          tui.requestRender();
-        }
-        break;
-      case "message_end":
-      case "agent_error": {
-        if (streamingReply) {
-          const text =
-            event.type === "agent_error" ? `Error: ${event.error.message}` : getMessageText(event.message);
-          streamingReply.updateContent({ role: "assistant", content: [{ type: "text", text }] });
-        }
-        streamingReply = null;
-        clearWorkingIndicator();
-        isResponding = false;
-        editor.disableSubmit = false;
-        tui.requestRender();
-        break;
+      } catch (error) {
+        errorText = `Error: ${error instanceof Error ? error.message : String(error)}`;
+        updateAssistantMessage(errorText);
       }
-    }
-  });
+      assistantText(errorText ?? (full.trim() ? full : "(no response)"));
+      endAssistantMessage();
+    })();
+  };
 
   // =========================================================================
   // Header
