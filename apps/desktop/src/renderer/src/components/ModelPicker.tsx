@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Check, ChevronDown, Download } from "lucide-react"
 import { useModelsStore } from "../store/models"
-import type { ModelTask } from "../../../shared/types"
+import type { LlmTask } from "../../../shared/types"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Badge } from "./ui/badge"
@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { cn } from "../lib/utils"
 
 /** Inline model selector: shows the active model for a task, lets the user pick or pull one. */
-export function ModelPicker({ task, className }: { task: ModelTask; className?: string }) {
+export function ModelPicker({ task, className }: { task: LlmTask; className?: string }) {
   const models = useModelsStore((s) => s.models)
   const selected = useModelsStore((s) => s.selected[task])
   const pulling = useModelsStore((s) => s.pulling)
@@ -23,7 +23,7 @@ export function ModelPicker({ task, className }: { task: ModelTask; className?: 
     void load()
   }, [load])
 
-  const taskModels = models.filter((m) => m.task === task || m.task === "unknown")
+  const taskModels = models.filter((m) => m.task === task)
   const active = taskModels.find((m) => m.id === selected)
 
   const pull = async () => {

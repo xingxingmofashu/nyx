@@ -1,7 +1,8 @@
 import { RawImage } from "@huggingface/transformers"
+import type { ModelInfo } from "@nyx/config"
 import { list, pull, OnnxImageToImageProvider, OnnxTextGenerationProvider } from "@nyx/llm"
-import type { LLMEvent, LLMProvider } from "@nyx/llm"
-import type { ChatMessage, ModelInfo, ModelTask } from "../shared/types"
+import type { LLMEvent, LLMProvider, LLMMessage, LlmTask } from "@nyx/llm"
+import type { ImageInput } from "../shared/types"
 
 /** Raw RGBA/RGB pixels of an image output, ready to stream back. */
 export interface ImageOutput {
@@ -34,19 +35,20 @@ export class InferenceService {
   }
 
   /**
-   * Run one chat turn over a transcript carried in `messages`, streaming the
-   * provider's token deltas straight through. The transformers.js pipeline
-   * applies the model's chat template to the message array internally.
-   * Empty assistant turns are dropped (they carry no content for the model).
+   * Run one text-generation turn over a transcript carried in `messages`,
+   * streaming the provider's token deltas straight through. The transformers.js
+   * pipeline applies the model's chat template to the message array
+   * internally. Empty assistant turns are dropped (they carry no content for
+   * the model).
    */
-  async *textGeneration(modelId: string, messages: ChatMessage[]): AsyncIterable<LLMEvent> {
+  async *textGeneration(modelId: string, messages: LLMMessage[]): AsyncIterable<LLMEvent> {
     const provider = this.getProvider(modelId, () => new OnnxTextGenerationProvider({ model: modelId }))
     const input = messages.filter((m) => m.role !== "assistant" || m.content.trim() !== "")
     yield* provider.stream(input)
   }
 
   /** Transform a single image with an image-to-image model. */
-  async imageToImage(modelId: string, input: { data: string; mimeType: string }): Promise<ImageOutput> {
+  async imageToImage(modelId: string, input: ImageInput): Promise<ImageOutput> {
     const provider = this.getProvider(modelId, () => new OnnxImageToImageProvider({ model: modelId }))
     const bytes = Buffer.from(input.data, "base64")
     const source = await RawImage.fromBlob(new Blob([bytes], { type: input.mimeType }))
@@ -66,7 +68,7 @@ export class InferenceService {
   }
 
   /** Download a model into the local cache. */
-  async pullModel(modelId: string, task: ModelTask): Promise<void> {
+  async pullModel(modelId: string, task: LlmTask): Promise<void> {
     await pull(modelId, task)
   }
 }

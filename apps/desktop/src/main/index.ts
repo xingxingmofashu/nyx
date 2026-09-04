@@ -1,8 +1,8 @@
 import { app, BrowserWindow, shell } from "electron"
 import { join } from "node:path"
 import { registerIpc } from "./ipc"
-import { AgentService } from "./services/agent"
-import { ImageService } from "./services/image"
+import { TextGenerationService } from "./services/text-generation"
+import { ImageToImageService } from "./services/image-to-image"
 import { ServerManager } from "./server/manager"
 import { IPC } from "../shared/ipc"
 
@@ -79,17 +79,17 @@ app.whenReady().then(async () => {
     console.error("failed to start nyx server:", error)
   }
 
-  const agentService = new AgentService(serverManager)
-  const imageService = new ImageService(serverManager)
-  registerIpc({ agent: agentService, image: imageService, manager: serverManager })
+  const textGenerationService = new TextGenerationService(serverManager)
+  const imageToImageService = new ImageToImageService(serverManager)
+  registerIpc({ textGeneration: textGenerationService, imageToImage: imageToImageService, manager: serverManager })
 
   const win = createWindow()
-  agentService.attachWindow(win)
+  textGenerationService.attachWindow(win)
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       const w = createWindow()
-      agentService.attachWindow(w)
+      textGenerationService.attachWindow(w)
     }
   })
 })

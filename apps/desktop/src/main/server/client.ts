@@ -1,7 +1,9 @@
-import type { ChatMessage, ImagePayload, ImageResult, ModelInfo, ModelTask } from "../../shared/types"
+import type { LLMMessage, LlmTask } from "@nyx/llm"
+import type { ModelInfo } from "@nyx/config"
+import type { TextGenerationEvent, ImagePayload, ImageResult } from "../../shared/types"
 
 /**
- * HTTP client for the @nyx/server inference process.
+ * HTTP transport for the @nyx/server inference process.
  *
  * Lives in the desktop main process, which talks to the spawned server over
  * HTTP (onnxruntime cannot run inside Electron). Construct with the server's
@@ -17,99 +19,54 @@ export class NyxServerClient {
     return { Authorization: `Bearer ${this.token}`, "Content-Type": "application/json" }
   }
 
-  async listModels(): Promise<ModelInfo[]> {
-    const res = await fetch(`${this.baseUrl}/v1/models`, { headers: this.headers() })
-    if (!res.ok) throw new Error(`models request failed: ${res.status}`)
-    return (await res.json()) as ModelInfo[]
-  }
-
-  async pullModel(modelId: string, task: ModelTask): Promise<void> {
-    const res = await fetch(`${this.baseUrl}/v1/models/pull`, {
-      method: "POST",
-      headers: this.headers(),
-      body: JSON.stringify({ model: modelId, task }),
-    })
+  private async requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+    const res = await fetch(`${this.baseUrl}${path}`, { ...init, headers: { ...this.headers(), ...init?.headers } })
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string }
-      throw new Error(body.error ?? `pull failed: ${res.status}`)
+      throw new Error(body.error ?? `${path} failed: ${res.status}`)
     }
+    return (await res.json()) as T
+  }
+
+  async listModels(): Promise<ModelInfo[]> {
+    return this.requestJson<ModelInfo[]>("/v1/models")
+  }
+
+  async pullModel(modelId: string, task: LlmTask): Promise<void> {
+    await this.requestJson<{ ok: true }>("/v1/models/pull", {
+      method: "POST",
+      body: JSON.stringify({ model: modelId, task }),
+    })
   }
 
   /**
-   * Stream a chat completion over a transcript. Invokes onDelta/onEnd/onError
-   * as SSE events arrive. Resolves when the stream completes, errors, or is
-   * aborted.
+   * Stream a text-generation turn. Yields `delta` events as tokens arrive,
+   * then a final `end` (with the full text) or `error`.
    */
-  async chat(
+  async *textGeneration(
     modelId: string,
-    messages: ChatMessage[],
-    handlers: {
-      onDelta: (delta: string) => void
-      onEnd: (fullText: string) => void
-      onError: (message: string) => void
-    },
+    messages: LLMMessage[],
     signal?: AbortSignal,
-  ): Promise<void> {
+  ): AsyncIterable<TextGenerationEvent> {
     const res = await fetch(`${this.baseUrl}/v1/text-generation`, {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify({ model: modelId, messages }),
       signal,
     })
-    if (res.status === 499 || (signal?.aborted && !res.ok)) {
-      handlers.onError("generation aborted")
-      return
-    }
+
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string }
-      handlers.onError(body.error ?? `chat failed: ${res.status}`)
+      yield { type: "error", message: body.error ?? `text-generation failed: ${res.status}` }
       return
     }
     if (!res.body) {
-      handlers.onError("no response body")
+      yield { type: "error", message: "no response body" }
       return
     }
 
-    const reader = res.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ""
-    let event = ""
-    let data = ""
-
-    const dispatch = () => {
-      if (event === "delta") {
-        const parsed = JSON.parse(data) as { text: string }
-        handlers.onDelta(parsed.text)
-      } else if (event === "end") {
-        const parsed = JSON.parse(data) as { text: string }
-        handlers.onEnd(parsed.text)
-      } else if (event === "error") {
-        const parsed = JSON.parse(data) as { message: string }
-        handlers.onError(parsed.message)
-      }
-      event = ""
-      data = ""
-    }
-
-    try {
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        // SSE framing: blank line separates events.
-        let sep: number
-        while ((sep = buffer.indexOf("\n\n")) !== -1) {
-          const block = buffer.slice(0, sep)
-          buffer = buffer.slice(sep + 2)
-          for (const line of block.split("\n")) {
-            if (line.startsWith("event:")) event = line.slice(6).trim()
-            else if (line.startsWith("data:")) data += line.slice(5).trim()
-          }
-          dispatch()
-        }
-      }
-    } catch (error) {
-      handlers.onError(error instanceof Error ? error.message : String(error))
+    for await (const frame of readSse(res.body)) {
+      yield frame
     }
   }
 
@@ -135,6 +92,44 @@ export class NyxServerClient {
       mimeType: res.headers.get("content-type") ?? "image/png",
       width: Number.isFinite(width) ? width : 0,
       height: Number.isFinite(height) ? height : 0,
+    }
+  }
+}
+
+/**
+ * Parse an SSE byte stream into chat frames. Supports CRLF/LF framing and
+ * multi-line `data:` payloads.
+ */
+async function* readSse(body: ReadableStream<Uint8Array>): AsyncIterable<TextGenerationEvent> {
+  const reader = body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ""
+  let event = ""
+
+  const emit = (data: string): TextGenerationEvent | null => {
+    if (event === "delta") return { type: "delta", text: JSON.parse(data).text as string }
+    if (event === "end") return { type: "end", text: JSON.parse(data).text as string }
+    if (event === "error") return { type: "error", message: JSON.parse(data).message as string }
+    return null
+  }
+
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    // SSE events are separated by a blank line.
+    let sep: number
+    while ((sep = buffer.indexOf("\n\n")) !== -1) {
+      const block = buffer.slice(0, sep)
+      buffer = buffer.slice(sep + 2)
+      let data = ""
+      for (const line of block.split("\n")) {
+        if (line.startsWith("event:")) event = line.slice(6).trim()
+        else if (line.startsWith("data:")) data += line.slice(5).trim()
+      }
+      const frame = emit(data)
+      if (frame) yield frame
+      event = ""
     }
   }
 }

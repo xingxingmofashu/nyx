@@ -2,7 +2,7 @@ import { useEffect, useReducer, useRef, useState } from "react"
 import { flushSync } from "react-dom"
 import { MessageCircleDashedIcon, SendHorizonal, Square } from "lucide-react"
 import { useModelsStore } from "../store/models"
-import type { ChatDisplayMessage, ChatEvent, ChatMessage } from "../../../shared/types"
+import type { DisplayMessage, TextGenerationEvent, LLMMessage } from "../../../shared/types"
 import { ModelPicker } from "../components/ModelPicker"
 import {
   Card,
@@ -45,14 +45,14 @@ function renderMarkdown(text: string): string {
 }
 
 interface ChatState {
-  messages: ChatDisplayMessage[]
+  messages: DisplayMessage[]
   streaming: boolean
 }
 
 let nextMessageId = 1
 
 /** The plain-text transcript sent to the server, mirroring the message list. */
-function toTranscript(messages: ChatDisplayMessage[]): ChatMessage[] {
+function toTranscript(messages: DisplayMessage[]): LLMMessage[] {
   return messages.map((m) => ({ role: m.role, content: m.text }))
 }
 
@@ -93,9 +93,9 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
 
 /** Patch the trailing assistant message (no-op when there is none). */
 function replaceLastAssistant(
-  messages: ChatDisplayMessage[],
-  patch: Partial<ChatDisplayMessage>,
-): ChatDisplayMessage[] {
+  messages: DisplayMessage[],
+  patch: Partial<DisplayMessage>,
+): DisplayMessage[] {
   const i = messages.length - 1
   if (i < 0 || messages[i]!.role !== "assistant") return messages
   const next = [...messages]
@@ -118,7 +118,7 @@ export function TextGenerationPage() {
 
   // Subscribe to streaming events once (dispatch is stable).
   useEffect(() => {
-    const unsubscribe = window.nyx.chat.onEvent((event: ChatEvent) => {
+    const unsubscribe = window.nyx.textGeneration.onEvent((event: TextGenerationEvent) => {
       switch (event.type) {
         case "delta":
           dispatch({ type: "delta", text: event.text })
@@ -142,13 +142,13 @@ export function TextGenerationPage() {
     // Build the transcript from everything before this turn plus the new user
     // message (the empty assistant bubble is added for the UI only).
     const history = messagesRef.current
-    const transcript: ChatMessage[] = [
+    const transcript: LLMMessage[] = [
       ...toTranscript(history),
       { role: "user", content: text },
     ]
     dispatch({ type: "user", text })
     dispatch({ type: "assistant" })
-    void window.nyx.chat.send(selectedModel, transcript)
+    void window.nyx.textGeneration.send(selectedModel, transcript)
     // Keep the composer focused so the user can keep typing.
     inputRef.current?.focus()
   }
@@ -250,7 +250,7 @@ export function TextGenerationPage() {
                 />
                 <InputGroupAddon align="inline-end">
                   {isStreaming ? (
-                    <InputGroupButton size="icon-sm" variant="secondary" onClick={() => void window.nyx.chat.abort()} aria-label="Stop generating">
+                    <InputGroupButton size="icon-sm" variant="secondary" onClick={() => void window.nyx.textGeneration.abort()} aria-label="Stop generating">
                       <Square />
                     </InputGroupButton>
                   ) : (

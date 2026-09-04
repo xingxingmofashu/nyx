@@ -1,15 +1,15 @@
 import { create } from "zustand"
-import type { ModelInfo, ModelTask } from "../../../shared/types"
+import type { ModelInfo, LlmTask } from "../../../shared/types"
 
 interface ModelsState {
   models: ModelInfo[]
   /** Selected model id per task. */
-  selected: Partial<Record<ModelTask, string>>
+  selected: Partial<Record<LlmTask, string>>
   /** modelId → pull progress percent (undefined while idle). */
   pulling: Record<string, number | undefined>
   load: () => Promise<void>
-  select: (task: ModelTask, modelId: string) => Promise<void>
-  startPull: (modelId: string, task: ModelTask) => Promise<void>
+  select: (task: LlmTask, modelId: string) => Promise<void>
+  startPull: (modelId: string, task: LlmTask) => Promise<void>
   /** Update pull progress for one model. */
   updatePullProgress: (modelId: string, percent: number | undefined, done: boolean) => void
 }

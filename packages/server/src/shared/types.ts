@@ -1,9 +1,5 @@
 /** Wire types for the nyx inference server HTTP API (shared server/client). */
 
-import type { LLMMessage, LlmTask } from "@nyx/llm"
-
-export type { LlmTask }
-
 // --- Image-to-image ---
 
 export interface ImageInput {
@@ -25,29 +21,13 @@ export interface ImageResult {
   height: number
 }
 
-// --- Models ---
-
-/** Local tasks the inference server exposes. Single source of truth: @nyx/llm. */
-export type ModelTask = LlmTask
-
-/** Installed model as reported by /v1/models. */
-export interface ModelInfo {
-  id: string
-  name: string
-  task: string
-  dtype?: string
-  createdAt?: string
-}
-
 // --- Text generation ---
 
 /**
- * One message of conversation history sent over the wire.
- *
- * Transcript contract: plain-text `{ role, content }` turns, fed straight to
- * the transformers.js text pipeline, which applies the model's chat template
- * to the whole array (so system messages should lead, and the final user
- * message is the prompt the model answers). No session is stored server-side —
- * each request carries the full transcript.
+ * Transcript contract: plain-text `{ role, content }` turns (`LLMMessage`),
+ * fed straight to the transformers.js text pipeline, which applies the
+ * model's chat template to the whole array (so system messages should lead,
+ * and the final user message is the prompt the model answers). No session is
+ * stored server-side — each request carries the full transcript.
  */
-export type ChatMessage = LLMMessage
+export type { LLMMessage } from "@nyx/llm"

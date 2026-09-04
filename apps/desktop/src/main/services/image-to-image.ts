@@ -5,7 +5,7 @@ import type { ImagePayload, ImageResult } from "../../shared/types"
  * Bridges the image-to-image tool to the inference server. Stateless proxy:
  * the caller passes the model id with each request.
  */
-export class ImageService {
+export class ImageToImageService {
   private readonly manager: ServerManager
 
   constructor(manager: ServerManager) {

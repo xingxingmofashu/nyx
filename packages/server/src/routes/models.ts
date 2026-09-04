@@ -1,6 +1,6 @@
 import { Hono } from "hono"
+import type { LlmTask } from "@nyx/llm"
 import type { InferenceService } from "../services/inference"
-import type { ModelTask } from "../shared/types"
 
 /** /v1/models — list and download cached models. */
 export function models(service: InferenceService): Hono {
@@ -16,7 +16,7 @@ export function models(service: InferenceService): Hono {
       return c.json({ error: "model and a valid task are required" }, 400)
     }
     try {
-      await service.pullModel(model, task as ModelTask)
+      await service.pullModel(model, task as LlmTask)
       return c.json({ ok: true })
     } catch (error) {
       return c.json({ error: error instanceof Error ? error.message : String(error) }, 500)

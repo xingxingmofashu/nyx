@@ -6,14 +6,16 @@
  * `{ message }`).
  */
 
-// Wire types shared with the inference server live in @nyx/server/types.
-import type { ChatMessage, ImagePayload, ImageResult, ModelInfo, ModelTask } from "@nyx/server/types"
-export type { ChatMessage, ImagePayload, ImageResult, ModelInfo, ModelTask }
+// HTTP wire types (image requests/results) live in @nyx/server/types.
+import type { ImagePayload, ImageResult } from "@nyx/server/types"
+import type { ModelInfo } from "@nyx/config"
+import type { LLMMessage, LlmTask } from "@nyx/llm"
+export type { ImagePayload, ImageResult, LLMMessage, LlmTask, ModelInfo }
 
-// --- Chat ---
+// --- Text generation ---
 
-/** A chat message as displayed in the UI (role + text accumulation). */
-export interface ChatDisplayMessage {
+/** A message as displayed in the text-generation UI (role + text accumulation). */
+export interface DisplayMessage {
   id: string
   role: "user" | "assistant"
   text: string
@@ -23,10 +25,10 @@ export interface ChatDisplayMessage {
 }
 
 /**
- * Streaming chat events pushed main → renderer as the server SSE stream is
- * read. Mirrors the server's /v1/text-generation SSE wire events.
+ * Streaming text-generation events pushed main → renderer as the server SSE
+ * stream is read. Mirrors the server's /v1/text-generation SSE wire events.
  */
-export type ChatEvent =
+export type TextGenerationEvent =
   | { type: "delta"; text: string }
   | { type: "end"; text: string }
   | { type: "error"; message: string }
@@ -46,19 +48,19 @@ export interface ModelPullProgress {
 // --- The preload-exposed API ---
 
 export interface NyxApi {
-  chat: {
-    /** Stream a chat turn over the full transcript using the given model. */
-    send: (modelId: string, messages: ChatMessage[]) => Promise<void>
+  textGeneration: {
+    /** Stream a text-generation turn over the full transcript using the given model. */
+    send: (modelId: string, messages: LLMMessage[]) => Promise<void>
     abort: () => Promise<void>
     /** Subscribe to streaming events. Returns an unsubscribe fn. */
-    onEvent: (cb: (e: ChatEvent) => void) => () => void
+    onEvent: (cb: (e: TextGenerationEvent) => void) => () => void
   }
-  image: {
+  imageToImage: {
     run: (modelId: string, input: ImagePayload) => Promise<ImageResult>
   }
   models: {
     list: () => Promise<ModelInfo[]>
-    pull: (modelId: string, task: ModelTask) => Promise<void>
+    pull: (modelId: string, task: LlmTask) => Promise<void>
     /** Subscribe to pull progress. Returns an unsubscribe fn. */
     onProgress: (cb: (p: ModelPullProgress) => void) => () => void
   }

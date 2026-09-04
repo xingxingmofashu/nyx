@@ -1,13 +1,13 @@
 /** IPC channel names shared between main, preload, and renderer. */
 export const IPC = {
-  chat: {
-    send: "chat:send",
-    abort: "chat:abort",
-    /** main → renderer: streaming agent events. */
-    event: "chat:event",
+  textGeneration: {
+    send: "text-generation:send",
+    abort: "text-generation:abort",
+    /** main → renderer: streaming generation events. */
+    event: "text-generation:event",
   },
-  image: {
-    run: "image:run",
+  imageToImage: {
+    run: "image-to-image:run",
   },
   models: {
     list: "models:list",

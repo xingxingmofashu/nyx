@@ -4,6 +4,9 @@ import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { NyxServerClient } from "./client"
 
+/** Generous ceiling for first startup (model load can be slow). */
+const READY_TIMEOUT_MS = 15_000
+
 /**
  * Manages the @nyx/server child process that runs inference.
  *
@@ -16,8 +19,8 @@ export class ServerManager {
   private child: ChildProcess | null = null
   private token = ""
   private baseUrl = ""
-  private readyResolvers: Array<() => void> = []
   private serverClient: NyxServerClient | null = null
+  private ready: Promise<void> | null = null
 
   /** Resolved server location; throws when the server has not started. */
   get url(): string {
@@ -37,11 +40,74 @@ export class ServerManager {
 
   /** Spawn the server process and wait until it reports ready. */
   async start(): Promise<void> {
-    if (this.child) return
+    if (this.ready) return this.ready
     this.token = randomBytes(24).toString("hex")
 
-    // Resolve the bundled server script. Dev: workspace dist. Packaged:
-    // resources/ (added by forge hooks later).
+    const script = this.resolveBundle()
+    const child = spawn("node", [script], {
+      env: { ...process.env, NYX_SERVER_TOKEN: this.token, NYX_SERVER_PORT: "0" },
+      stdio: ["ignore", "pipe", "pipe"],
+    })
+    this.child = child
+
+    this.ready = new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("nyx server did not become ready in time")), READY_TIMEOUT_MS)
+
+      let stdoutBuf = ""
+      child.stdout?.on("data", (chunk: Buffer) => {
+        stdoutBuf += chunk.toString()
+        const match = stdoutBuf.match(/nyx-server-ready (\S+)/)
+        if (match) {
+          clearTimeout(timer)
+          this.baseUrl = match[1]!
+          resolve()
+        }
+      })
+      child.stderr?.on("data", (chunk: Buffer) => {
+        process.stderr.write(`[nyx-server] ${chunk.toString()}`)
+      })
+      child.on("exit", () => {
+        clearTimeout(timer)
+        this.child = null
+        this.baseUrl = ""
+        reject(new Error("nyx server exited during startup"))
+      })
+      child.on("error", (error) => {
+        clearTimeout(timer)
+        reject(new Error(`failed to spawn nyx server: ${error.message}`))
+      })
+    })
+
+    try {
+      await this.ready
+    } catch (error) {
+      this.ready = null
+      this.child = null
+      throw error
+    }
+  }
+
+  /** Stop the server process. */
+  async stop(): Promise<void> {
+    const child = this.child
+    this.child = null
+    this.ready = null
+    this.serverClient = null
+    this.baseUrl = ""
+    if (!child || child.exitCode !== null) return
+
+    child.kill()
+    await new Promise<void>((resolve) => {
+      child.once("exit", () => resolve())
+      // Force-kill if graceful exit stalls.
+      setTimeout(() => {
+        if (child.exitCode === null) child.kill("SIGKILL")
+        resolve()
+      }, 2000)
+    })
+  }
+
+  private resolveBundle(): string {
     const candidates = [
       join(__dirname, "../../../../packages/server/dist/server.cjs"),
       join(process.resourcesPath ?? "", "server.cjs"),
@@ -50,62 +116,6 @@ export class ServerManager {
     if (!script) {
       throw new Error("nyx server bundle not found; build @nyx/server first (bun --cwd packages/server run build)")
     }
-
-    const child = spawn("node", [script], {
-      env: { ...process.env, NYX_SERVER_TOKEN: this.token, NYX_SERVER_PORT: "0" },
-      stdio: ["ignore", "pipe", "pipe"],
-    })
-    this.child = child
-
-    let stdoutBuf = ""
-    child.stdout?.on("data", (chunk: Buffer) => {
-      stdoutBuf += chunk.toString()
-      const match = stdoutBuf.match(/nyx-server-ready (\S+)/)
-      if (match) {
-        this.baseUrl = match[1]!
-        for (const resolve of this.readyResolvers) resolve()
-        this.readyResolvers = []
-      }
-    })
-    child.stderr?.on("data", (chunk: Buffer) => {
-      process.stderr.write(`[nyx-server] ${chunk.toString()}`)
-    })
-    child.on("exit", (code) => {
-      this.child = null
-      this.baseUrl = ""
-      process.stderr.write(`[nyx-server] exited with code ${code}\n`)
-    })
-    child.on("error", (error) => {
-      process.stderr.write(`[nyx-server] failed to spawn: ${error.message}\n`)
-    })
-
-    // Wait for the ready line (with a generous timeout for first model load).
-    if (!this.baseUrl) {
-      await new Promise<void>((resolve, reject) => {
-        this.readyResolvers.push(resolve)
-        const timer = setTimeout(() => reject(new Error("nyx server did not become ready in time")), 15000)
-        child.on("exit", () => {
-          clearTimeout(timer)
-          reject(new Error("nyx server exited during startup"))
-        })
-      })
-    }
-  }
-
-  /** Stop the server process. */
-  async stop(): Promise<void> {
-    if (!this.child) return
-    const child = this.child
-    this.child = null
-    child.kill()
-    await new Promise<void>((resolve) => {
-      if (child.exitCode !== null) return resolve()
-      child.once("exit", () => resolve())
-      // Force-kill if graceful exit stalls.
-      setTimeout(() => {
-        if (child.exitCode === null) child.kill("SIGKILL")
-        resolve()
-      }, 2000)
-    })
+    return script
   }
 }

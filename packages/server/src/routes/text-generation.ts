@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import { streamSSE } from "hono/streaming"
+import type { LLMMessage } from "@nyx/llm"
 import type { InferenceService } from "../services/inference"
-import type { ChatMessage } from "../shared/types"
 
 /** POST /v1/text-generation — SSE-streamed text generation over a transcript. */
 export function textGeneration(service: InferenceService): Hono {
@@ -11,7 +11,7 @@ export function textGeneration(service: InferenceService): Hono {
     streamSSE(c, async (stream) => {
       const body = await c.req.json().catch(() => ({}))
       const model = (body as { model?: string }).model
-      const messages = (body as { messages?: ChatMessage[] }).messages
+      const messages = (body as { messages?: LLMMessage[] }).messages
 
       if (!model || !Array.isArray(messages) || messages.length === 0) {
         await stream.writeSSE({

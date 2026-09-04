@@ -1,24 +1,24 @@
 import { contextBridge, ipcRenderer } from "electron"
 import { IPC } from "../shared/ipc"
-import type { ChatEvent, ImagePayload, ImageResult, ModelInfo, ModelPullProgress, ModelTask, NyxApi } from "../shared/types"
+import type { TextGenerationEvent, ImagePayload, ImageResult, ModelInfo, ModelPullProgress, LlmTask, NyxApi } from "../shared/types"
 
 const api: NyxApi = {
-  chat: {
-    send: (modelId, messages) => ipcRenderer.invoke(IPC.chat.send, modelId, messages),
-    abort: () => ipcRenderer.invoke(IPC.chat.abort),
+  textGeneration: {
+    send: (modelId, messages) => ipcRenderer.invoke(IPC.textGeneration.send, modelId, messages),
+    abort: () => ipcRenderer.invoke(IPC.textGeneration.abort),
     onEvent: (cb) => {
-      const listener = (_e: Electron.IpcRendererEvent, event: ChatEvent) => cb(event)
-      ipcRenderer.on(IPC.chat.event, listener)
-      return () => ipcRenderer.removeListener(IPC.chat.event, listener)
+      const listener = (_e: Electron.IpcRendererEvent, event: TextGenerationEvent) => cb(event)
+      ipcRenderer.on(IPC.textGeneration.event, listener)
+      return () => ipcRenderer.removeListener(IPC.textGeneration.event, listener)
     },
   },
-  image: {
+  imageToImage: {
     run: (modelId: string, input: ImagePayload): Promise<ImageResult> =>
-      ipcRenderer.invoke(IPC.image.run, modelId, input),
+      ipcRenderer.invoke(IPC.imageToImage.run, modelId, input),
   },
   models: {
     list: (): Promise<ModelInfo[]> => ipcRenderer.invoke(IPC.models.list),
-    pull: (modelId: string, task: ModelTask) => ipcRenderer.invoke(IPC.models.pull, modelId, task),
+    pull: (modelId: string, task: LlmTask) => ipcRenderer.invoke(IPC.models.pull, modelId, task),
     onProgress: (cb) => {
       const listener = (_e: Electron.IpcRendererEvent, p: ModelPullProgress) => cb(p)
       ipcRenderer.on(IPC.models.progress, listener)
