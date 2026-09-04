@@ -1,7 +1,7 @@
 import { BrowserWindow, ipcMain } from "electron"
 import { getModelsDir } from "@nyx/config"
 import { IPC } from "../shared/ipc"
-import type { ImagePayload, ModelTask } from "../shared/types"
+import type { ChatMessage, ImagePayload, ModelTask } from "../shared/types"
 import { AgentService } from "./services/agent"
 import { ImageService } from "./services/image"
 import type { ServerManager } from "./server/manager"
@@ -17,7 +17,7 @@ export function registerIpc(services: Services): void {
   const { agent, image, manager } = services
 
   // --- Chat ---
-  ipcMain.handle(IPC.chat.send, (_e, text: string) => agent.send(text))
+  ipcMain.handle(IPC.chat.send, (_e, messages: ChatMessage[]) => agent.send(messages))
   ipcMain.handle(IPC.chat.abort, () => agent.abort())
   ipcMain.handle(IPC.chat.setModel, (_e, modelId: string) => agent.setModel(modelId))
 

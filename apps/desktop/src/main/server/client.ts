@@ -1,4 +1,4 @@
-import type { ImagePayload, ImageResult, ModelInfo, ModelTask } from "../../shared/types"
+import type { ChatMessage, ImagePayload, ImageResult, ModelInfo, ModelTask } from "../../shared/types"
 
 /**
  * HTTP client for the @nyx/server inference process.
@@ -36,12 +36,13 @@ export class NyxServerClient {
   }
 
   /**
-   * Stream a chat completion. Invokes onDelta/onEnd/onError as SSE events
-   * arrive. Resolves when the stream completes, errors, or is aborted.
+   * Stream a chat completion over a transcript. Invokes onDelta/onEnd/onError
+   * as SSE events arrive. Resolves when the stream completes, errors, or is
+   * aborted.
    */
   async chat(
     modelId: string,
-    message: string,
+    messages: ChatMessage[],
     handlers: {
       onDelta: (delta: string) => void
       onEnd: (fullText: string) => void
@@ -52,7 +53,7 @@ export class NyxServerClient {
     const res = await fetch(`${this.baseUrl}/v1/text-generation`, {
       method: "POST",
       headers: this.headers(),
-      body: JSON.stringify({ model: modelId, message }),
+      body: JSON.stringify({ model: modelId, messages }),
       signal,
     })
     if (res.status === 499 || (signal?.aborted && !res.ok)) {

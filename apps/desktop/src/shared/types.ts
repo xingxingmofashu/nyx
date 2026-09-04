@@ -7,8 +7,8 @@
  */
 
 // Wire types shared with the inference server live in @nyx/server/types.
-import type { ImagePayload, ImageResult, ModelInfo, ModelTask } from "@nyx/server/types"
-export type { ImagePayload, ImageResult, ModelInfo, ModelTask }
+import type { ChatMessage, ImagePayload, ImageResult, ModelInfo, ModelTask } from "@nyx/server/types"
+export type { ChatMessage, ImagePayload, ImageResult, ModelInfo, ModelTask }
 
 // --- Chat ---
 
@@ -48,7 +48,8 @@ export interface ModelPullProgress {
 
 export interface NyxApi {
   chat: {
-    send: (text: string) => Promise<void>
+    /** Send the full transcript; the server runs one stateless turn on it. */
+    send: (messages: ChatMessage[]) => Promise<void>
     abort: () => Promise<void>
     setModel: (modelId: string) => Promise<void>
     /** Subscribe to streaming events. Returns an unsubscribe fn. */

@@ -1,10 +1,10 @@
 import { contextBridge, ipcRenderer } from "electron"
 import { IPC } from "../shared/ipc"
-import type { ChatEvent, ImagePayload, ImageResult, ModelInfo, ModelPullProgress, ModelTask, NyxApi } from "../shared/types"
+import type { ChatEvent, ChatMessage, ImagePayload, ImageResult, ModelInfo, ModelPullProgress, ModelTask, NyxApi } from "../shared/types"
 
 const api: NyxApi = {
   chat: {
-    send: (text) => ipcRenderer.invoke(IPC.chat.send, text),
+    send: (messages: ChatMessage[]) => ipcRenderer.invoke(IPC.chat.send, messages),
     abort: () => ipcRenderer.invoke(IPC.chat.abort),
     setModel: (modelId) => ipcRenderer.invoke(IPC.chat.setModel, modelId),
     onEvent: (cb) => {

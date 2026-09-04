@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@hono/node-server": "catalog:",
+    "@nyx/core": "workspace:*",
     "@nyx/llm": "workspace:*",
     "hono": "catalog:"
   },

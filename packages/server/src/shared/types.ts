@@ -1,5 +1,9 @@
 /** Wire types for the nyx inference server HTTP API (shared server/client). */
 
+import type { LlmTask } from "@nyx/llm"
+
+export type { LlmTask }
+
 // --- Image-to-image ---
 
 export interface ImageInput {
@@ -23,7 +27,8 @@ export interface ImageResult {
 
 // --- Models ---
 
-export type ModelTask = "text-generation" | "image-to-image"
+/** Local tasks the inference server exposes. Single source of truth: @nyx/llm. */
+export type ModelTask = LlmTask
 
 /** Installed model as reported by /v1/models. */
 export interface ModelInfo {
@@ -32,4 +37,19 @@ export interface ModelInfo {
   task: string
   dtype?: string
   createdAt?: string
+}
+
+// --- Text generation ---
+
+/** Chat roles understood by the text-generation endpoint. */
+export type ChatRole = "system" | "user" | "assistant"
+
+/**
+ * One turn of conversation history. Stateless callers (desktop, CLI) carry
+ * their full transcript here on each request; the server runs a single turn
+ * on top of it and stores nothing.
+ */
+export interface ChatMessage {
+  role: ChatRole
+  content: string
 }

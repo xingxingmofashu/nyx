@@ -1,7 +1,7 @@
 import type { BrowserWindow } from "electron"
 import type { ServerManager } from "../server/manager"
 import { IPC } from "../../shared/ipc"
-import type { ChatEvent } from "../../shared/types"
+import type { ChatEvent, ChatMessage } from "../../shared/types"
 
 /**
  * Bridges the chat tool to the inference server.
@@ -41,8 +41,8 @@ export class AgentService {
     this.abortController?.abort()
   }
 
-  /** Start a streaming chat; SSE events are pushed to attached windows. */
-  async send(text: string): Promise<void> {
+  /** Start a streaming chat turn over the full transcript; SSE events are pushed to windows. */
+  async send(messages: ChatMessage[]): Promise<void> {
     if (!this.modelId) throw new Error("No text-generation model selected. Pick a model first.")
     if (this.busy) return
     this.busy = true
@@ -51,7 +51,7 @@ export class AgentService {
     try {
       await this.manager.client.chat(
         this.modelId,
-        text,
+        messages,
         {
           onDelta: (delta) => this.broadcast({ type: "message_update", text: delta }),
           onEnd: (fullText) => this.broadcast({ type: "message_end", text: fullText }),

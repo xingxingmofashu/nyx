@@ -3,6 +3,7 @@ import { flushSync } from "react-dom"
 import { MessageCircleDashedIcon, SendHorizonal, Square } from "lucide-react"
 import { useChatStore } from "../store/chat"
 import { useModelsStore } from "../store/models"
+import type { ChatMessage } from "../../../shared/types"
 import { ModelPicker } from "../components/ModelPicker"
 import {
   Card,
@@ -97,7 +98,9 @@ export function TextGenerationPage() {
     const msgs = useChatStore.getState().messages
     const last = msgs[msgs.length - 1]
     if (last) updateMessage(last.id, { text })
-    void window.nyx.chat.send(text)
+    // Carry the full transcript; the server runs one stateless turn on it.
+    const transcript: ChatMessage[] = msgs.map((m) => ({ role: m.role, content: m.text }))
+    void window.nyx.chat.send(transcript)
     // Keep the composer focused so the user can keep typing.
     inputRef.current?.focus()
   }

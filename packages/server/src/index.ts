@@ -1,14 +1,16 @@
 import { serve } from "@hono/node-server"
 import { Hono } from "hono"
 import { auth } from "./middleware/auth"
+import { InferenceService } from "./services/inference"
 import { textGenerationRoutes } from "./routes/text-generation"
 import { imageToImageRoutes } from "./routes/image-to-image"
 import { modelsRoutes } from "./routes/models"
 
-/** Assemble the app: auth middleware + mounted v1 routes. */
-export function createApp(options: { token?: string } = {}): Hono {
+/** Assemble the app: auth middleware + mounted v1 routes over one service. */
+export function createApp(options: { token?: string; service?: InferenceService } = {}): Hono {
   const app = new Hono()
   const { token } = options
+  const service = options.service ?? new InferenceService()
 
   // Bearer token auth when a token is configured (spawned by the desktop app).
   if (token) {
@@ -16,9 +18,9 @@ export function createApp(options: { token?: string } = {}): Hono {
   }
 
   app.get("/v1/health", (c) => c.json({ ok: true }))
-  app.route("/v1/models", modelsRoutes)
-  app.route("/v1/text-generation", textGenerationRoutes)
-  app.route("/v1/image-to-image", imageToImageRoutes)
+  app.route("/v1/models", modelsRoutes(service))
+  app.route("/v1/text-generation", textGenerationRoutes(service))
+  app.route("/v1/image-to-image", imageToImageRoutes(service))
 
   return app
 }
@@ -30,8 +32,8 @@ export interface NyxServerHandle {
 }
 
 /** Start the inference server; resolves once listening. */
-export function startServer(options: { token?: string; port?: number; host?: string } = {}): Promise<NyxServerHandle> {
-  const app = createApp({ token: options.token })
+export function startServer(options: { token?: string; port?: number; host?: string; service?: InferenceService } = {}): Promise<NyxServerHandle> {
+  const app = createApp({ token: options.token, service: options.service })
   const port = options.port ?? 0 // 0 = OS-assigned ephemeral port
   const host = options.host ?? "127.0.0.1"
 
