@@ -7,7 +7,6 @@
   "types": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./client": "./src/shared/client.ts",
     "./types": "./src/shared/types.ts"
   },
   "scripts": {

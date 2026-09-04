@@ -1,10 +1,11 @@
-import type { ImagePayload, ImageResult, ModelInfo, ModelTask } from "./types"
+import type { ImagePayload, ImageResult, ModelInfo, ModelTask } from "../../shared/types"
 
 /**
- * HTTP client for the nyx inference server.
+ * HTTP client for the @nyx/server inference process.
  *
- * Same-process clients (e.g. the Electron main process) construct this with
- * the server's base URL + bearer token and call the typed methods below.
+ * Lives in the desktop main process, which talks to the spawned server over
+ * HTTP (onnxruntime cannot run inside Electron). Construct with the server's
+ * base URL + bearer token (see ServerManager).
  */
 export class NyxServerClient {
   constructor(

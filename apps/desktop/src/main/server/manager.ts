@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from "node:child_process"
 import { randomBytes } from "node:crypto"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { NyxServerClient } from "@nyx/server/client"
+import { NyxServerClient } from "./client"
 
 /**
  * Manages the @nyx/server child process that runs inference.
