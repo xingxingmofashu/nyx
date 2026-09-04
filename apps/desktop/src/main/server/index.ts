@@ -11,9 +11,11 @@ const READY_TIMEOUT_MS = 15_000
  * Manages the @nyx/server child process that runs inference.
  *
  * onnxruntime-node crashes inside Electron's Node runtime (SIGTRAP), so
- * inference runs in a plain Node process spawned here. The server binds to
- * 127.0.0.1 with a random bearer token and prints
- * `nyx-server-ready <url>` on stdout once listening.
+ * inference runs in a plain process spawned here. `ELECTRON_RUN_AS_NODE=1`
+ * makes the app's own Electron binary act as a plain Node runtime — no system
+ * `node` install is required (and the server's onnxruntime/sharp natives load
+ * fine there). The server binds to 127.0.0.1 with a random bearer token and
+ * prints `nyx-server-ready <url>` on stdout once listening.
  */
 export class NyxServer {
   private child: ChildProcess | null = null
@@ -44,8 +46,13 @@ export class NyxServer {
     this.token = randomBytes(24).toString("hex")
 
     const script = this.resolveBundle()
-    const child = spawn("node", [script], {
-      env: { ...process.env, NYX_SERVER_TOKEN: this.token, NYX_SERVER_PORT: "0" },
+    const child = spawn(process.execPath, [script], {
+      env: {
+        ...process.env,
+        ELECTRON_RUN_AS_NODE: "1",
+        NYX_SERVER_TOKEN: this.token,
+        NYX_SERVER_PORT: "0",
+      },
       stdio: ["ignore", "pipe", "pipe"],
     })
     this.child = child
@@ -110,7 +117,7 @@ export class NyxServer {
   private resolveBundle(): string {
     const candidates = [
       join(__dirname, "../../../../packages/server/dist/server.cjs"),
-      join(process.resourcesPath ?? "", "server.cjs"),
+      join(process.resourcesPath ?? "", "runtime", "server.cjs"),
     ]
     const script = candidates.find((p) => existsSync(p))
     if (!script) {
