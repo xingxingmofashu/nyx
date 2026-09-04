@@ -51,5 +51,5 @@ export function startServer(options: { token?: string; port?: number; host?: str
   })
 }
 
-export * from "./types"
-export * from "./client"
+export * from "./shared/types"
+export * from "./shared/client"

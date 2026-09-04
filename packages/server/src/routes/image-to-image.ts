@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 import { streamImageToImage } from "../services/image-to-image"
-import type { ImageInput } from "../types"
+import type { ImageInput } from "../shared/types"
 
 /** POST /v1/image-to-image — transform an image; responds with image bytes. */
 export const imageToImageRoutes = new Hono()

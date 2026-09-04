@@ -1,10 +1,11 @@
 import { Hono } from "hono"
-import { list, pull } from "@nyx/llm"
+import { listModels, pullModel } from "../services/models"
+import type { ModelTask } from "../shared/types"
 
 /** /v1/models — list and download cached models. */
 export const modelsRoutes = new Hono()
 
-modelsRoutes.get("/", (c) => c.json(list()))
+modelsRoutes.get("/", (c) => c.json(listModels()))
 
 modelsRoutes.post("/pull", async (c) => {
   const body = await c.req.json().catch(() => ({}))
@@ -14,7 +15,7 @@ modelsRoutes.post("/pull", async (c) => {
     return c.json({ error: "model and a valid task are required" }, 400)
   }
   try {
-    await pull(model, task)
+    await pullModel(model, task as ModelTask)
     return c.json({ ok: true })
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : String(error) }, 500)
