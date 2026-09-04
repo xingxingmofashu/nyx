@@ -1,5 +1,6 @@
 import type { TextProvider, LLMMessage } from "@nyx/llm"
-import type { AssistantMessage, Message, UserMessage } from "../types"
+import type { AssistantMessage, Message, TextContent, UserMessage } from "../types"
+import { messageToJson } from "../types"
 
 export type AgentEvent =
   | { type: "message_start"; message: UserMessage | AssistantMessage }
@@ -19,35 +20,40 @@ export interface ChatResult {
 export interface AgentOptions {
   llm: TextProvider
   systemPrompt?: string
+  /**
+   * Seed the transcript with a prior conversation (e.g. history a stateless
+   * caller carries in). Copied at construction; later turns append on top.
+   * The system prompt is not part of this array — pass it via `systemPrompt`.
+   */
+  history?: Message[]
 }
 
 const DEFAULT_SYSTEM_PROMPT = "You are nyx, a helpful local assistant. Answer concisely."
 
-/** Extract plain text from a user/assistant message, joining text blocks. */
+/** Extract the plain text of a message, joining text blocks (thinking/image/tool ignored). */
 export function messageText(message: Message): string {
-  if (message.role === "user" && Array.isArray(message.content)) {
-    return textOfBlocks(message.content)
+  if (message.role === "user") {
+    return typeof message.content === "string" ? message.content : textOfBlocks(message.content)
   }
-  if (message.role === "assistant") {
-    return textOfBlocks(message.content)
-  }
-  return typeof message.content === "string" ? message.content : ""
+  return textOfBlocks(message.content)
 }
 
-function textOfBlocks(blocks: { type?: string; text?: string }[]): string {
+function textOfBlocks(blocks: readonly (TextContent | { type: string })[]): string {
   return blocks
-    .filter((c): c is { type: string; text: string } => c.type === "text" && typeof c.text === "string")
+    .filter((c): c is TextContent => c.type === "text")
     .map((c) => c.text)
     .join("\n")
 }
 
 /**
- * A single chat session.
+ * A single in-memory chat session (one `Agent` = one conversation).
  *
- * Owns the transcript (`system` prompt + every user/assistant exchange) and
- * replays it to the provider on each `prompt()`, so a turn always sees the
- * full conversation (multi-turn). Stateless beyond `history`; a new session is
- * a new Agent instance.
+ * Pure engine: owns the transcript (`systemPrompt` + every user/assistant
+ * exchange) and replays the full context to the provider on each `prompt()`,
+ * so a turn always sees the whole conversation. Does not persist anything,
+ * touch the network, or know about processes — a host (server, CLI, TUI)
+ * serializes `messages` via `messageToJson` and seeds a fresh Agent from it
+ * to resume across boundaries.
  */
 export class Agent {
   readonly llm: TextProvider
@@ -60,12 +66,12 @@ export class Agent {
   constructor(options: AgentOptions) {
     this.llm = options.llm
     this.systemPrompt = options.systemPrompt ?? DEFAULT_SYSTEM_PROMPT
-    this.history = []
+    this.history = options.history ? options.history.map((m) => messageToJson(m)) : []
   }
 
   /** Immutable snapshot of the session transcript (system excluded). */
   get messages(): Message[] {
-    return [...this.history]
+    return this.history.map((m) => messageToJson(m))
   }
 
   /** Register an event listener. Returns an unsubscribe function. */
@@ -93,7 +99,7 @@ export class Agent {
     await this.idlePromise
   }
 
-  /** Clear the transcript and re-seed with the system prompt. */
+  /** Clear the transcript (the system prompt is retained). */
   reset(): void {
     if (this.isBusy) {
       throw new Error("Agent is busy. Wait for idle before resetting.")
@@ -104,7 +110,8 @@ export class Agent {
   /**
    * Send a user message and stream the assistant reply via events:
    *   message_start (assistant, empty) → message_update* → message_end
-   * The exchange is appended to the session history.
+   * The exchange is appended to the transcript only on success, so a
+   * throwing/aborted turn leaves the history unchanged.
    */
   async prompt(userText: string): Promise<ChatResult> {
     if (this.isBusy) {
@@ -124,8 +131,7 @@ export class Agent {
       resolveIdle = resolve
     })
 
-    // The transcript only commits once the turn completes, so a prompt that
-    // throws never leaves a dangling user message behind.
+    // The transcript only commits once the turn completes.
     try {
       this.emit({ type: "message_start", message: userMessage })
 
@@ -153,7 +159,7 @@ export class Agent {
 
       if (!text.trim()) text = "(no response)"
       assistantMessage.content = [{ type: "text", text }]
-      this.history.push(userMessage, assistantMessage)
+      this.history.push(messageToJson(userMessage), messageToJson(assistantMessage))
       this.emit({ type: "message_end", message: assistantMessage })
       return { text, message: assistantMessage }
     } catch (error) {
@@ -168,7 +174,8 @@ export class Agent {
 
   /**
    * Translate the transcript into the provider wire format. System goes
-   * first, then user/assistant turns in order.
+   * first, then user/assistant turns in order. Only plain-text content is
+   * sent; thinking/image/tool blocks have no provider representation yet.
    */
   private toProviderMessages(tail: string[] = []): LLMMessage[] {
     const out: LLMMessage[] = [{ role: "system", content: this.systemPrompt }]

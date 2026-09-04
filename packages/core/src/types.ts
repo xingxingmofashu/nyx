@@ -1,10 +1,15 @@
 // Chat message + content-block model for @nyx/core.
 //
-// Messages are the session transcript the Agent owns and renders. Content
-// blocks are discriminated unions: a message carries an ordered list that
-// renderers walk top-to-bottom. Blocks no consumer produces yet (thinking,
-// toolCall, image) are kept so streaming those in later is additive, not a
-// breaking model change.
+// Messages are the transcript a session owns and renders. Content blocks are
+// discriminated unions: a message carries an ordered list that renderers walk
+// top-to-bottom. Blocks no consumer produces yet (thinking, image, toolCall)
+// are kept so streaming them in later is additive, not a breaking model
+// change.
+//
+// Serialization contract: every message/content type here is plain JSON
+// (no class instances, no undefined). `messageToJson`/`messageFromJson`
+// round-trip a transcript so a stateless host (server/CLI/desktop) can carry
+// history across requests — core itself never stores anything.
 
 export interface TextContent {
   type: "text"
@@ -55,3 +60,17 @@ export interface AssistantMessage {
 
 /** Any message in the transcript. */
 export type Message = UserMessage | AssistantMessage
+
+/** Serialize a message to plain JSON (safe to store or send on the wire). */
+export function messageToJson(message: Message): Message {
+  return message
+}
+
+/**
+ * Rehydrate a message from plain JSON produced by `messageToJson`.
+ * Identity today (messages are already plain data); kept as the seam where a
+ * future version can validate/normalize untrusted input.
+ */
+export function messageFromJson(json: Message): Message {
+  return json
+}
