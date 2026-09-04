@@ -4,7 +4,6 @@ import { useModelsStore } from "../store/models"
 import type { LlmTask } from "../../../shared/types"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
-import { Badge } from "./ui/badge"
 import { Separator } from "./ui/separator"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { cn } from "../lib/utils"
@@ -68,7 +67,6 @@ export function ModelPicker({ task, className }: { task: LlmTask; className?: st
                   )}
                 >
                   <span className="min-w-0 flex-1 truncate">{model.name ?? model.id}</span>
-                  {model.dtype && <Badge variant="outline">{model.dtype}</Badge>}
                   {selected === model.id && <Check className="size-4 shrink-0" />}
                   {progress !== undefined && <span className="text-xs text-muted-foreground">{progress}%</span>}
                 </button>

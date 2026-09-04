@@ -11,7 +11,7 @@ export type {
   ImageProvider,
   ImageSource,
 } from "./types.ts";
-export { LLM_TASKS, TASK_DTYPES } from "./types.ts";
+export { LLM_TASKS } from "./types.ts";
 export type { LlmTask } from "./types.ts";
 
 export { configureEnv, loadPipeline, clearModelCache } from "./runtime.ts";

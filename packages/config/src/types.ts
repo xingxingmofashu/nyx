@@ -1,10 +1,9 @@
-import type { DataType, PipelineType } from "@huggingface/transformers"
+import type { PipelineType } from "@huggingface/transformers"
 
 /** A locally installed model record. */
 export interface ModelInfo {
   id: string
   name: string
-  dtype: DataType
   task: PipelineType
   createdAt: string
 }

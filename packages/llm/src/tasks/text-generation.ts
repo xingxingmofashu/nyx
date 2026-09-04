@@ -7,7 +7,7 @@ export interface OnnxTextGenerationOptions {
   cacheDir?: string;
   /** Max tokens to generate per call. Default 512. */
   maxTokens?: number;
-  /** Quantization dtype. Default "q4". */
+  /** Quantization dtype. When omitted, transformers.js picks the device default. */
   dtype?: DataType;
   allowDownload?: boolean;
 }
@@ -17,14 +17,14 @@ export class OnnxTextGenerationProvider implements TextProvider {
   readonly task = "text-generation" as const;
   readonly model: string;
   private maxTokens: number;
-  private dtype: NonNullable<OnnxTextGenerationOptions["dtype"]>;
+  private readonly dtype?: DataType;
   private cacheDir?: string;
   private allowDownload?: boolean;
 
   constructor(options: OnnxTextGenerationOptions) {
     this.model = options.model;
     this.maxTokens = options.maxTokens ?? 512;
-    this.dtype = options.dtype ?? "q4";
+    this.dtype = options.dtype;
     this.cacheDir = options.cacheDir;
     this.allowDownload = options.allowDownload;
   }

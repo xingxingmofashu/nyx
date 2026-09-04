@@ -1,10 +1,12 @@
-import { RawImage, type ImageToImagePipeline } from "@huggingface/transformers";
+import { RawImage, type DataType, type ImageToImagePipeline } from "@huggingface/transformers";
 import { loadPipeline } from "../runtime.ts";
 import type { ImageProvider, ImageSource } from "../types.ts";
 
 export interface OnnxImageToImageOptions {
   model: string;
   cacheDir?: string;
+  /** Quantization dtype. When omitted, transformers.js picks the device default. */
+  dtype?: DataType;
   allowDownload?: boolean;
 }
 
@@ -12,11 +14,13 @@ export class OnnxImageToImageProvider implements ImageProvider {
   readonly id = "local-onnx";
   readonly task = "image-to-image" as const;
   readonly model: string;
+  private readonly dtype?: DataType;
   private readonly cacheDir?: string;
   private readonly allowDownload?: boolean;
 
   constructor(options: OnnxImageToImageOptions) {
     this.model = options.model;
+    this.dtype = options.dtype;
     this.cacheDir = options.cacheDir;
     this.allowDownload = options.allowDownload;
   }
@@ -29,11 +33,10 @@ export class OnnxImageToImageProvider implements ImageProvider {
   }
 
   private async load(): Promise<ImageToImagePipeline> {
-    // Super-resolution models need fp32 weights.
     return loadPipeline<ImageToImagePipeline>("image-to-image", this.model, {
       cacheDir: this.cacheDir,
       allowDownload: this.allowDownload,
-      dtype: "fp32",
+      dtype: this.dtype,
     });
   }
 }

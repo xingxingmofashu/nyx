@@ -1,4 +1,4 @@
-import type { DataType, RawImage } from "@huggingface/transformers";
+import type { RawImage } from "@huggingface/transformers";
 
 export type Role = "user" | "assistant" | "system";
 
@@ -26,12 +26,6 @@ export interface StreamOptions {
 /** The local ONNX tasks nyx supports. */
 export const LLM_TASKS = ["text-generation", "image-to-image"] as const;
 export type LlmTask = (typeof LLM_TASKS)[number];
-
-/** Default quantization dtype per task. */
-export const TASK_DTYPES: Record<LlmTask, DataType> = {
-  "text-generation": "q4",
-  "image-to-image": "fp32",
-};
 
 /** Capability marker; consumers depend on `TextProvider` or `ImageProvider`. */
 export interface LLMProvider {

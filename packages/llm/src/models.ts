@@ -4,7 +4,7 @@ import { pipeline } from "@huggingface/transformers"
 import { getModelsDir, read as readModelConfig, write, type ModelInfo } from "@nyx/config"
 import { configureEnv } from "./runtime.ts"
 import type { ProgressInfo } from "./runtime.ts"
-import { TASK_DTYPES, type LlmTask } from "./types.ts"
+import type { LlmTask } from "./types.ts"
 
 /** List models recorded in the config that still exist on disk. */
 export function list(): ModelInfo[] {
@@ -29,10 +29,6 @@ export async function pull(
   task: LlmTask,
   onProgress?: (info: ProgressInfo) => void,
 ): Promise<void> {
-  const dtype = TASK_DTYPES[task]
-  if (!dtype) {
-    throw new Error(`Unsupported task: ${task}`)
-  }
   const [org, ...rest] = modelId.split("/")
   const name = rest.join("/")
   if (!org || !name) {
@@ -41,15 +37,14 @@ export async function pull(
 
   configureEnv()
   // Loading the pipeline downloads config/tokenizer/weights; discard the instance.
+  // No dtype is passed: transformers.js picks the default for the device.
   await pipeline(task, modelId, {
-    dtype,
     ...(onProgress ? { progress_callback: onProgress } : {}),
   })
 
   const info: ModelInfo = {
     id: modelId,
     name,
-    dtype,
     task,
     createdAt: new Date().toISOString(),
   }

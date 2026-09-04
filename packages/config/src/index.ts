@@ -24,7 +24,8 @@ function isNotFoundError(error: unknown): boolean {
 }
 
 /** Read the installed-model config; empty when no file exists yet. */
-export function read(): ModelConfig {  try {
+export function read(): ModelConfig {
+  try {
     return JSON.parse(readFileSync(getModelConfigPath(), "utf-8")) as ModelConfig;
   } catch (error) {
     if (isNotFoundError(error)) return { provider: {} };
@@ -32,12 +33,21 @@ export function read(): ModelConfig {  try {
   }
 }
 
+/** Drop legacy per-model fields no longer tracked (e.g. dtype). */
+function sanitize(config: ModelConfig): ModelConfig {
+  for (const provider of Object.values(config.provider)) {
+    for (const info of Object.values(provider.models)) {
+      delete (info as Partial<ModelInfo> & { dtype?: string }).dtype;
+    }
+  }
+  return config;
+}
+
 /** Deep-merge one installed model into the config file (via defu). */
 export function write(entry: { provider: Record<string, { models: Record<string, ModelInfo> }> }): void {
-  const existing = read();
-  const merged = defu(existing, entry);
+  const merged = defu(read(), entry);
   mkdirSync(getConfigDir(), { recursive: true });
-  writeFileSync(getModelConfigPath(), JSON.stringify(merged, null, 2));
+  writeFileSync(getModelConfigPath(), JSON.stringify(sanitize(merged), null, 2));
 }
 
 export * from "./types.ts";
