@@ -6,7 +6,7 @@ import { configureEnv } from "./runtime.ts"
 import type { ProgressInfo } from "./runtime.ts"
 import { TASK_DTYPES, type LlmTask } from "./types.ts"
 
-/** List installed models recorded in the config that still exist on disk. */
+/** List models recorded in the config that still exist on disk. */
 export function list(): ModelInfo[] {
   const modelsDir = getModelsDir()
   const config = readModelConfig()
@@ -40,8 +40,7 @@ export async function pull(
   }
 
   configureEnv()
-  // Constructing the pipeline downloads config/tokenizer/weights; the
-  // instance is discarded so nothing stays in memory.
+  // Loading the pipeline downloads config/tokenizer/weights; discard the instance.
   await pipeline(task, modelId, {
     dtype,
     ...(onProgress ? { progress_callback: onProgress } : {}),

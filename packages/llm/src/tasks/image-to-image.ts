@@ -21,7 +21,7 @@ export class OnnxImageToImageProvider implements ImageProvider {
     this.allowDownload = options.allowDownload;
   }
 
-  /** Run the image-to-image model on a single image; returns the output image. */
+  /** Transform one image; returns the output image. */
   async generate(input: ImageSource): Promise<RawImage> {
     const pipe = await this.load();
     const output = await pipe(input);
@@ -29,7 +29,7 @@ export class OnnxImageToImageProvider implements ImageProvider {
   }
 
   private async load(): Promise<ImageToImagePipeline> {
-    // swin2sr-style super-resolution models require fp32 weights.
+    // Super-resolution models need fp32 weights.
     return loadPipeline<ImageToImagePipeline>("image-to-image", this.model, {
       cacheDir: this.cacheDir,
       allowDownload: this.allowDownload,

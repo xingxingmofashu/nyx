@@ -13,14 +13,9 @@ export interface ImageOutput {
 }
 
 /**
- * Inference service: the process-scoped host that owns model weights and
- * runs inference.
- *
- * One instance exists per server process. It caches providers (and, via
- * @nyx/llm, the underlying pipelines) per model id, so weights load once.
- * Text generation is stateless multi-turn: each request carries the full
- * transcript and is forwarded straight to the text provider — no session
- * is stored here.
+ * Process-scoped host owning model weights. Caches providers per model id so
+ * weights load once. Text generation is stateless multi-turn: each request
+ * carries the full transcript, forwarded straight to the text provider.
  */
 export class InferenceService {
   private readonly providers = new Map<string, LLMProvider>()
@@ -34,13 +29,7 @@ export class InferenceService {
     return provider
   }
 
-  /**
-   * Run one text-generation turn over a transcript carried in `messages`,
-   * streaming the provider's token deltas straight through. The transformers.js
-   * pipeline applies the model's chat template to the message array
-   * internally. Empty assistant turns are dropped (they carry no content for
-   * the model).
-   */
+  /** Stream one multi-turn generation over `messages` (chat template applied internally). */
   async *textGeneration(modelId: string, messages: LLMMessage[]): AsyncIterable<LLMEvent> {
     const provider = this.getProvider(modelId, () => new OnnxTextGenerationProvider({ model: modelId }))
     const input = messages.filter((m) => m.role !== "assistant" || m.content.trim() !== "")

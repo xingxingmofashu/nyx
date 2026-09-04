@@ -12,7 +12,7 @@ export interface ModelRuntimeOptions {
   cacheDir?: string;
   allowDownload?: boolean;
   dtype?: DataType;
-  /** Receive model load/download progress events (transformers.js ProgressInfo). */
+  /** Receive model load/download progress events. */
   onProgress?: ProgressCallback;
 }
 
@@ -35,8 +35,7 @@ export function loadPipeline<T>(
 ): Promise<T> {
   configureEnv(options);
 
-  // Key includes dtype: the same model id loaded at two quantizations
-  // (e.g. a q4 provider plus an fp32 caller) must not share a pipeline.
+  // Memoize per task:dtype:model so mixed quantization callers don't collide.
   const key = `${task}:${options.dtype ?? "default"}:${model}`;
   let pending = pipelines.get(key) as Promise<T> | undefined;
   if (!pending) {

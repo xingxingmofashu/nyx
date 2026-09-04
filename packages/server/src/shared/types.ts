@@ -1,7 +1,5 @@
 /** Wire types for the nyx inference server HTTP API (shared server/client). */
 
-// --- Image-to-image ---
-
 export interface ImageInput {
   /** base64-encoded image bytes. */
   data: string
@@ -21,13 +19,9 @@ export interface ImageResult {
   height: number
 }
 
-// --- Text generation ---
-
 /**
- * Transcript contract: plain-text `{ role, content }` turns (`LLMMessage`),
- * fed straight to the transformers.js text pipeline, which applies the
- * model's chat template to the whole array (so system messages should lead,
- * and the final user message is the prompt the model answers). No session is
- * stored server-side — each request carries the full transcript.
+ * Transcript contract: `{ role, content }` turns fed straight to the
+ * transformers.js pipeline (chat template applied internally). Each request
+ * carries the full transcript; no session is stored server-side.
  */
 export type { LLMMessage } from "@nyx/llm"

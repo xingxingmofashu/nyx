@@ -25,9 +25,7 @@ export async function run(options: TuiOptions): Promise<void> {
   const terminal = new ProcessTerminal();
   const tui: TUI = new TuiMainScreen(terminal);
 
-  // Local transcript for the conversation. Each turn replays the whole
-  // history to the provider (stateless multi-turn — a future server-backed
-  // client sends the same array over HTTP).
+  // Local transcript replayed in full each turn (stateless multi-turn).
   const transcript: LLMMessage[] = [];
   const assistantText = (message: string): void => {
     if (transcript[transcript.length - 1]?.role === "assistant") {
@@ -37,7 +35,7 @@ export async function run(options: TuiOptions): Promise<void> {
     }
   };
 
-  // Component tree: document (header + chat), status, editor
+  // Component tree: header + chat, status, editor.
   const documentContainer = new Container();
   const headerContainer = new Container();
   const chatContainer = new Container();
@@ -51,10 +49,6 @@ export async function run(options: TuiOptions): Promise<void> {
   let workingIndicator: WorkingStatusIndicator | null = null;
   let isResponding = false;
   let shuttingDown = false;
-
-  // =========================================================================
-  // Shutdown
-  // =========================================================================
 
   function shutdown(): void {
     if (shuttingDown) return;
@@ -75,10 +69,6 @@ export async function run(options: TuiOptions): Promise<void> {
   for (const signal of ["SIGTERM", "SIGHUP"] as const) {
     process.prependListener(signal, () => shutdown());
   }
-
-  // =========================================================================
-  // Message rendering
-  // =========================================================================
 
   function addUserMessage(text: string): void {
     chatContainer.addChild(new UserMessageComponent(text));
@@ -122,9 +112,7 @@ export async function run(options: TuiOptions): Promise<void> {
     tui.requestRender();
   }
 
-  // =========================================================================
-  // Editor
-  // =========================================================================
+  // === Editor ===
 
   const editor = new Editor(tui, getEditorTheme() as never);
   editorContainer.addChild(editor);
@@ -184,18 +172,12 @@ export async function run(options: TuiOptions): Promise<void> {
     })();
   };
 
-  // =========================================================================
-  // Header
-  // =========================================================================
-
   const logo = theme.bold(theme.fg("accent", "nyx")) + theme.fg("dim", ` (${options.model})`);
   headerContainer.addChild(new Spacer());
   headerContainer.addChild(new Text(`${logo}\n${theme.fg("muted", "Type a message. /clear resets, /quit exits.")}`));
   headerContainer.addChild(new Spacer());
 
-  // =========================================================================
-  // Mount & input handling
-  // =========================================================================
+  // === Mount & input handling ===
 
   tui.addChild(documentContainer);
   tui.addChild(statusContainer);

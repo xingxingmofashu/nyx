@@ -4,15 +4,12 @@ import type { DataType, PipelineType } from "@huggingface/transformers"
 export interface ModelInfo {
   id: string
   name: string
-  dtype:DataType
+  dtype: DataType
   task: PipelineType
   createdAt: string
 }
 
-/**
- * Config of locally installed models, persisted at ~/.nyx/models.json:
- * { provider: { <provider>: { models: { <name>: InstalledModel } } } }
- */
+/** Model registry persisted at ~/.nyx/models.json. */
 export interface ModelConfig {
   provider: Record<string, { models: Record<string, ModelInfo> }>
 }

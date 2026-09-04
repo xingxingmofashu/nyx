@@ -10,10 +10,7 @@ function getConfigDir(): string {
   return join(homedir(), CONFIG_DIR_NAME);
 }
 
-/**
- * Directory where model weights are cached.
- * Overridable via NYX_MODELS_DIR (e.g. for tests or shared caches).
- */
+/** Model weight cache dir; overridable via NYX_MODELS_DIR. */
 export function getModelsDir(): string {
   return process.env.NYX_MODELS_DIR ?? join(getConfigDir(), "models");
 }
@@ -27,8 +24,7 @@ function isNotFoundError(error: unknown): boolean {
 }
 
 /** Read the installed-model config; empty when no file exists yet. */
-export function read(): ModelConfig {
-  try {
+export function read(): ModelConfig {  try {
     return JSON.parse(readFileSync(getModelConfigPath(), "utf-8")) as ModelConfig;
   } catch (error) {
     if (isNotFoundError(error)) return { provider: {} };
@@ -36,11 +32,7 @@ export function read(): ModelConfig {
   }
 }
 
-/**
- * Write one installed model into the config, deep-merging with the existing
- * file via defu. `entry` is a partial config: { provider: { <provider>:
- * { models: { <name>: InstalledModel } } } }.
- */
+/** Deep-merge one installed model into the config file (via defu). */
 export function write(entry: { provider: Record<string, { models: Record<string, ModelInfo> }> }): void {
   const existing = read();
   const merged = defu(existing, entry);

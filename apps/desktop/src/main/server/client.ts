@@ -2,13 +2,7 @@ import type { LLMMessage, LlmTask } from "@nyx/llm"
 import type { ModelInfo } from "@nyx/config"
 import type { TextGenerationEvent, ImagePayload, ImageResult } from "../../shared/types"
 
-/**
- * HTTP transport for the @nyx/server inference process.
- *
- * Lives in the desktop main process, which talks to the spawned server over
- * HTTP (onnxruntime cannot run inside Electron). Construct with the server's
- * base URL + bearer token (see NyxServer).
- */
+/** HTTP transport for the @nyx/server child (main talks to it over HTTP; onnxruntime cannot run inside Electron). */
 export class NyxServerClient {
   constructor(
     private readonly baseUrl: string,
@@ -39,10 +33,7 @@ export class NyxServerClient {
     })
   }
 
-  /**
-   * Stream a text-generation turn. Yields `delta` events as tokens arrive,
-   * then a final `end` (with the full text) or `error`.
-   */
+  /** Stream a turn, yielding delta events then a final end/error. */
   async *textGeneration(
     modelId: string,
     messages: LLMMessage[],
@@ -96,10 +87,7 @@ export class NyxServerClient {
   }
 }
 
-/**
- * Parse an SSE byte stream into chat frames. Supports CRLF/LF framing and
- * multi-line `data:` payloads.
- */
+/** Parse an SSE byte stream (CRLF/LF framing, multi-line `data:` payloads). */
 async function* readSse(body: ReadableStream<Uint8Array>): AsyncIterable<TextGenerationEvent> {
   const reader = body.getReader()
   const decoder = new TextDecoder()

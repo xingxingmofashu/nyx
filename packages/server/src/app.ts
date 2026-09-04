@@ -6,15 +6,12 @@ import { textGeneration } from "./routes/text-generation"
 import { InferenceService } from "./services/inference"
 
 /**
- * The versioned API group (`/v1`). Hono grouping: each resource is its own
- * sub-app (see routes/*) and is mounted under this group, which carries the
- * auth middleware + the shared health route once. Mounted on the root app in
- * `createApp`.
+ * The versioned `/v1` API group: auth + health once, resource sub-apps mounted
+ * below. Each resource is its own stateless sub-app factory.
  */
 export function v1(options: { token?: string; service: InferenceService }): Hono {
   const v1 = new Hono()
 
-  // Bearer token auth guards the whole API group (spawned by the desktop app).
   if (options.token) {
     v1.use("*", auth(options.token))
   }

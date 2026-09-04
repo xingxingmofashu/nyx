@@ -38,7 +38,7 @@ import { Bubble, BubbleContent } from "../components/ui/bubble"
 import { Marker, MarkerContent, MarkerIcon } from "../components/ui/marker"
 import { Spinner } from "../components/ui/spinner"
 
-/** Minimal markdown-ish renderer for assistant replies (v1: code fences only). */
+/** Minimal markdown renderer for assistant replies (code fences only). */
 function renderMarkdown(text: string): string {
   const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
   return escaped.replace(/```(\w*)\n?([\s\S]*?)```/g, (_m, _lang, code) => `<pre>${code.trim()}</pre>`)
@@ -51,7 +51,7 @@ interface ChatState {
 
 let nextMessageId = 1
 
-/** The plain-text transcript sent to the server, mirroring the message list. */
+/** Plain-text transcript sent to the server, mirroring the message list. */
 function toTranscript(messages: DisplayMessage[]): LLMMessage[] {
   return messages.map((m) => ({ role: m.role, content: m.text }))
 }
@@ -111,12 +111,10 @@ export function TextGenerationPage() {
   const [input, setInput] = useState("")
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Mirror the message list so stream events and send() can read the latest
-  // state without re-subscribing.
+  // Mirror the message list so stream events and send() read the latest state.
   const messagesRef = useRef(messages)
   messagesRef.current = messages
 
-  // Subscribe to streaming events once (dispatch is stable).
   useEffect(() => {
     const unsubscribe = window.nyx.tasks.textGeneration.onEvent((event: TextGenerationEvent) => {
       switch (event.type) {
@@ -139,8 +137,7 @@ export function TextGenerationPage() {
     if (!text || isStreaming || !selectedModel) return
     // Clear synchronously so the re-render happens before we restore focus.
     flushSync(() => setInput(""))
-    // Build the transcript from everything before this turn plus the new user
-    // message (the empty assistant bubble is added for the UI only).
+    // Transcript = history so far + the new user message (assistant bubble is UI-only).
     const history = messagesRef.current
     const transcript: LLMMessage[] = [
       ...toTranscript(history),

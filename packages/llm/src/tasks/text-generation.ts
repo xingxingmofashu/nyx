@@ -1,10 +1,3 @@
-/**
- * Local text-generation provider — text → text, fully local, true token streaming.
- *
- * Runs an ONNX instruct model via the shared runtime, using transformers.js
- * TextStreamer so each generated token is emitted as it arrives.
- */
-
 import { TextStreamer, type DataType, type TextGenerationPipeline } from "@huggingface/transformers";
 import { loadPipeline } from "../runtime.ts";
 import type { LLMMessage, TextProvider, LLMEvent, StreamOptions } from "../types.ts";
@@ -14,7 +7,7 @@ export interface OnnxTextGenerationOptions {
   cacheDir?: string;
   /** Max tokens to generate per call. Default 512. */
   maxTokens?: number;
-  /** Quantization dtype. Default "q4" for speed/size. */
+  /** Quantization dtype. Default "q4". */
   dtype?: DataType;
   allowDownload?: boolean;
 }
@@ -43,8 +36,7 @@ export class OnnxTextGenerationProvider implements TextProvider {
     const pipe = await this.load();
     const maxTokens = options.maxTokens ?? this.maxTokens;
 
-    // A wakeable queue bridges the synchronous TextStreamer callback to the
-    // async generator: each token pushes text and resolves the waiter.
+    // Bridge the synchronous TextStreamer callback to the async generator.
     let buffer: string[] = [];
     let waiter: (() => void) | undefined;
     let done = false;

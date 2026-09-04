@@ -1,13 +1,8 @@
 /**
- * Standalone entry — run as `node packages/server/dist/server.cjs`.
- *
- * Config via env:
- *   NYX_SERVER_TOKEN — required auth token
- *   NYX_SERVER_PORT  — port (default 0 = ephemeral)
- *   NYX_SERVER_HOST  — bind host (default 127.0.0.1)
- *
- * On ready prints `nyx-server-ready <url>` to stdout so the spawning
- * Electron main can discover the actual port.
+ * Standalone entry (`node dist/server.cjs`). Reads NYX_SERVER_TOKEN (required),
+ * NYX_SERVER_PORT (default 0 = ephemeral), NYX_SERVER_HOST (default 127.0.0.1).
+ * Prints `nyx-server-ready <url>` once listening so the spawning Electron main
+ * can discover the port.
  */
 import { start } from "./index"
 

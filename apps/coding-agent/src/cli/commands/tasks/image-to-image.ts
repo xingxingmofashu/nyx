@@ -1,7 +1,4 @@
-/**
- * `nyx image-to-image <input>` — run a local ONNX image-to-image model
- * (e.g. super-resolution) on an image.
- */
+/** `nyx image-to-image <input>` — run a local ONNX image-to-image model. */
 
 import { extname } from "node:path";
 import { log, spinner } from "@clack/prompts";

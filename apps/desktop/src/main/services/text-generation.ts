@@ -3,13 +3,7 @@ import type { NyxServer } from "../server"
 import { IPC } from "../../shared/ipc"
 import type { TextGenerationEvent, LLMMessage } from "../../shared/types"
 
-/**
- * Bridges the text-generation tool to the inference server.
- *
- * Stateless proxy: model selection and busy state live in the renderer; each
- * turn passes its model + full transcript. The server's SSE events are
- * forwarded to windows verbatim (delta/end/error).
- */
+/** Stateless proxy: each turn passes model + full transcript; server SSE events forward verbatim. */
 export class TextGenerationService {
   private readonly manager: NyxServer
   private windows = new Set<BrowserWindow>()

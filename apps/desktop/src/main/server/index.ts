@@ -11,11 +11,10 @@ const READY_TIMEOUT_MS = 15_000
  * Manages the @nyx/server child process that runs inference.
  *
  * onnxruntime-node crashes inside Electron's Node runtime (SIGTRAP), so
- * inference runs in a plain process spawned here. `ELECTRON_RUN_AS_NODE=1`
- * makes the app's own Electron binary act as a plain Node runtime — no system
- * `node` install is required (and the server's onnxruntime/sharp natives load
- * fine there). The server binds to 127.0.0.1 with a random bearer token and
- * prints `nyx-server-ready <url>` on stdout once listening.
+ * inference runs in a child spawned with `ELECTRON_RUN_AS_NODE=1` (this app's
+ * own binary acting as plain Node — no system node needed). The server binds
+ * to 127.0.0.1 with a random bearer token and prints `nyx-server-ready <url>`
+ * on stdout once listening.
  */
 export class NyxServer {
   private child: ChildProcess | null = null
