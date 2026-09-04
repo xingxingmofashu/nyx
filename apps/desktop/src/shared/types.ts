@@ -48,15 +48,17 @@ export interface ModelPullProgress {
 // --- The preload-exposed API ---
 
 export interface NyxApi {
-  textGeneration: {
-    /** Stream a text-generation turn over the full transcript using the given model. */
-    send: (modelId: string, messages: LLMMessage[]) => Promise<void>
-    abort: () => Promise<void>
-    /** Subscribe to streaming events. Returns an unsubscribe fn. */
-    onEvent: (cb: (e: TextGenerationEvent) => void) => () => void
-  }
-  imageToImage: {
-    run: (modelId: string, input: ImagePayload) => Promise<ImageResult>
+  tasks: {
+    textGeneration: {
+      /** Stream a text-generation turn over the full transcript using the given model. */
+      send: (modelId: string, messages: LLMMessage[]) => Promise<void>
+      abort: () => Promise<void>
+      /** Subscribe to streaming events. Returns an unsubscribe fn. */
+      onEvent: (cb: (e: TextGenerationEvent) => void) => () => void
+    }
+    imageToImage: {
+      run: (modelId: string, input: ImagePayload) => Promise<ImageResult>
+    }
   }
   models: {
     list: () => Promise<ModelInfo[]>

@@ -1,13 +1,15 @@
 /** IPC channel names shared between main, preload, and renderer. */
 export const IPC = {
-  textGeneration: {
-    send: "text-generation:send",
-    abort: "text-generation:abort",
-    /** main → renderer: streaming generation events. */
-    event: "text-generation:event",
-  },
-  imageToImage: {
-    run: "image-to-image:run",
+  tasks: {
+    textGeneration: {
+      send: "text-generation:send",
+      abort: "text-generation:abort",
+      /** main → renderer: streaming generation events. */
+      event: "text-generation:event",
+    },
+    imageToImage: {
+      run: "image-to-image:run",
+    },
   },
   models: {
     list: "models:list",
@@ -27,4 +29,5 @@ export const IPC = {
   },
 } as const
 
-export type IpcChannel = (typeof IPC)[keyof typeof IPC][keyof (typeof IPC)[keyof typeof IPC]]
+export type IpcChannel =
+  (typeof IPC)[keyof typeof IPC][keyof (typeof IPC)[keyof typeof IPC]]

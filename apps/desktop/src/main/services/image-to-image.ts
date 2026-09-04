@@ -1,4 +1,4 @@
-import type { ServerManager } from "../server/manager"
+import type { NyxServer } from "../server"
 import type { ImagePayload, ImageResult } from "../../shared/types"
 
 /**
@@ -6,9 +6,9 @@ import type { ImagePayload, ImageResult } from "../../shared/types"
  * the caller passes the model id with each request.
  */
 export class ImageToImageService {
-  private readonly manager: ServerManager
+  private readonly manager: NyxServer
 
-  constructor(manager: ServerManager) {
+  constructor(manager: NyxServer) {
     this.manager = manager
   }
 

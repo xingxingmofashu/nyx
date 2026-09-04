@@ -1,5 +1,5 @@
 import type { BrowserWindow } from "electron"
-import type { ServerManager } from "../server/manager"
+import type { NyxServer } from "../server"
 import { IPC } from "../../shared/ipc"
 import type { TextGenerationEvent, LLMMessage } from "../../shared/types"
 
@@ -11,11 +11,11 @@ import type { TextGenerationEvent, LLMMessage } from "../../shared/types"
  * forwarded to windows verbatim (delta/end/error).
  */
 export class TextGenerationService {
-  private readonly manager: ServerManager
+  private readonly manager: NyxServer
   private windows = new Set<BrowserWindow>()
   private abortController: AbortController | null = null
 
-  constructor(manager: ServerManager) {
+  constructor(manager: NyxServer) {
     this.manager = manager
   }
 
@@ -48,7 +48,7 @@ export class TextGenerationService {
 
   private broadcast(event: TextGenerationEvent): void {
     for (const win of this.windows) {
-      if (!win.isDestroyed()) win.webContents.send(IPC.textGeneration.event, event)
+      if (!win.isDestroyed()) win.webContents.send(IPC.tasks.textGeneration.event, event)
     }
   }
 }

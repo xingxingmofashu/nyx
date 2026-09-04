@@ -4,12 +4,12 @@ import { IPC } from "../shared/ipc"
 import type { LLMMessage, ImagePayload, LlmTask } from "../shared/types"
 import { TextGenerationService } from "./services/text-generation"
 import { ImageToImageService } from "./services/image-to-image"
-import type { ServerManager } from "./server/manager"
+import type { NyxServer } from "./server"
 
 interface Services {
   textGeneration: TextGenerationService
   imageToImage: ImageToImageService
-  manager: ServerManager
+  manager: NyxServer
 }
 
 /** Register all ipcMain handlers. Must run after app is ready. */
@@ -17,11 +17,11 @@ export function registerIpc(services: Services): void {
   const { textGeneration, imageToImage, manager } = services
 
   // --- Text generation ---
-  ipcMain.handle(IPC.textGeneration.send, (_e, modelId: string, messages: LLMMessage[]) => textGeneration.send(modelId, messages))
-  ipcMain.handle(IPC.textGeneration.abort, () => textGeneration.abort())
+  ipcMain.handle(IPC.tasks.textGeneration.send, (_e, modelId: string, messages: LLMMessage[]) => textGeneration.send(modelId, messages))
+  ipcMain.handle(IPC.tasks.textGeneration.abort, () => textGeneration.abort())
 
   // --- Image-to-image ---
-  ipcMain.handle(IPC.imageToImage.run, (_e, modelId: string, input: ImagePayload) => imageToImage.run(modelId, input))
+  ipcMain.handle(IPC.tasks.imageToImage.run, (_e, modelId: string, input: ImagePayload) => imageToImage.run(modelId, input))
 
   // --- Models ---
   ipcMain.handle(IPC.models.list, () => manager.client.listModels())

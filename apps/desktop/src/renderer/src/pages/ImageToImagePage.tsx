@@ -52,7 +52,7 @@ export function ImageToImagePage() {
     setError(null)
     try {
       const data = new Uint8Array(await source.file.arrayBuffer())
-      const output = await window.nyx.imageToImage.run(selectedModel, { data, mimeType: source.file.type || "image/png" })
+      const output = await window.nyx.tasks.imageToImage.run(selectedModel, { data, mimeType: source.file.type || "image/png" })
       if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current)
       const url = toObjectUrl(output)
       resultUrlRef.current = url

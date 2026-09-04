@@ -7,7 +7,7 @@ import type { TextGenerationEvent, ImagePayload, ImageResult } from "../../share
  *
  * Lives in the desktop main process, which talks to the spawned server over
  * HTTP (onnxruntime cannot run inside Electron). Construct with the server's
- * base URL + bearer token (see ServerManager).
+ * base URL + bearer token (see NyxServer).
  */
 export class NyxServerClient {
   constructor(

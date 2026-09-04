@@ -3,7 +3,7 @@ import { join } from "node:path"
 import { registerIpc } from "./ipc"
 import { TextGenerationService } from "./services/text-generation"
 import { ImageToImageService } from "./services/image-to-image"
-import { ServerManager } from "./server/manager"
+import { NyxServer } from "./server"
 import { IPC } from "../shared/ipc"
 
 // Single instance: local model cache is a single set of files.
@@ -20,7 +20,7 @@ if (!gotLock) {
   })
 }
 
-const serverManager = new ServerManager()
+const serverManager = new NyxServer()
 const windows = new Set<BrowserWindow>()
 
 function createWindow(): BrowserWindow {

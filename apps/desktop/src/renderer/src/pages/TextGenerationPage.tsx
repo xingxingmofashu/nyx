@@ -118,7 +118,7 @@ export function TextGenerationPage() {
 
   // Subscribe to streaming events once (dispatch is stable).
   useEffect(() => {
-    const unsubscribe = window.nyx.textGeneration.onEvent((event: TextGenerationEvent) => {
+    const unsubscribe = window.nyx.tasks.textGeneration.onEvent((event: TextGenerationEvent) => {
       switch (event.type) {
         case "delta":
           dispatch({ type: "delta", text: event.text })
@@ -148,7 +148,7 @@ export function TextGenerationPage() {
     ]
     dispatch({ type: "user", text })
     dispatch({ type: "assistant" })
-    void window.nyx.textGeneration.send(selectedModel, transcript)
+    void window.nyx.tasks.textGeneration.send(selectedModel, transcript)
     // Keep the composer focused so the user can keep typing.
     inputRef.current?.focus()
   }
@@ -250,7 +250,7 @@ export function TextGenerationPage() {
                 />
                 <InputGroupAddon align="inline-end">
                   {isStreaming ? (
-                    <InputGroupButton size="icon-sm" variant="secondary" onClick={() => void window.nyx.textGeneration.abort()} aria-label="Stop generating">
+                    <InputGroupButton size="icon-sm" variant="secondary" onClick={() => void window.nyx.tasks.textGeneration.abort()} aria-label="Stop generating">
                       <Square />
                     </InputGroupButton>
                   ) : (

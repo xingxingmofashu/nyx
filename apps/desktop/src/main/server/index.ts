@@ -15,7 +15,7 @@ const READY_TIMEOUT_MS = 15_000
  * 127.0.0.1 with a random bearer token and prints
  * `nyx-server-ready <url>` on stdout once listening.
  */
-export class ServerManager {
+export class NyxServer {
   private child: ChildProcess | null = null
   private token = ""
   private baseUrl = ""
