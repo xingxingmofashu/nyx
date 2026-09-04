@@ -4,7 +4,7 @@ import type { InferenceService } from "../services/inference"
 import type { ChatMessage } from "../shared/types"
 
 /** POST /v1/text-generation — SSE-streamed text generation over a transcript. */
-export function textGenerationRoutes(service: InferenceService): Hono {
+export function textGeneration(service: InferenceService): Hono {
   const app = new Hono()
 
   app.post("/", (c) =>
@@ -23,7 +23,7 @@ export function textGenerationRoutes(service: InferenceService): Hono {
 
       try {
         let full = ""
-        for await (const event of service.streamTextGeneration(model, messages)) {
+        for await (const event of service.textGeneration(model, messages)) {
           if (event.type === "text-delta") {
             full += event.delta
             await stream.writeSSE({ event: "delta", data: JSON.stringify({ text: event.delta }) })

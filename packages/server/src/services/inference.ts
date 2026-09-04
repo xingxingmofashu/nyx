@@ -1,6 +1,6 @@
 import { RawImage } from "@huggingface/transformers"
 import { list, pull, OnnxImageToImageProvider, OnnxTextGenerationProvider } from "@nyx/llm"
-import type { LLMEvent, LLMMessage } from "@nyx/llm"
+import type { LLMEvent, LLMProvider } from "@nyx/llm"
 import type { ChatMessage, ModelInfo, ModelTask } from "../shared/types"
 
 /** Raw RGBA/RGB pixels of an image output, ready to stream back. */
@@ -22,23 +22,13 @@ export interface ImageOutput {
  * is stored here.
  */
 export class InferenceService {
-  private readonly textProviders = new Map<string, OnnxTextGenerationProvider>()
-  private readonly imageProviders = new Map<string, OnnxImageToImageProvider>()
+  private readonly providers = new Map<string, LLMProvider>()
 
-  private textProviderFor(modelId: string): OnnxTextGenerationProvider {
-    let provider = this.textProviders.get(modelId)
+  private getProvider<T extends LLMProvider>(modelId: string, create: () => T): T {
+    let provider = this.providers.get(modelId) as T | undefined
     if (!provider) {
-      provider = new OnnxTextGenerationProvider({ model: modelId })
-      this.textProviders.set(modelId, provider)
-    }
-    return provider
-  }
-
-  private imageProviderFor(modelId: string): OnnxImageToImageProvider {
-    let provider = this.imageProviders.get(modelId)
-    if (!provider) {
-      provider = new OnnxImageToImageProvider({ model: modelId })
-      this.imageProviders.set(modelId, provider)
+      provider = create()
+      this.providers.set(modelId, provider)
     }
     return provider
   }
@@ -49,19 +39,15 @@ export class InferenceService {
    * applies the model's chat template to the message array internally.
    * Empty assistant turns are dropped (they carry no content for the model).
    */
-  async *streamTextGeneration(modelId: string, messages: ChatMessage[]): AsyncIterable<LLMEvent> {
-    const provider = this.textProviderFor(modelId)
-    const input: LLMMessage[] = messages.filter(
-      (m) => !(m.role === "assistant" && m.content.trim() === ""),
-    )
-    for await (const event of provider.stream(input)) {
-      yield event
-    }
+  async *textGeneration(modelId: string, messages: ChatMessage[]): AsyncIterable<LLMEvent> {
+    const provider = this.getProvider(modelId, () => new OnnxTextGenerationProvider({ model: modelId }))
+    const input = messages.filter((m) => m.role !== "assistant" || m.content.trim() !== "")
+    yield* provider.stream(input)
   }
 
   /** Transform a single image with an image-to-image model. */
   async imageToImage(modelId: string, input: { data: string; mimeType: string }): Promise<ImageOutput> {
-    const provider = this.imageProviderFor(modelId)
+    const provider = this.getProvider(modelId, () => new OnnxImageToImageProvider({ model: modelId }))
     const bytes = Buffer.from(input.data, "base64")
     const source = await RawImage.fromBlob(new Blob([bytes], { type: input.mimeType }))
     const output = await provider.generate(source)

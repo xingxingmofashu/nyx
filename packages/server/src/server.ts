@@ -9,7 +9,7 @@
  * On ready prints `nyx-server-ready <url>` to stdout so the spawning
  * Electron main can discover the actual port.
  */
-import { startServer } from "./index"
+import { start } from "./index"
 
 const token = process.env.NYX_SERVER_TOKEN
 if (!token) {
@@ -20,7 +20,7 @@ if (!token) {
 const port = process.env.NYX_SERVER_PORT ? Number(process.env.NYX_SERVER_PORT) : 0
 const host = process.env.NYX_SERVER_HOST ?? "127.0.0.1"
 
-startServer({ token, port, host })
+start({ token, port, host })
   .then((server) => {
     console.log(`nyx-server-ready ${server.url}`)
   })

@@ -3,7 +3,7 @@ import type { InferenceService } from "../services/inference"
 import type { ImageInput } from "../shared/types"
 
 /** POST /v1/image-to-image — transform an image; responds with image bytes. */
-export function imageToImageRoutes(service: InferenceService): Hono {
+export function imageToImage(service: InferenceService): Hono {
   const app = new Hono()
 
   app.post("/", async (c) => {

@@ -3,7 +3,7 @@ import type { InferenceService } from "../services/inference"
 import type { ModelTask } from "../shared/types"
 
 /** /v1/models — list and download cached models. */
-export function modelsRoutes(service: InferenceService): Hono {
+export function models(service: InferenceService): Hono {
   const app = new Hono()
 
   app.get("/", (c) => c.json(service.listModels()))
