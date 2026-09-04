@@ -20,7 +20,7 @@ if (!gotLock) {
   })
 }
 
-const serverManager = new NyxServer()
+const server = new NyxServer()
 const windows = new Set<BrowserWindow>()
 
 function createWindow(): BrowserWindow {
@@ -51,14 +51,18 @@ function createWindow(): BrowserWindow {
   })
 
   // Debug: surface renderer console + load failures to stdout.
-  win.webContents.on("console-message", (_e, level, message, line, sourceId) => {
-    console.log(`[renderer:${level}] ${message} (${sourceId}:${line})`)
-  })
+  win.webContents.on(
+    "console-message",
+    (_e, level, message, line, sourceId) => {
+      console.log(`[renderer:${level}] ${message} (${sourceId}:${line})`)
+    },
+  )
   win.webContents.on("did-fail-load", (_e, code, desc, url) => {
     console.log(`[did-fail-load] ${code} ${desc} ${url}`)
   })
 
-  const sendMaximized = () => win.webContents.send(IPC.window.maximized, win.isMaximized())
+  const sendMaximized = () =>
+    win.webContents.send(IPC.window.maximized, win.isMaximized())
   win.on("maximize", sendMaximized)
   win.on("unmaximize", sendMaximized)
 
@@ -74,14 +78,20 @@ function createWindow(): BrowserWindow {
 app.whenReady().then(async () => {
   // Start the inference server before any window can issue model calls.
   try {
-    await serverManager.start()
+    await server.start()
   } catch (error) {
     console.error("failed to start nyx server:", error)
   }
 
-  const textGenerationService = new TextGenerationService(serverManager)
-  const imageToImageService = new ImageToImageService(serverManager)
-  registerIpc({ textGeneration: textGenerationService, imageToImage: imageToImageService, manager: serverManager })
+  const textGenerationService = new TextGenerationService(server)
+  const imageToImageService = new ImageToImageService(server)
+  registerIpc({
+    tasks: {
+      textGeneration: textGenerationService,
+      imageToImage: imageToImageService,
+    },
+    server: server,
+  })
 
   const win = createWindow()
   textGenerationService.attachWindow(win)
@@ -100,5 +110,5 @@ app.on("window-all-closed", () => {
 
 // Stop the inference server when the app quits.
 app.on("will-quit", () => {
-  void serverManager.stop()
+  void server.stop()
 })
