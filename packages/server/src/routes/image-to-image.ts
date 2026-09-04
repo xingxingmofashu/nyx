@@ -1,5 +1,5 @@
 import { Hono } from "hono"
-import { streamImageToImage } from "../services/image-to-image"
+import { stream } from "../services/image-to-image"
 import type { ImageInput } from "../shared/types"
 
 /** POST /v1/image-to-image — transform an image; responds with image bytes. */
@@ -12,7 +12,7 @@ imageToImageRoutes.post("/", async (c) => {
   if (!model || !image?.data) return c.json({ error: "model and image are required" }, 400)
 
   try {
-    const result = await streamImageToImage(model, image)
+    const result = await stream(model, image)
     return c.body(new Uint8Array(result.data), 200, {
       "Content-Type": "application/octet-stream",
       "X-Image-Width": String(result.width),

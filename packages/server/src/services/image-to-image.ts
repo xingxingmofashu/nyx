@@ -1,11 +1,11 @@
 import { RawImage } from "@huggingface/transformers"
-import { OnnxImageToImageEngine } from "@nyx/llm"
+import { OnnxImageToImageProvider } from "@nyx/llm"
 
 /**
- * Image-to-image inference. Engines are cached per model id so weights load
- * once per process.
+ * Image-to-image inference. Providers are cached per model id so weights
+ * load once per process.
  */
-const imageEngines = new Map<string, OnnxImageToImageEngine>()
+const providers = new Map<string, OnnxImageToImageProvider>()
 
 export interface ImageToImageStreamResult {
   /** Raw RGBA/RGB pixels of the output image, ready to stream. */
@@ -15,21 +15,21 @@ export interface ImageToImageStreamResult {
   channels: number
 }
 
-export async function streamImageToImage(
+export async function stream(
   modelId: string,
   input: { data: string; mimeType: string },
 ): Promise<ImageToImageStreamResult> {
-  let engine = imageEngines.get(modelId)
-  if (!engine) {
-    engine = new OnnxImageToImageEngine({ model: modelId })
-    imageEngines.set(modelId, engine)
+  let provider = providers.get(modelId)
+  if (!provider) {
+    provider = new OnnxImageToImageProvider({ model: modelId })
+    providers.set(modelId, provider)
   }
 
   const bytes = Buffer.from(input.data, "base64")
   const source = await RawImage.fromBlob(new Blob([bytes], { type: input.mimeType }))
-  const output = await engine.generate(source)
+  const output = await provider.generate(source)
 
-  const data =  await output.toSharp().toBuffer()
+  const data = await output.toSharp().toBuffer()
   return {
     data,
     width: output.width,

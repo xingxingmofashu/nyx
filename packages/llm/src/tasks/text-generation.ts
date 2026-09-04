@@ -21,6 +21,7 @@ export interface OnnxTextGenerationOptions {
 
 export class OnnxTextGenerationProvider implements LLMProvider {
   readonly id = "local-onnx";
+  readonly task = "text-generation";
   readonly model: string;
   private maxTokens: number;
   private dtype: NonNullable<OnnxTextGenerationOptions["dtype"]>;

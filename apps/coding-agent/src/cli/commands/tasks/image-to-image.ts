@@ -6,7 +6,7 @@
 import { extname } from "node:path";
 import { log, spinner } from "@clack/prompts";
 import { cmd } from "../../utils/cmd";
-import { OnnxImageToImageEngine } from "@nyx/llm";
+import { OnnxImageToImageProvider } from "@nyx/llm";
 
 interface ImageToImageArgs {
   input?: string;
@@ -46,8 +46,8 @@ export const ImageToImageCommand = cmd<Record<string, unknown>, ImageToImageArgs
 
     const spin = spinner();
     spin.start("Loading local ONNX model (first run downloads)...");
-    const engine = new OnnxImageToImageEngine({ model: args.model });
-    const image = await engine.generate(input);
+    const provider = new OnnxImageToImageProvider({ model: args.model });
+    const image = await provider.generate(input);
     await image.save(output);
     spin.stop("Done");
 

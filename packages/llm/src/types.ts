@@ -1,3 +1,5 @@
+import type { PipelineType, RawImage } from "@huggingface/transformers";
+
 export type Role = "user" | "assistant" | "system";
 
 export interface LLMMessage {
@@ -14,8 +16,13 @@ export interface StreamOptions {
   temperature?: number;
 }
 
+/** Shared surface of every local ONNX pipeline provider. */
 export interface LLMProvider {
   readonly id: string;
   readonly model: string;
-  stream(messages: LLMMessage[], options?: StreamOptions): AsyncIterable<LLMEvent>;
+  /** transformers.js pipeline task this provider runs. */
+  readonly task: PipelineType;
 }
+
+/** Anything a generate-style provider accepts as an image. */
+export type ImageSource = string | RawImage;

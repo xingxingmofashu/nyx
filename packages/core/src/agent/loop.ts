@@ -1,4 +1,4 @@
-import type { LLMProvider } from "@nyx/llm"
+import type { TextProvider } from "@nyx/llm"
 import type { AssistantMessage, UserMessage } from "../types"
 
 export type AgentEvent =
@@ -15,13 +15,13 @@ export interface ChatResult {
 }
 
 export class Agent {
-  private llm: LLMProvider
+  private llm: TextProvider
   private systemPrompt: string
   private listeners = new Set<AgentEventListener>()
   private abortController: AbortController | null = null
   private idlePromise: Promise<void> | null = null
 
-  constructor(options: { llm: LLMProvider; systemPrompt?: string }) {
+  constructor(options: { llm: TextProvider; systemPrompt?: string }) {
     this.llm = options.llm
     this.systemPrompt =
       options.systemPrompt ??
