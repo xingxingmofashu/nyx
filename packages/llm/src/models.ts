@@ -1,15 +1,10 @@
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { pipeline, type DataType, type PipelineType } from "@huggingface/transformers"
+import { pipeline } from "@huggingface/transformers"
 import { getModelsDir, read as readModelConfig, write, type ModelInfo } from "@nyx/config"
 import { configureEnv } from "./runtime.ts"
 import type { ProgressInfo } from "./runtime.ts"
-
-/** Default quantization per pipeline task. */
-const TASK_DTYPES: Partial<Record<PipelineType, DataType>> = {
-  "text-generation": "q4",
-  "image-to-image": "fp32",
-}
+import { TASK_DTYPES, type LlmTask } from "./types.ts"
 
 /** List installed models recorded in the config that still exist on disk. */
 export function list(): ModelInfo[] {
@@ -31,10 +26,13 @@ export function list(): ModelInfo[] {
 /** Download a model into the cache and record it in the config. */
 export async function pull(
   modelId: string,
-  task: PipelineType,
+  task: LlmTask,
   onProgress?: (info: ProgressInfo) => void,
 ): Promise<void> {
-  const dtype = TASK_DTYPES[task] ?? "fp32"
+  const dtype = TASK_DTYPES[task]
+  if (!dtype) {
+    throw new Error(`Unsupported task: ${task}`)
+  }
   const [org, ...rest] = modelId.split("/")
   const name = rest.join("/")
   if (!org || !name) {

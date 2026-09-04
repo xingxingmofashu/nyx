@@ -1,6 +1,6 @@
 import { RawImage, type ImageToImagePipeline } from "@huggingface/transformers";
 import { loadPipeline } from "../runtime.ts";
-import type { LLMProvider, ImageSource } from "../types.ts";
+import type { ImageProvider, ImageSource } from "../types.ts";
 
 export interface OnnxImageToImageOptions {
   model: string;
@@ -8,9 +8,9 @@ export interface OnnxImageToImageOptions {
   allowDownload?: boolean;
 }
 
-export class OnnxImageToImageProvider implements LLMProvider {
+export class OnnxImageToImageProvider implements ImageProvider {
   readonly id = "local-onnx";
-  readonly task = "image-to-image";
+  readonly task = "image-to-image" as const;
   readonly model: string;
   private readonly cacheDir?: string;
   private readonly allowDownload?: boolean;

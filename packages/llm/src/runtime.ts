@@ -35,7 +35,9 @@ export function loadPipeline<T>(
 ): Promise<T> {
   configureEnv(options);
 
-  const key = `${task}:${model}`;
+  // Key includes dtype: the same model id loaded at two quantizations
+  // (e.g. a q4 provider plus an fp32 caller) must not share a pipeline.
+  const key = `${task}:${options.dtype ?? "default"}:${model}`;
   let pending = pipelines.get(key) as Promise<T> | undefined;
   if (!pending) {
     pending = pipeline(task, model, {

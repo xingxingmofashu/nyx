@@ -7,7 +7,7 @@
 
 import { TextStreamer, type DataType, type TextGenerationPipeline } from "@huggingface/transformers";
 import { loadPipeline } from "../runtime.ts";
-import type { LLMMessage, LLMProvider, LLMEvent, StreamOptions } from "../types.ts";
+import type { LLMMessage, TextProvider, LLMEvent, StreamOptions } from "../types.ts";
 
 export interface OnnxTextGenerationOptions {
   model: string;
@@ -19,9 +19,9 @@ export interface OnnxTextGenerationOptions {
   allowDownload?: boolean;
 }
 
-export class OnnxTextGenerationProvider implements LLMProvider {
+export class OnnxTextGenerationProvider implements TextProvider {
   readonly id = "local-onnx";
-  readonly task = "text-generation";
+  readonly task = "text-generation" as const;
   readonly model: string;
   private maxTokens: number;
   private dtype: NonNullable<OnnxTextGenerationOptions["dtype"]>;
