@@ -34,7 +34,7 @@ export const ModelListCommand = cmd<Record<string, unknown>, Record<string, neve
     for (const [task, taskModels] of byTask) {
       log.step(task);
       for (const model of taskModels) {
-        log.message(`  ${model.id}`);
+        log.message(`  ${model.id}${model.dtype ? `  (${model.dtype})` : ""}`);
       }
     }
   },

@@ -33,21 +33,11 @@ export function read(): ModelConfig {
   }
 }
 
-/** Drop legacy per-model fields no longer tracked (e.g. dtype). */
-function sanitize(config: ModelConfig): ModelConfig {
-  for (const provider of Object.values(config.provider)) {
-    for (const info of Object.values(provider.models)) {
-      delete (info as Partial<ModelInfo> & { dtype?: string }).dtype;
-    }
-  }
-  return config;
-}
-
 /** Deep-merge one installed model into the config file (via defu). */
 export function write(entry: { provider: Record<string, { models: Record<string, ModelInfo> }> }): void {
   const merged = defu(read(), entry);
   mkdirSync(getConfigDir(), { recursive: true });
-  writeFileSync(getModelConfigPath(), JSON.stringify(sanitize(merged), null, 2));
+  writeFileSync(getModelConfigPath(), JSON.stringify(merged, null, 2));
 }
 
 export * from "./types.ts";

@@ -26,6 +26,12 @@ export function configureEnv(options: ModelRuntimeOptions = {}): void {
   env.cacheDir = cacheDir;
   env.allowRemoteModels = allowDownload;
   env.allowLocalModels = true;
+  // Honor the standard HF_ENDPOINT mirror override (e.g. https://hf-mirror.com
+  // for mainland China), like the Python transformers library does.
+  const endpoint = process.env.HF_ENDPOINT;
+  if (endpoint) {
+    env.remoteHost = endpoint.endsWith("/") ? endpoint : `${endpoint}/`;
+  }
 }
 
 export function loadPipeline<T>(

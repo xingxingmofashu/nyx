@@ -1,10 +1,12 @@
-import type { PipelineType } from "@huggingface/transformers"
+import type { DataType, PipelineType } from "@huggingface/transformers"
 
 /** A locally installed model record. */
 export interface ModelInfo {
   id: string
   name: string
   task: PipelineType
+  /** Dtype used when pulling; absent when the transformers.js default was used. */
+  dtype?: DataType
   createdAt: string
 }
 

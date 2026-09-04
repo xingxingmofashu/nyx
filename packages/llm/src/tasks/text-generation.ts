@@ -1,5 +1,6 @@
 import { TextStreamer, type DataType, type TextGenerationPipeline } from "@huggingface/transformers";
 import { loadPipeline } from "../runtime.ts";
+import { find } from "../models.ts";
 import type { LLMMessage, TextProvider, LLMEvent, StreamOptions } from "../types.ts";
 
 export interface OnnxTextGenerationOptions {
@@ -7,7 +8,7 @@ export interface OnnxTextGenerationOptions {
   cacheDir?: string;
   /** Max tokens to generate per call. Default 512. */
   maxTokens?: number;
-  /** Quantization dtype. When omitted, transformers.js picks the device default. */
+  /** Override the dtype recorded at pull time. When omitted, the pulled dtype (or the transformers.js default) is used. */
   dtype?: DataType;
   allowDownload?: boolean;
 }
@@ -24,7 +25,9 @@ export class OnnxTextGenerationProvider implements TextProvider {
   constructor(options: OnnxTextGenerationOptions) {
     this.model = options.model;
     this.maxTokens = options.maxTokens ?? 512;
-    this.dtype = options.dtype;
+    // Default to the dtype recorded when the model was pulled, so inference
+    // matches what's cached instead of re-downloading another variant.
+    this.dtype = options.dtype ?? find(options.model)?.dtype;
     this.cacheDir = options.cacheDir;
     this.allowDownload = options.allowDownload;
   }

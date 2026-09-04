@@ -17,7 +17,7 @@ export type { LlmTask } from "./types.ts";
 export { configureEnv, loadPipeline, clearModelCache } from "./runtime.ts";
 export type { ModelRuntimeOptions, ProgressInfo } from "./runtime.ts";
 
-export { list, pull } from "./models.ts";
+export { list, pull, find } from "./models.ts";
 
 export { OnnxTextGenerationProvider } from "./tasks/text-generation.ts";
 export type { OnnxTextGenerationOptions } from "./tasks/text-generation.ts";
