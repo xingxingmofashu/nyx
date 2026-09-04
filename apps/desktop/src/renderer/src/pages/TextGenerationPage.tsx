@@ -94,12 +94,8 @@ export function TextGenerationPage() {
     if (!text || isStreaming || !selectedModel) return
     // Clear synchronously so the re-render happens before we restore focus.
     flushSync(() => setInput(""))
-    appendMessage("user")
-    const msgs = useChatStore.getState().messages
-    const last = msgs[msgs.length - 1]
-    if (last) updateMessage(last.id, { text })
-    // Carry the full transcript; the server runs one stateless turn on it.
-    const transcript: ChatMessage[] = msgs.map((m) => ({ role: m.role, content: m.text }))
+    // Append with its text in one write; the transcript mirrors the new state.
+    const { transcript } = useChatStore.getState().appendUserMessage(text)
     void window.nyx.chat.send(transcript)
     // Keep the composer focused so the user can keep typing.
     inputRef.current?.focus()

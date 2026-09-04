@@ -78,7 +78,14 @@ export class InferenceService {
 
     try {
       const run = agent.prompt(messages[promptIndex]!.content)
-      yield* queue.stream()
+      // Drain events, but never hang the wire: if the turn ends without a
+      // terminal event the generator still resolves.
+      for (let ended = false; !ended; ) {
+        for await (const event of queue.stream()) {
+          ended = true
+          yield event
+        }
+      }
       await run
     } finally {
       unsubscribe()

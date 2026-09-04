@@ -45,9 +45,14 @@ export interface ModelInfo {
 export type ChatRole = "system" | "user" | "assistant"
 
 /**
- * One turn of conversation history. Stateless callers (desktop, CLI) carry
- * their full transcript here on each request; the server runs a single turn
- * on top of it and stores nothing.
+ * One turn of conversation history.
+ *
+ * Transcript contract enforced by the server's stateless text-generation turn:
+ * the transcript must end in a `user` message — that is the prompt the model
+ * answers — and `system` content is honored only as a leading prefix (each
+ * `system` message seeds the engine's system prompt, in order; a `system`
+ * message placed after the first `user` is ignored). Message bodies are plain
+ * text only.
  */
 export interface ChatMessage {
   role: ChatRole
