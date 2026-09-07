@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../components/ui/empty"
 import { Spinner } from "../components/ui/spinner"
+import { toast } from "../components/ui/toast"
 import { cn } from "../lib/utils"
 
 const TASK_OPTIONS: Array<{ id: LLMTask; label: string }> = [
@@ -41,7 +42,6 @@ export function ModelsPage() {
   const [modelId, setModelId] = useState("")
   const [task, setTask] = useState<LLMTask>("text-generation")
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const downloads = Object.entries(pulling)
 
@@ -49,12 +49,11 @@ export function ModelsPage() {
     const id = modelId.trim()
     if (!id || busy) return
     setBusy(true)
-    setError(null)
     try {
       await startPull(id, task)
       setModelId("")
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+    } catch {
+      // Errors are toasted from the IPC progress broadcast; nothing more to do.
     } finally {
       setBusy(false)
     }
@@ -64,7 +63,11 @@ export function ModelsPage() {
     try {
       await remove(id)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      toast.add({
+        title: `Remove failed: ${id}`,
+        description: e instanceof Error ? e.message : String(e),
+        type: "error",
+      })
     }
   }
 
@@ -115,7 +118,6 @@ export function ModelsPage() {
               Pull
             </Button>
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
         </CardContent>
       </Card>
 

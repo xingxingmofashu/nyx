@@ -5,11 +5,21 @@ import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
+import { Separator } from "../components/ui/separator"
+import { getTheme, setTheme, type Theme } from "../lib/theme"
 
 const HF_EXAMPLES = ["https://huggingface.co", "https://hf-mirror.com"]
 
-/** App settings: Hugging Face download endpoint + cache location. */
+const THEME_OPTIONS: Array<{ id: Theme; label: string }> = [
+  { id: "light", label: "Light" },
+  { id: "dark", label: "Dark" },
+  { id: "system", label: "System" },
+]
+
+/** App settings: theme, download endpoint, and cache location. */
 export function SettingsPage() {
+  const [theme, setThemeState] = useState<Theme>(getTheme)
   const [hubBaseUrl, setHubBaseUrl] = useState("")
   const [modelsDir, setModelsDir] = useState("")
   const [saved, setSaved] = useState(false)
@@ -22,6 +32,11 @@ export function SettingsPage() {
       setModelsDir(dir)
     })()
   }, [])
+
+  const changeTheme = (t: Theme) => {
+    setTheme(t)
+    setThemeState(t)
+  }
 
   const save = async () => {
     setSaved(false)
@@ -38,9 +53,35 @@ export function SettingsPage() {
 
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+      {/* Appearance */}
       <Card>
         <CardHeader>
-          <CardTitle>Settings</CardTitle>
+          <CardTitle>Appearance</CardTitle>
+          <CardDescription>Choose how Nyx looks.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="theme">Theme</Label>
+            <Select value={theme} onValueChange={(v) => changeTheme(v as Theme)}>
+              <SelectTrigger id="theme" size="sm" className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {THEME_OPTIONS.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Downloads */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Downloads</CardTitle>
           <CardDescription>Where model downloads come from and where models live.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -71,6 +112,8 @@ export function SettingsPage() {
               ))}
             </div>
           </div>
+
+          <Separator />
 
           <div className="flex items-center gap-2">
             <FolderOpen className="size-4 text-muted-foreground" />

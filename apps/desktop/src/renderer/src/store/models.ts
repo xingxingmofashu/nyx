@@ -16,13 +16,9 @@ interface ModelsState {
   selected: Partial<Record<LLMTask, string>>
   /** modelId → detailed pull progress for in-flight downloads. */
   pulling: Record<string, PullState>
-  /** modelId → most recent pull error message. */
-  pullErrors: Record<string, string>
   load: () => Promise<void>
   select: (task: LLMTask, modelId: string) => Promise<void>
   startPull: (modelId: string, task: LLMTask) => Promise<void>
-  /** Clear a pull error for one model. */
-  clearPullError: (modelId: string) => void
   /** Merge a progress event into `pulling`. */
   updatePullProgress: (p: ModelPullProgress) => void
   /** Remove a model from disk; clears its selection when selected. */
@@ -33,7 +29,6 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
   models: [],
   selected: {},
   pulling: {},
-  pullErrors: {},
 
   load: async () => {
     const models = await window.nyx.models.list()
@@ -45,16 +40,10 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
   },
 
   startPull: async (modelId, task) => {
-    set((state) => {
-      const { [modelId]: _gone, ...restErrors } = state.pullErrors
-      return { pulling: { ...state.pulling, [modelId]: { task } }, pullErrors: restErrors }
-    })
+    set((state) => ({ pulling: { ...state.pulling, [modelId]: { task } } }))
     try {
       await window.nyx.models.pull(modelId, task)
       await get().load()
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e)
-      set((state) => ({ pullErrors: { ...state.pullErrors, [modelId]: message } }))
     } finally {
       set((state) => {
         const next = { ...state.pulling }
@@ -62,13 +51,6 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
         return { pulling: next }
       })
     }
-  },
-
-  clearPullError: (modelId) => {
-    set((state) => {
-      const { [modelId]: _gone, ...rest } = state.pullErrors
-      return { pullErrors: rest }
-    })
   },
 
   updatePullProgress: (p) => {

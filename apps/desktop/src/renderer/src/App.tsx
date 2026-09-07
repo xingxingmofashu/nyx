@@ -1,13 +1,15 @@
 import { useEffect } from "react"
 import { HashRouter, Navigate, Route, Routes, useLocation } from "react-router-dom"
 import { AppSidebar } from "./components/Sidebar"
-import { ThemeToggle } from "./components/ThemeToggle"
+import { SettingsMenu } from "./components/SettingsMenu"
 import { TextGenerationPage } from "./pages/TextGenerationPage"
 import { ImageToImagePage } from "./pages/ImageToImagePage"
 import { ModelsPage } from "./pages/ModelsPage"
 import { SettingsPage } from "./pages/SettingsPage"
 import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar"
+import { Toaster, toast } from "./components/ui/toast"
 import { useModelsStore } from "./store/models"
+import { applyTheme, getTheme } from "./lib/theme"
 
 const PAGE_TITLES: Record<string, string> = {
   "/text-generation": "Text generation",
@@ -24,10 +26,29 @@ function Shell() {
   useEffect(() => {
     const unsubscribe = window.nyx.models.onProgress((p) => {
       useModelsStore.getState().updatePullProgress(p)
-      if (p.done) void useModelsStore.getState().load()
+      if (p.done) {
+        void useModelsStore.getState().load()
+        if (p.error) {
+          toast.add({
+            title: `Pull failed: ${p.modelId}`,
+            description: p.error,
+            type: "error",
+          })
+        }
+      }
     })
     void useModelsStore.getState().load()
     return unsubscribe
+  }, [])
+
+  // Follow OS preference changes while the theme is set to "system".
+  useEffect(() => {
+    const mql = window.matchMedia("(prefers-color-scheme: dark)")
+    const onChange = () => {
+      if (getTheme() === "system") applyTheme("system")
+    }
+    mql.addEventListener("change", onChange)
+    return () => mql.removeEventListener("change", onChange)
   }, [])
 
   return (
@@ -40,7 +61,7 @@ function Shell() {
               <SidebarTrigger />
               <span className="text-xs font-medium text-muted-foreground">{title}</span>
               <div className="ms-auto">
-                <ThemeToggle />
+                <SettingsMenu />
               </div>
             </header>
             <div className="flex min-h-0 flex-1 flex-col">
@@ -62,7 +83,9 @@ function Shell() {
 export default function App() {
   return (
     <HashRouter>
-      <Shell />
+      <Toaster>
+        <Shell />
+      </Toaster>
     </HashRouter>
   )
 }
