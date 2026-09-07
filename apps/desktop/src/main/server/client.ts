@@ -2,6 +2,14 @@ import type { LLMMessage, LLMTask } from "@nyx/llm"
 import type { ModelInfo } from "@nyx/config"
 import type { TextGenerationEvent, ImagePayload, ImageResult, ModelPullProgress } from "../../shared/types"
 
+/** Thrown when a pull was cancelled (server sent the `cancelled` SSE event). */
+export class PullCancelledError extends Error {
+  constructor(modelId: string) {
+    super(`Pull cancelled: ${modelId}`)
+    this.name = "PullCancelledError"
+  }
+}
+
 /** HTTP transport for the @nyx/server child (main talks to it over HTTP; onnxruntime cannot run inside Electron). */
 export class NyxServerClient {
   constructor(
@@ -47,11 +55,22 @@ export class NyxServerClient {
       if (event === "progress") {
         const frame = JSON.parse(data) as { file?: string; loaded?: number; total?: number; percent?: number }
         onProgress?.({ file: frame.file, loaded: frame.loaded, total: frame.total, percent: frame.percent })
+      } else if (event === "cancelled") {
+        throw new PullCancelledError(modelId)
       } else if (event === "error") {
         const message = (JSON.parse(data) as { message?: string }).message
         throw new Error(message ?? "model pull failed")
       }
     }
+  }
+
+  /** Ask the server to stop an in-flight pull by model id. */
+  async cancelPull(modelId: string): Promise<boolean> {
+    const res = await this.requestJson<{ cancelled: boolean }>("/v1/models/pull/cancel", {
+      method: "POST",
+      body: JSON.stringify({ model: modelId }),
+    })
+    return res.cancelled
   }
 
   async removeModel(modelId: string): Promise<void> {

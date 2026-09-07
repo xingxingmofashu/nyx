@@ -43,6 +43,9 @@ export function registerIpc(services: Services): void {
   ipcMain.handle(IPC.models.pull, (_e, modelId: string, task: LLMTask) =>
     models.pull(modelId, task),
   )
+  ipcMain.handle(IPC.models.cancelPull, (_e, modelId: string) =>
+    models.cancelPull(modelId),
+  )
   ipcMain.handle(IPC.models.remove, (_e, modelId: string) =>
     models.remove(modelId),
   )

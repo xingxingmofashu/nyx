@@ -37,6 +37,8 @@ export interface ModelPullProgress {
   done: boolean
   /** Present when the pull failed. */
   error?: string
+  /** True when the pull was cancelled by the user. */
+  cancelled?: boolean
 }
 
 /** The preload-exposed API surface. */
@@ -55,6 +57,8 @@ export interface NyxApi {
   models: {
     list: () => Promise<ModelInfo[]>
     pull: (modelId: string, task: LLMTask) => Promise<void>
+    /** Resolve true when a running pull was aborted. */
+    cancelPull: (modelId: string) => Promise<boolean>
     remove: (modelId: string) => Promise<void>
     /** Subscribe to pull progress; returns an unsubscribe fn. */
     onProgress: (cb: (p: ModelPullProgress) => void) => () => void

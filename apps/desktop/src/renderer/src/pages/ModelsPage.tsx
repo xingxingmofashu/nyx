@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Boxes, Download, HardDrive, Trash2 } from "lucide-react"
+import { Boxes, Download, HardDrive, Trash2, X } from "lucide-react"
 import { useModelsStore, type PullState } from "../store/models"
 import type { LLMTask } from "../../../shared/types"
 import { Badge } from "../components/ui/badge"
@@ -37,26 +37,28 @@ function formatBytes(n: number): string {
 export function ModelsPage() {
   const models = useModelsStore((s) => s.models)
   const pulling = useModelsStore((s) => s.pulling)
-  const { startPull, remove } = useModelsStore()
+  const { startPull, cancelPull, remove } = useModelsStore()
 
   const [modelId, setModelId] = useState("")
   const [task, setTask] = useState<LLMTask>("text-generation")
-  const [busy, setBusy] = useState(false)
 
   const downloads = Object.entries(pulling)
 
   const doPull = async () => {
     const id = modelId.trim()
-    if (!id || busy) return
-    setBusy(true)
+    if (!id) return
     try {
       await startPull(id, task)
       setModelId("")
     } catch {
       // Errors are toasted from the IPC progress broadcast; nothing more to do.
-    } finally {
-      setBusy(false)
     }
+  }
+
+  const cancelDownload = (id: string) => {
+    void cancelPull(id).catch(() => {
+      // The pull will also end on its own (server-side); ignore races.
+    })
   }
 
   const removeModel = async (id: string) => {
@@ -113,8 +115,8 @@ export function ModelsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={() => void doPull()} disabled={busy || !modelId.trim()} className="shrink-0">
-              {busy ? <Spinner data-icon="inline-start" /> : <Download data-icon="inline-start" />}
+            <Button onClick={() => void doPull()} disabled={!modelId.trim()} className="shrink-0">
+              <Download data-icon="inline-start" />
               Pull
             </Button>
           </div>
@@ -129,7 +131,7 @@ export function ModelsPage() {
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             {downloads.map(([id, state]) => (
-              <DownloadRow key={id} modelId={id} state={state} />
+              <DownloadRow key={id} modelId={id} state={state} onCancel={() => cancelDownload(id)} />
             ))}
           </CardContent>
         </Card>
@@ -189,23 +191,36 @@ export function ModelsPage() {
   )
 }
 
-function DownloadRow({ modelId, state }: { modelId: string; state: PullState }) {
+function DownloadRow({ modelId, state, onCancel }: { modelId: string; state: PullState; onCancel: () => void }) {
   const percent = state.percent ?? (state.loaded && state.total ? Math.round((state.loaded / state.total) * 100) : 0)
   const hasTotal = typeof state.total === "number" && state.total > 0
   const value = hasTotal ? percent : null
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex min-w-0 items-baseline gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         <HardDrive className="size-3.5 shrink-0 self-center text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{modelId}</span>
-        <span className="text-xs text-muted-foreground tabular-nums">
+        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
           {hasTotal ? `${formatBytes(state.loaded ?? 0)} / ${formatBytes(state.total!)} (${percent}%)` : "Downloading…"}
         </span>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={`Cancel download ${modelId}`}
+          title={state.cancelling ? "Cancelling…" : "Cancel download"}
+          disabled={state.cancelling}
+          onClick={onCancel}
+          className="text-muted-foreground hover:text-destructive"
+        >
+          {state.cancelling ? <Spinner className="size-4" /> : <X />}
+        </Button>
       </div>
       <div className="flex items-center gap-2 pl-5">
         <Progress value={value} className={cn("flex-1", !hasTotal && "opacity-60")} aria-label={`Downloading ${modelId}`} />
-        <span className="min-w-0 flex-1 truncate pl-1 text-xs text-muted-foreground">{state.file ?? modelId}</span>
+        <span className="min-w-0 flex-1 truncate pl-1 text-xs text-muted-foreground">
+          {state.cancelling ? "Cancelling…" : (state.file ?? modelId)}
+        </span>
       </div>
     </div>
   )

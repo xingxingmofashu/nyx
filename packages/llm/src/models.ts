@@ -6,6 +6,18 @@ import { configureEnv } from "./runtime.ts"
 import type { ProgressInfo } from "./runtime.ts"
 import type { LLMTask } from "./types.ts"
 
+/** Thrown when a pull is cancelled mid-download. */
+export class PullAbortedError extends Error {
+  constructor(modelId: string) {
+    super(`Pull cancelled: ${modelId}`)
+    this.name = "PullAbortedError"
+  }
+}
+
+function throwIfAborted(modelId: string, signal?: AbortSignal): void {
+  if (signal?.aborted) throw new PullAbortedError(modelId)
+}
+
 /** List models recorded in the config that still exist on disk. */
 export function list(): ModelInfo[] {
   const modelsDir = getModelsDir()
@@ -33,12 +45,25 @@ export async function pull(
   task: LLMTask,
   onProgress?: (info: ProgressInfo) => void,
   dtype?: DataType,
+  signal?: AbortSignal,
 ): Promise<void> {
   const [org, ...rest] = modelId.split("/")
   const name = rest.join("/")
   if (!org || !name) {
     throw new Error(`Invalid model id: ${modelId}`)
   }
+
+  // When a signal is given, wrapping the progress callback doubles as the abort
+  // lever: transformers.js fires it per read chunk on the streaming download
+  // path, so throwing from it stops the current file write and unwinds the
+  // whole pipeline load. Without a signal we pass onProgress straight through
+  // (transformers takes the arrayBuffer fast path when no callback is given).
+  const progress_callback: ((info: ProgressInfo) => void) | undefined = signal
+    ? (info) => {
+        throwIfAborted(modelId, signal)
+        onProgress?.(info)
+      }
+    : onProgress
 
   configureEnv()
   // Drop weights whose local size differs from the remote file, so truncated
@@ -47,8 +72,11 @@ export async function pull(
   // Loading the pipeline downloads config/tokenizer/weights; discard the instance.
   await pipeline(task, modelId, {
     ...(dtype ? { dtype } : {}),
-    ...(onProgress ? { progress_callback: onProgress } : {}),
+    ...(progress_callback ? { progress_callback } : {}),
   })
+
+  // An abort landing between the last chunk and registration must not cache.
+  throwIfAborted(modelId, signal)
 
   const info: ModelInfo = {
     id: modelId,

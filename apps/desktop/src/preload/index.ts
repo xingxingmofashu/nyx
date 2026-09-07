@@ -35,6 +35,8 @@ const api: NyxApi = {
     list: (): Promise<ModelInfo[]> => ipcRenderer.invoke(IPC.models.list),
     pull: (modelId: string, task: LLMTask) =>
       ipcRenderer.invoke(IPC.models.pull, modelId, task),
+    cancelPull: (modelId: string) =>
+      ipcRenderer.invoke(IPC.models.cancelPull, modelId),
     remove: (modelId: string) => ipcRenderer.invoke(IPC.models.remove, modelId),
     onProgress: (cb) => {
       const listener = (_e: Electron.IpcRendererEvent, p: ModelPullProgress) =>

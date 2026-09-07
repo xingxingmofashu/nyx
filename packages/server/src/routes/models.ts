@@ -1,15 +1,15 @@
 import { Hono } from "hono"
 import { streamSSE } from "hono/streaming"
-import type { LLMTask, ProgressInfo } from "@nyx/llm"
-import type { InferenceService } from "../services/inference"
+import { PullAbortedError, type LLMTask, type ProgressInfo } from "@nyx/llm"
+import type { ModelStore } from "../services/model-store"
 
-/** /v1/models — list, download, and delete cached models. */
-export function models(service: InferenceService): Hono {
+/** /v1/models — list, download, cancel, and delete cached models. */
+export function models(store: ModelStore): Hono {
   const app = new Hono()
 
-  app.get("/", (c) => c.json(service.listModels()))
+  app.get("/", (c) => c.json(store.listModels()))
 
-  /** POST /pull — SSE stream of download progress; ends with done/error. */
+  /** POST /pull — SSE stream of download progress; ends with done/cancelled/error. */
   app.post("/pull", (c) =>
     streamSSE(c, async (stream) => {
       const body = await c.req.json().catch(() => ({}))
@@ -22,6 +22,16 @@ export function models(service: InferenceService): Hono {
         })
         return
       }
+
+      if (store.isPulling(model)) {
+        await stream.writeSSE({
+          event: "error",
+          data: JSON.stringify({ message: `already pulling ${model}` }),
+        })
+        return
+      }
+
+      const controller = store.beginPull(model)
 
       const onProgress = (info: ProgressInfo) => {
         if (info.status === "progress" && info.total > 0) {
@@ -40,16 +50,36 @@ export function models(service: InferenceService): Hono {
       }
 
       try {
-        await service.pullModel(model, task as LLMTask, onProgress)
+        await store.pullModel(model, task as LLMTask, onProgress, controller.signal)
         await stream.writeSSE({ event: "done", data: JSON.stringify({ file: undefined }) })
       } catch (error) {
-        await stream.writeSSE({
-          event: "error",
-          data: JSON.stringify({ message: error instanceof Error ? error.message : String(error) }),
-        })
+        if (error instanceof PullAbortedError) {
+          // The download was cancelled: drop any partial files so a truncated
+          // model is never mistaken for a complete one.
+          store.removeModel(model)
+          await stream.writeSSE({ event: "cancelled", data: JSON.stringify({ file: undefined }) })
+        } else {
+          await stream.writeSSE({
+            event: "error",
+            data: JSON.stringify({ message: error instanceof Error ? error.message : String(error) }),
+          })
+        }
+      } finally {
+        store.endPull(model)
       }
     }),
   )
+
+  /** POST /pull/cancel — stop an in-flight pull by model id. */
+  app.post("/pull/cancel", async (c) => {
+    const body = await c.req.json().catch(() => ({}))
+    const model = (body as { model?: string }).model
+    if (!model) {
+      return c.json({ error: "model is required" }, 400)
+    }
+    const cancelled = store.cancelPull(model)
+    return c.json({ ok: true, cancelled })
+  })
 
   app.delete("/", async (c) => {
     const body = await c.req.json().catch(() => ({}))
@@ -57,7 +87,7 @@ export function models(service: InferenceService): Hono {
     if (!model) {
       return c.json({ error: "model is required" }, 400)
     }
-    if (!service.removeModel(model)) {
+    if (!store.removeModel(model)) {
       return c.json({ error: `model not cached: ${model}` }, 404)
     }
     return c.json({ ok: true })

@@ -3,6 +3,7 @@ import type { ModelInfo } from "@nyx/config"
 import type { NyxServer } from "../server"
 import { IPC } from "../../shared/ipc"
 import type { LLMTask, ModelPullProgress } from "../../shared/types"
+import { PullCancelledError } from "../server/client"
 
 /**
  * Bridges model management to the inference server. Stateless proxy: the
@@ -26,7 +27,7 @@ export class ModelsService {
     return this.server.client.listModels()
   }
 
-  /** Pull a model, streaming progress to all windows until done/error. */
+  /** Pull a model, streaming progress to all windows until done/error/cancel. */
   async pull(modelId: string, task: LLMTask): Promise<void> {
     this.broadcast({ modelId, task, done: false })
     try {
@@ -35,6 +36,10 @@ export class ModelsService {
       })
       this.broadcast({ modelId, task, done: true })
     } catch (error) {
+      if (error instanceof PullCancelledError) {
+        this.broadcast({ modelId, task, done: true, cancelled: true })
+        return
+      }
       this.broadcast({
         modelId,
         task,
@@ -43,6 +48,14 @@ export class ModelsService {
       })
       throw error
     }
+  }
+
+  /**
+   * Ask the server to stop an in-flight pull; the SSE stream reports `cancelled`.
+   * Resolves true when a running pull was actually aborted.
+   */
+  cancelPull(modelId: string): Promise<boolean> {
+    return this.server.client.cancelPull(modelId)
   }
 
   remove(modelId: string): Promise<void> {

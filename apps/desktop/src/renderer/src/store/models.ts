@@ -8,6 +8,8 @@ export interface PullState {
   loaded?: number
   total?: number
   percent?: number
+  /** True once the user asked to cancel but the server hasn't confirmed yet. */
+  cancelling?: boolean
 }
 
 interface ModelsState {
@@ -19,6 +21,8 @@ interface ModelsState {
   load: () => Promise<void>
   select: (task: LLMTask, modelId: string) => Promise<void>
   startPull: (modelId: string, task: LLMTask) => Promise<void>
+  /** Ask the server to stop an in-flight pull. */
+  cancelPull: (modelId: string) => Promise<void>
   /** Merge a progress event into `pulling`. */
   updatePullProgress: (p: ModelPullProgress) => void
   /** Remove a model from disk; clears its selection when selected. */
@@ -49,6 +53,49 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
         const next = { ...state.pulling }
         delete next[modelId]
         return { pulling: next }
+      })
+    }
+  },
+
+  cancelPull: async (modelId) => {
+    // If the row is already gone the pull ended (success or terminal event); a
+    // cancel then is moot, so don't recreate a phantom row.
+    set((state) => {
+      const current = state.pulling[modelId]
+      if (!current) return {}
+      return {
+        pulling: {
+          ...state.pulling,
+          [modelId]: { ...current, cancelling: true },
+        },
+      }
+    })
+    try {
+      const cancelled = await window.nyx.models.cancelPull(modelId)
+      if (cancelled) {
+        // The server aborted the pull. Drop the row now rather than waiting for
+        // the SSE terminal event: transformers.js can't interrupt a fetch in
+        // flight, so that event may lag (or never come on a hung connection).
+        // Terminal events below only ever delete rows, never re-add.
+        set((state) => {
+          const next = { ...state.pulling }
+          delete next[modelId]
+          return { pulling: next }
+        })
+      }
+    } catch {
+      // The server may have finished/cleaned the pull already (or gone away).
+      // Reset the flag so the row is not stuck in a disabled "Cancelling…"
+      // state; the pull's own terminal SSE event (or an error) clears the row.
+      set((state) => {
+        const current = state.pulling[modelId]
+        if (!current) return {}
+        return {
+          pulling: {
+            ...state.pulling,
+            [modelId]: { ...current, cancelling: false },
+          },
+        }
       })
     }
   },
