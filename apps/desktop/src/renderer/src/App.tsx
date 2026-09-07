@@ -5,6 +5,7 @@ import { ThemeToggle } from "./components/ThemeToggle"
 import { TextGenerationPage } from "./pages/TextGenerationPage"
 import { ImageToImagePage } from "./pages/ImageToImagePage"
 import { ModelsPage } from "./pages/ModelsPage"
+import { SettingsPage } from "./pages/SettingsPage"
 import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar"
 import { useModelsStore } from "./store/models"
 
@@ -12,6 +13,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/text-generation": "Text generation",
   "/image-to-image": "Image to image",
   "/models": "Models",
+  "/settings": "Settings",
 }
 
 function Shell() {
@@ -47,6 +49,7 @@ function Shell() {
                 <Route path="/text-generation" element={<TextGenerationPage />} />
                 <Route path="/image-to-image" element={<ImageToImagePage />} />
                 <Route path="/models" element={<ModelsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
               </Routes>
             </div>
           </main>

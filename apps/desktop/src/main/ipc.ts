@@ -1,7 +1,7 @@
 import { BrowserWindow, ipcMain } from "electron"
-import { getModelsDir } from "@nyx/config"
+import { getModelsDir, getSettings, setSettings } from "@nyx/config"
 import { IPC } from "../shared/ipc"
-import type { LLMMessage, ImagePayload, LLMTask } from "../shared/types"
+import type { LLMMessage, ImagePayload, LLMTask, Settings } from "../shared/types"
 import { TextGenerationService } from "./services/text-generation"
 import { ImageToImageService } from "./services/image-to-image"
 import { ModelsService } from "./services/models"
@@ -49,6 +49,8 @@ export function registerIpc(services: Services): void {
 
   // --- Config ---
   ipcMain.handle(IPC.config.getModelsDir, () => getModelsDir())
+  ipcMain.handle(IPC.config.getSettings, () => getSettings())
+  ipcMain.handle(IPC.config.setSettings, (_e, patch: Settings) => setSettings(patch))
 
   // --- Window controls (frameless) ---
   ipcMain.on(IPC.window.minimize, (e) =>

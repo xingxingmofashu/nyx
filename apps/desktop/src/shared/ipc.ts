@@ -20,6 +20,8 @@ export const IPC = {
   },
   config: {
     getModelsDir: "config:getModelsDir",
+    getSettings: "config:getSettings",
+    setSettings: "config:setSettings",
   },
   window: {
     minimize: "window:minimize",

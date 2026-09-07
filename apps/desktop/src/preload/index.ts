@@ -46,6 +46,8 @@ const api: NyxApi = {
   config: {
     getModelsDir: (): Promise<string> =>
       ipcRenderer.invoke(IPC.config.getModelsDir),
+    getSettings: () => ipcRenderer.invoke(IPC.config.getSettings),
+    setSettings: (patch) => ipcRenderer.invoke(IPC.config.setSettings, patch),
   },
   window: {
     minimize: () => ipcRenderer.send(IPC.window.minimize),

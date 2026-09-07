@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { defu } from "defu";
-import type { ModelInfo, ModelConfig } from "./types.ts";
+import type { ModelInfo, ModelConfig, Settings } from "./types.ts";
 
 const CONFIG_DIR_NAME = ".nyx";
 
@@ -19,6 +19,13 @@ function getModelConfigPath(): string {
   return join(getConfigDir(), "models.json");
 }
 
+function getSettingsPath(): string {
+  return join(getConfigDir(), "settings.json");
+}
+
+/** Default endpoint; clears to this when a user blanks the mirror. */
+export const DEFAULT_HUB_URL = "https://huggingface.co";
+
 function isNotFoundError(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as NodeJS.ErrnoException).code === "ENOENT";
 }
@@ -31,6 +38,24 @@ export function read(): ModelConfig {
     if (isNotFoundError(error)) return { provider: {} };
     throw error;
   }
+}
+
+/** Read user settings; defaults when no file exists yet. */
+export function getSettings(): Settings {
+  try {
+    return JSON.parse(readFileSync(getSettingsPath(), "utf-8")) as Settings;
+  } catch (error) {
+    if (isNotFoundError(error)) return {};
+    throw error;
+  }
+}
+
+/** Deep-merge a settings patch into ~/.nyx/settings.json (via defu). */
+export function setSettings(patch: Settings): Settings {
+  const merged = defu(patch, getSettings());
+  mkdirSync(getConfigDir(), { recursive: true });
+  writeFileSync(getSettingsPath(), JSON.stringify(merged, null, 2));
+  return merged;
 }
 
 /** Deep-merge one installed model into the config file (via defu). */

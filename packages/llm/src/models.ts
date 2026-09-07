@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, rmSync, statSync } from "node:fs"
 import { join } from "node:path"
-import { pipeline, type DataType } from "@huggingface/transformers"
+import { env, pipeline, type DataType } from "@huggingface/transformers"
 import { getModelsDir, read as readModelConfig, write, type ModelInfo } from "@nyx/config"
 import { configureEnv } from "./runtime.ts"
 import type { ProgressInfo } from "./runtime.ts"
@@ -91,8 +91,8 @@ async function prune(modelId: string): Promise<void> {
   const weightsDir = join(getModelsDir(), org, name, "onnx")
   if (!existsSync(weightsDir)) return
 
-  const host = process.env.HF_ENDPOINT ?? "https://huggingface.co"
-  const url = `${host.replace(/\/$/, "")}/api/models/${modelId}/tree/main/onnx?recursive=true`
+  const host = env.remoteHost.replace(/\/$/, "")
+  const url = `${host}/api/models/${modelId}/tree/main/onnx?recursive=true`
 
   let remote: RemoteFile[]
   try {
