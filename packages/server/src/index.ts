@@ -15,7 +15,9 @@ export function start(options: { token?: string; port?: number; host?: string; s
   const host = options.host ?? "127.0.0.1"
 
   return new Promise((resolve, reject) => {
-    const server = serve({ fetch: app.fetch, port, hostname: host }, (info) => {
+    const server = serve(
+      { fetch: app.fetch, port, hostname: host, overrideGlobalObjects: false },
+      (info) => {
       const actualPort = typeof info === "object" && info !== null ? info.port : port
       resolve({
         url: `http://${host}:${actualPort}`,
