@@ -42,7 +42,7 @@ export function SettingsPage() {
     setSaved(false)
     setError(null)
     const value = hubBaseUrl.trim()
-    const patch: Settings = { hubBaseUrl: value && value !== "https://huggingface.co" ? value : undefined }
+    const patch: Settings = { hubBaseUrl: value || undefined }
     try {
       await window.nyx.config.setSettings(patch)
       setSaved(true)
