@@ -1,9 +1,10 @@
 import { BrowserWindow, ipcMain } from "electron"
 import { getModelsDir } from "@nyx/config"
 import { IPC } from "../shared/ipc"
-import type { LLMMessage, ImagePayload, LlmTask } from "../shared/types"
+import type { LLMMessage, ImagePayload, LLMTask } from "../shared/types"
 import { TextGenerationService } from "./services/text-generation"
 import { ImageToImageService } from "./services/image-to-image"
+import { ModelsService } from "./services/models"
 import type { NyxServer } from "./server"
 
 interface Services {
@@ -11,6 +12,7 @@ interface Services {
     textGeneration: TextGenerationService
     imageToImage: ImageToImageService
   }
+  models: ModelsService
   server: NyxServer
 }
 
@@ -18,7 +20,7 @@ interface Services {
 export function registerIpc(services: Services): void {
   const {
     tasks: { textGeneration, imageToImage },
-    server,
+    models,
   } = services
 
   // --- Text generation ---
@@ -37,12 +39,12 @@ export function registerIpc(services: Services): void {
   )
 
   // --- Models ---
-  ipcMain.handle(IPC.models.list, () => server.client.listModels())
-  ipcMain.handle(IPC.models.pull, (_e, modelId: string, task: LlmTask) =>
-    server.client.pullModel(modelId, task),
+  ipcMain.handle(IPC.models.list, () => models.list())
+  ipcMain.handle(IPC.models.pull, (_e, modelId: string, task: LLMTask) =>
+    models.pull(modelId, task),
   )
   ipcMain.handle(IPC.models.remove, (_e, modelId: string) =>
-    server.client.removeModel(modelId),
+    models.remove(modelId),
   )
 
   // --- Config ---

@@ -4,7 +4,7 @@ import { pipeline, type DataType } from "@huggingface/transformers"
 import { getModelsDir, read as readModelConfig, write, type ModelInfo } from "@nyx/config"
 import { configureEnv } from "./runtime.ts"
 import type { ProgressInfo } from "./runtime.ts"
-import type { LlmTask } from "./types.ts"
+import type { LLMTask } from "./types.ts"
 
 /** List models recorded in the config that still exist on disk. */
 export function list(): ModelInfo[] {
@@ -30,7 +30,7 @@ export function list(): ModelInfo[] {
  */
 export async function pull(
   modelId: string,
-  task: LlmTask,
+  task: LLMTask,
   onProgress?: (info: ProgressInfo) => void,
   dtype?: DataType,
 ): Promise<void> {

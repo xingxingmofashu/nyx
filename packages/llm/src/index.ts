@@ -12,7 +12,7 @@ export type {
   ImageSource,
 } from "./types.ts";
 export { LLM_TASKS } from "./types.ts";
-export type { LlmTask } from "./types.ts";
+export type { LLMTask } from "./types.ts";
 
 export { configureEnv, loadPipeline, clearModelCache } from "./runtime.ts";
 export type { ModelRuntimeOptions, ProgressInfo } from "./runtime.ts";

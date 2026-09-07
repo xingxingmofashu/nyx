@@ -1,4 +1,4 @@
-import { Bot, Image as ImageIcon, MessageSquare, Sparkles } from "lucide-react"
+import { Bot, Boxes, Image as ImageIcon, MessageSquare, Sparkles } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import {
   Sidebar,
@@ -12,7 +12,7 @@ import {
   SidebarMenuButton,
 } from "./ui/sidebar"
 
-export type ViewId = "text-generation" | "image-to-image"
+export type ViewId = "text-generation" | "image-to-image" | "models"
 
 interface ViewDef {
   id: ViewId
@@ -30,6 +30,10 @@ const DOMAINS: Array<{ name: string; views: ViewDef[] }> = [
   {
     name: "Computer Vision",
     views: [{ id: "image-to-image", path: "/image-to-image", label: "Image to image", icon: ImageIcon }],
+  },
+  {
+    name: "Models",
+    views: [{ id: "models", path: "/models", label: "Manage models", icon: Boxes }],
   },
 ]
 

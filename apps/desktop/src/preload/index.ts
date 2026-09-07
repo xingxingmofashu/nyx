@@ -6,7 +6,7 @@ import type {
   ImageResult,
   ModelInfo,
   ModelPullProgress,
-  LlmTask,
+  LLMTask,
   NyxApi,
 } from "../shared/types"
 
@@ -33,7 +33,7 @@ const api: NyxApi = {
   },
   models: {
     list: (): Promise<ModelInfo[]> => ipcRenderer.invoke(IPC.models.list),
-    pull: (modelId: string, task: LlmTask) =>
+    pull: (modelId: string, task: LLMTask) =>
       ipcRenderer.invoke(IPC.models.pull, modelId, task),
     remove: (modelId: string) => ipcRenderer.invoke(IPC.models.remove, modelId),
     onProgress: (cb) => {

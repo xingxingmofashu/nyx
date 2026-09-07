@@ -1,6 +1,6 @@
-import type { LLMMessage, LlmTask } from "@nyx/llm"
+import type { LLMMessage, LLMTask } from "@nyx/llm"
 import type { ModelInfo } from "@nyx/config"
-import type { TextGenerationEvent, ImagePayload, ImageResult } from "../../shared/types"
+import type { TextGenerationEvent, ImagePayload, ImageResult, ModelPullProgress } from "../../shared/types"
 
 /** HTTP transport for the @nyx/server child (main talks to it over HTTP; onnxruntime cannot run inside Electron). */
 export class NyxServerClient {
@@ -26,11 +26,32 @@ export class NyxServerClient {
     return this.requestJson<ModelInfo[]>("/v1/models")
   }
 
-  async pullModel(modelId: string, task: LlmTask): Promise<void> {
-    await this.requestJson<{ ok: true }>("/v1/models/pull", {
+  /** Pull a model; download progress events are delivered via `onProgress`. */
+  async pullModel(
+    modelId: string,
+    task: LLMTask,
+    onProgress?: (p: Omit<ModelPullProgress, "modelId" | "done">) => void,
+  ): Promise<void> {
+    const res = await fetch(`${this.baseUrl}/v1/models/pull`, {
       method: "POST",
+      headers: this.headers(),
       body: JSON.stringify({ model: modelId, task }),
     })
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: string }
+      throw new Error(body.error ?? `models/pull failed: ${res.status}`)
+    }
+    if (!res.body) throw new Error("no response body")
+
+    for await (const { event, data } of readSseEvents(res.body)) {
+      if (event === "progress") {
+        const frame = JSON.parse(data) as { file?: string; loaded?: number; total?: number; percent?: number }
+        onProgress?.({ file: frame.file, loaded: frame.loaded, total: frame.total, percent: frame.percent })
+      } else if (event === "error") {
+        const message = (JSON.parse(data) as { message?: string }).message
+        throw new Error(message ?? "model pull failed")
+      }
+    }
   }
 
   async removeModel(modelId: string): Promise<void> {
@@ -63,8 +84,10 @@ export class NyxServerClient {
       return
     }
 
-    for await (const frame of readSse(res.body)) {
-      yield frame
+    for await (const { event, data } of readSseEvents(res.body)) {
+      if (event === "delta") yield { type: "delta", text: JSON.parse(data).text as string }
+      else if (event === "end") yield { type: "end", text: JSON.parse(data).text as string }
+      else if (event === "error") yield { type: "error", message: JSON.parse(data).message as string }
     }
   }
 
@@ -94,19 +117,17 @@ export class NyxServerClient {
   }
 }
 
+interface SseFrame {
+  event: string
+  data: string
+}
+
 /** Parse an SSE byte stream (CRLF/LF framing, multi-line `data:` payloads). */
-async function* readSse(body: ReadableStream<Uint8Array>): AsyncIterable<TextGenerationEvent> {
+async function* readSseEvents(body: ReadableStream<Uint8Array>): AsyncIterable<SseFrame> {
   const reader = body.getReader()
   const decoder = new TextDecoder()
   let buffer = ""
   let event = ""
-
-  const emit = (data: string): TextGenerationEvent | null => {
-    if (event === "delta") return { type: "delta", text: JSON.parse(data).text as string }
-    if (event === "end") return { type: "end", text: JSON.parse(data).text as string }
-    if (event === "error") return { type: "error", message: JSON.parse(data).message as string }
-    return null
-  }
 
   for (;;) {
     const { done, value } = await reader.read()
@@ -122,8 +143,7 @@ async function* readSse(body: ReadableStream<Uint8Array>): AsyncIterable<TextGen
         if (line.startsWith("event:")) event = line.slice(6).trim()
         else if (line.startsWith("data:")) data += line.slice(5).trim()
       }
-      const frame = emit(data)
-      if (frame) yield frame
+      if (event && data) yield { event, data }
       event = ""
     }
   }

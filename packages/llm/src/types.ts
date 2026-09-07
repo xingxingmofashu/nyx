@@ -25,13 +25,13 @@ export interface StreamOptions {
 
 /** The local ONNX tasks nyx supports. */
 export const LLM_TASKS = ["text-generation", "image-to-image"] as const;
-export type LlmTask = (typeof LLM_TASKS)[number];
+export type LLMTask = (typeof LLM_TASKS)[number];
 
 /** Capability marker; consumers depend on `TextProvider` or `ImageProvider`. */
 export interface LLMProvider {
   readonly id: string;
   /** The local task this provider implements. */
-  readonly task: LlmTask;
+  readonly task: LLMTask;
   readonly model: string;
 }
 

@@ -1,7 +1,7 @@
 import { RawImage } from "@huggingface/transformers"
 import { remove, type ModelInfo } from "@nyx/config"
 import { list, pull, clearModelCache, OnnxImageToImageProvider, OnnxTextGenerationProvider } from "@nyx/llm"
-import type { LLMEvent, LLMProvider, LLMMessage, LlmTask } from "@nyx/llm"
+import type { LLMEvent, LLMProvider, LLMMessage, LLMTask, ProgressInfo } from "@nyx/llm"
 import type { ImageInput } from "../shared/types"
 
 /** Raw RGBA/RGB pixels of an image output, ready to stream back. */
@@ -56,9 +56,9 @@ export class InferenceService {
     return list()
   }
 
-  /** Download a model into the local cache. */
-  async pullModel(modelId: string, task: LlmTask): Promise<void> {
-    await pull(modelId, task)
+  /** Download a model into the local cache, streaming progress when a callback is given. */
+  async pullModel(modelId: string, task: LLMTask, onProgress?: (info: ProgressInfo) => void): Promise<void> {
+    await pull(modelId, task, onProgress)
   }
 
   /** Remove a model from disk and the registry; true when it was cached. */

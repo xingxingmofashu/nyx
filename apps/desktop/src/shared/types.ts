@@ -6,8 +6,8 @@
 // HTTP wire types live in @nyx/server/types.
 import type { ImagePayload, ImageResult } from "@nyx/server/types"
 import type { ModelInfo } from "@nyx/config"
-import type { LLMMessage, LlmTask } from "@nyx/llm"
-export type { ImagePayload, ImageResult, LLMMessage, LlmTask, ModelInfo }
+import type { LLMMessage, LLMTask } from "@nyx/llm"
+export type { ImagePayload, ImageResult, LLMMessage, LLMTask, ModelInfo }
 
 /** A message as displayed in the text-generation UI. */
 export interface DisplayMessage {
@@ -27,12 +27,16 @@ export type TextGenerationEvent =
 
 export interface ModelPullProgress {
   modelId: string
+  /** Task being pulled; set on the initial kickoff, kept on later events. */
+  task?: LLMTask
   file?: string
   /** 0..100 when status is "progress". */
   percent?: number
   loaded?: number
   total?: number
   done: boolean
+  /** Present when the pull failed. */
+  error?: string
 }
 
 /** The preload-exposed API surface. */
@@ -50,7 +54,7 @@ export interface NyxApi {
   }
   models: {
     list: () => Promise<ModelInfo[]>
-    pull: (modelId: string, task: LlmTask) => Promise<void>
+    pull: (modelId: string, task: LLMTask) => Promise<void>
     remove: (modelId: string) => Promise<void>
     /** Subscribe to pull progress; returns an unsubscribe fn. */
     onProgress: (cb: (p: ModelPullProgress) => void) => () => void

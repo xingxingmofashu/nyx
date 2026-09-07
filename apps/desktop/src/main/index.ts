@@ -3,6 +3,7 @@ import { join } from "node:path"
 import { registerIpc } from "./ipc"
 import { TextGenerationService } from "./services/text-generation"
 import { ImageToImageService } from "./services/image-to-image"
+import { ModelsService } from "./services/models"
 import { NyxServer } from "./server"
 import { IPC } from "../shared/ipc"
 
@@ -85,21 +86,25 @@ app.whenReady().then(async () => {
 
   const textGenerationService = new TextGenerationService(server)
   const imageToImageService = new ImageToImageService(server)
+  const modelsService = new ModelsService(server)
   registerIpc({
     tasks: {
       textGeneration: textGenerationService,
       imageToImage: imageToImageService,
     },
+    models: modelsService,
     server: server,
   })
 
   const win = createWindow()
   textGenerationService.attachWindow(win)
+  modelsService.attachWindow(win)
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       const w = createWindow()
       textGenerationService.attachWindow(w)
+      modelsService.attachWindow(w)
     }
   })
 })

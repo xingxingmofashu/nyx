@@ -4,22 +4,24 @@ import { AppSidebar } from "./components/Sidebar"
 import { ThemeToggle } from "./components/ThemeToggle"
 import { TextGenerationPage } from "./pages/TextGenerationPage"
 import { ImageToImagePage } from "./pages/ImageToImagePage"
+import { ModelsPage } from "./pages/ModelsPage"
 import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar"
 import { useModelsStore } from "./store/models"
 
 const PAGE_TITLES: Record<string, string> = {
   "/text-generation": "Text generation",
   "/image-to-image": "Image to image",
+  "/models": "Models",
 }
 
 function Shell() {
   const location = useLocation()
   const title = PAGE_TITLES[location.pathname] ?? "Nyx"
 
-  // Register model-pull progress once; refresh list on mount.
+  // Register model-pull progress once; refresh list when a pull finishes.
   useEffect(() => {
     const unsubscribe = window.nyx.models.onProgress((p) => {
-      useModelsStore.getState().updatePullProgress(p.modelId, p.percent, p.done)
+      useModelsStore.getState().updatePullProgress(p)
       if (p.done) void useModelsStore.getState().load()
     })
     void useModelsStore.getState().load()
@@ -44,6 +46,7 @@ function Shell() {
                 <Route path="/" element={<Navigate to="/text-generation" replace />} />
                 <Route path="/text-generation" element={<TextGenerationPage />} />
                 <Route path="/image-to-image" element={<ImageToImagePage />} />
+                <Route path="/models" element={<ModelsPage />} />
               </Routes>
             </div>
           </main>
