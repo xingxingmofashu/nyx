@@ -23,5 +23,17 @@ export function models(service: InferenceService): Hono {
     }
   })
 
+  app.delete("/", async (c) => {
+    const body = await c.req.json().catch(() => ({}))
+    const model = (body as { model?: string }).model
+    if (!model) {
+      return c.json({ error: "model is required" }, 400)
+    }
+    if (!service.removeModel(model)) {
+      return c.json({ error: `model not cached: ${model}` }, 404)
+    }
+    return c.json({ ok: true })
+  })
+
   return app
 }

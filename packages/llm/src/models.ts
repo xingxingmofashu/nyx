@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs"
+import { existsSync, readdirSync, rmSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { pipeline, type DataType } from "@huggingface/transformers"
 import { getModelsDir, read as readModelConfig, write, type ModelInfo } from "@nyx/config"
@@ -41,6 +41,9 @@ export async function pull(
   }
 
   configureEnv()
+  // Drop weights whose local size differs from the remote file, so truncated
+  // downloads can't be mistaken for complete. Degrades to a no-op offline.
+  await prune(modelId)
   // Loading the pipeline downloads config/tokenizer/weights; discard the instance.
   await pipeline(task, modelId, {
     ...(dtype ? { dtype } : {}),
@@ -66,4 +69,58 @@ export function find(modelId: string): ModelInfo | undefined {
     }
   }
   return undefined
+}
+
+interface RemoteFile {
+  path: string
+  type?: string
+  size?: number
+}
+
+/**
+ * Delete cached weights whose on-disk size differs from the remote file, so a
+ * truncated download is never mistaken for complete. Only `onnx/` weights are
+ * touched (config/tokenizer are tiny and rarely the truncation casualty).
+ * Offline or on error, does nothing — never deletes on uncertainty.
+ */
+async function prune(modelId: string): Promise<void> {
+  const [org, ...rest] = modelId.split("/")
+  const name = rest.join("/")
+  if (!org || !name) return
+
+  const weightsDir = join(getModelsDir(), org, name, "onnx")
+  if (!existsSync(weightsDir)) return
+
+  const host = process.env.HF_ENDPOINT ?? "https://huggingface.co"
+  const url = `${host.replace(/\/$/, "")}/api/models/${modelId}/tree/main/onnx?recursive=true`
+
+  let remote: RemoteFile[]
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return
+    remote = (await res.json()) as RemoteFile[]
+  } catch {
+    return
+  }
+  if (!Array.isArray(remote) || remote.length === 0) return
+
+  const remoteMap = new Map<string, number | undefined>()
+  for (const f of remote) {
+    if (f.type === "file") remoteMap.set(f.path, f.size)
+  }
+
+  for (const local of readdirSync(weightsDir)) {
+    const rname = `onnx/${local}`
+    if (!remoteMap.has(rname) || remoteMap.get(rname) !== statSyncSafe(join(weightsDir, local))) {
+      rmSync(join(weightsDir, local), { force: true })
+    }
+  }
+}
+
+function statSyncSafe(path: string): number | undefined {
+  try {
+    return statSync(path).size
+  } catch {
+    return undefined
+  }
 }

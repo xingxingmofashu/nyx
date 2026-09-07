@@ -41,6 +41,9 @@ export function registerIpc(services: Services): void {
   ipcMain.handle(IPC.models.pull, (_e, modelId: string, task: LlmTask) =>
     server.client.pullModel(modelId, task),
   )
+  ipcMain.handle(IPC.models.remove, (_e, modelId: string) =>
+    server.client.removeModel(modelId),
+  )
 
   // --- Config ---
   ipcMain.handle(IPC.config.getModelsDir, () => getModelsDir())

@@ -14,6 +14,7 @@ export const IPC = {
   models: {
     list: "models:list",
     pull: "models:pull",
+    remove: "models:remove",
     /** main → renderer: download progress. */
     progress: "models:progress",
   },

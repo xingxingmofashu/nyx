@@ -12,6 +12,8 @@ interface ModelsState {
   startPull: (modelId: string, task: LlmTask) => Promise<void>
   /** Update pull progress for one model. */
   updatePullProgress: (modelId: string, percent: number | undefined, done: boolean) => void
+  /** Remove a model from disk; clears its selection when selected. */
+  remove: (modelId: string) => Promise<void>
 }
 
 export const useModelsStore = create<ModelsState>((set, get) => ({
@@ -42,7 +44,7 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
     }
   },
 
-  updatePullProgress: (modelId, percent, done) => {
+    updatePullProgress: (modelId, percent, done) => {
     if (done) {
       set((state) => {
         const next = { ...state.pulling }
@@ -52,5 +54,16 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
       return
     }
     set((state) => ({ pulling: { ...state.pulling, [modelId]: percent } }))
+  },
+
+  remove: async (modelId) => {
+    await window.nyx.models.remove(modelId)
+    set((state) => {
+      const selected = { ...state.selected }
+      const task = (Object.keys(selected) as LlmTask[]).find((t) => selected[t] === modelId)
+      if (task) delete selected[task]
+      return { selected }
+    })
+    await get().load()
   },
 }))

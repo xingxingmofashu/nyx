@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { defu } from "defu";
@@ -38,6 +38,55 @@ export function write(entry: { provider: Record<string, { models: Record<string,
   const merged = defu(read(), entry);
   mkdirSync(getConfigDir(), { recursive: true });
   writeFileSync(getModelConfigPath(), JSON.stringify(merged, null, 2));
+}
+
+/** Remove one model record from the registry (no-op when absent). */
+export function removeRecord(modelId: string): void {
+  const config = read();
+  let changed = false;
+  for (const [org, { models }] of Object.entries(config.provider)) {
+    for (const name of Object.keys(models)) {
+      if (models[name]?.id === modelId) {
+        delete models[name];
+        changed = true;
+      }
+    }
+    if (changed && Object.keys(models).length === 0) {
+      delete config.provider[org];
+    }
+    if (changed) break;
+  }
+  if (changed) {
+    writeFileSync(getModelConfigPath(), JSON.stringify(config, null, 2));
+  }
+}
+
+/**
+ * Remove an installed model from disk and registry. Expects a full
+ * `org/name` id; no-op when the model is not on disk.
+ */
+export function remove(modelId: string): boolean {
+  const [org, ...rest] = modelId.split("/");
+  const name = rest.join("/");
+  if (!org || !name) return false;
+  const dir = join(getModelsDir(), org, name);
+  if (!existsSync(dir)) return false;
+  rmSync(dir, { recursive: true, force: true });
+  // Drop the org dir too when it's now empty.
+  const orgDir = join(getModelsDir(), org);
+  if (existsSync(orgDir) && readdirSafe(orgDir).length === 0) {
+    rmSync(orgDir, { recursive: true, force: true });
+  }
+  removeRecord(modelId);
+  return true;
+}
+
+function readdirSafe(dir: string): string[] {
+  try {
+    return readdirSync(dir);
+  } catch {
+    return [];
+  }
 }
 
 export * from "./types.ts";

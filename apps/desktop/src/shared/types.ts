@@ -51,6 +51,7 @@ export interface NyxApi {
   models: {
     list: () => Promise<ModelInfo[]>
     pull: (modelId: string, task: LlmTask) => Promise<void>
+    remove: (modelId: string) => Promise<void>
     /** Subscribe to pull progress; returns an unsubscribe fn. */
     onProgress: (cb: (p: ModelPullProgress) => void) => () => void
   }

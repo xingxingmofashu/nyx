@@ -33,6 +33,13 @@ export class NyxServerClient {
     })
   }
 
+  async removeModel(modelId: string): Promise<void> {
+    await this.requestJson<{ ok: true }>("/v1/models", {
+      method: "DELETE",
+      body: JSON.stringify({ model: modelId }),
+    })
+  }
+
   /** Stream a turn, yielding delta events then a final end/error. */
   async *textGeneration(
     modelId: string,

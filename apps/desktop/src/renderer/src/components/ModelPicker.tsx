@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Check, ChevronDown, Download } from "lucide-react"
+import { Check, ChevronDown, Download, Trash2 } from "lucide-react"
 import { useModelsStore } from "../store/models"
 import type { LlmTask } from "../../../shared/types"
 import { Button } from "./ui/button"
@@ -13,7 +13,7 @@ export function ModelPicker({ task, className }: { task: LlmTask; className?: st
   const models = useModelsStore((s) => s.models)
   const selected = useModelsStore((s) => s.selected[task])
   const pulling = useModelsStore((s) => s.pulling)
-  const { load, select, startPull } = useModelsStore()
+  const { load, select, startPull, remove } = useModelsStore()
   const [modelId, setModelId] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,6 +40,15 @@ export function ModelPicker({ task, className }: { task: LlmTask; className?: st
     }
   }
 
+  const removeModel = async (id: string) => {
+    setError(null)
+    try {
+      await remove(id)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
   return (
     <Popover>
       <PopoverTrigger
@@ -62,13 +71,33 @@ export function ModelPicker({ task, className }: { task: LlmTask; className?: st
                   key={model.id}
                   onClick={() => void select(task, model.id)}
                   className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted",
+                    "group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted",
                     selected === model.id && "bg-muted text-foreground"
                   )}
                 >
                   <span className="min-w-0 flex-1 truncate">{model.name ?? model.id}</span>
                   {selected === model.id && <Check className="size-4 shrink-0" />}
                   {progress !== undefined && <span className="text-xs text-muted-foreground">{progress}%</span>}
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Remove ${model.id}`}
+                    title="Remove model"
+                    className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus:opacity-100 group-hover:opacity-100"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      void removeModel(model.id)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        void removeModel(model.id)
+                      }
+                    }}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </span>
                 </button>
               )
             })}
