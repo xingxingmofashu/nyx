@@ -1,10 +1,10 @@
 import { Hono } from "hono"
 import { streamSSE } from "hono/streaming"
 import { PullAbortedError, type LLMTask, type ProgressInfo } from "@nyx/llm"
-import type { ModelStore } from "../services/model-store"
+import type { ModelsService } from "../services/models"
 
 /** /v1/models — list, download, cancel, and delete cached models. */
-export function models(store: ModelStore): Hono {
+export function models(store: ModelsService): Hono {
   const app = new Hono()
 
   app.get("/", (c) => c.json(store.listModels()))

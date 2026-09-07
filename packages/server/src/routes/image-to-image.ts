@@ -1,9 +1,9 @@
 import { Hono } from "hono"
-import type { InferenceService } from "../services/inference"
+import type { ImageToImageService } from "../services/image-to-image"
 import type { ImageInput } from "../shared/types"
 
 /** POST /v1/image-to-image — transform an image; responds with image bytes. */
-export function imageToImage(service: InferenceService): Hono {
+export function imageToImage(service: ImageToImageService): Hono {
   const app = new Hono()
 
   app.post("/", async (c) => {
@@ -13,7 +13,7 @@ export function imageToImage(service: InferenceService): Hono {
     if (!model || !image?.data) return c.json({ error: "model and image are required" }, 400)
 
     try {
-      const result = await service.imageToImage(model, image)
+      const result = await service.generate(model, image)
       return c.body(new Uint8Array(result.data), 200, {
         "Content-Type": "application/octet-stream",
         "X-Image-Width": String(result.width),

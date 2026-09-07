@@ -1,13 +1,13 @@
 import { list, pull, type LLMTask, type ProgressInfo } from "@nyx/llm"
 import { remove, type ModelInfo } from "@nyx/config"
-import { ProviderCache } from "./provider-cache"
+import { ProviderCache } from "../lib/provider-cache"
 
 /**
  * Model lifecycle: list cached models, download (pull) with progress, cancel an
  * in-flight pull, and remove models from disk + the provider cache. Each pull
  * is tracked by model id so a cancel can abort it.
  */
-export class ModelStore {
+export class ModelsService {
   /** modelId → controller for the in-flight pull; lets cancelPull abort it. */
   private readonly activePulls = new Map<string, AbortController>()
 

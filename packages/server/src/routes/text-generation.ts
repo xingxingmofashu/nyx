@@ -1,10 +1,10 @@
 import { Hono } from "hono"
 import { streamSSE } from "hono/streaming"
 import type { LLMMessage } from "@nyx/llm"
-import type { InferenceService } from "../services/inference"
+import type { TextGenerationService } from "../services/text-generation"
 
 /** POST /v1/text-generation — SSE-streamed text generation over a transcript. */
-export function textGeneration(service: InferenceService): Hono {
+export function textGeneration(service: TextGenerationService): Hono {
   const app = new Hono()
 
   app.post("/", (c) =>
@@ -23,7 +23,7 @@ export function textGeneration(service: InferenceService): Hono {
 
       try {
         let full = ""
-        for await (const event of service.textGeneration(model, messages)) {
+        for await (const event of service.stream(model, messages)) {
           if (event.type === "text-delta") {
             full += event.delta
             await stream.writeSSE({ event: "delta", data: JSON.stringify({ text: event.delta }) })
