@@ -1,9 +1,9 @@
 import { Hono } from "hono"
 import { streamSSE } from "hono/streaming"
 import type { LLMMessage } from "@nyx/llm"
-import type { TextGenerationService } from "../services/text-generation"
+import type { TextGenerationService } from "../services/tasks/text-generation"
 
-/** POST /v1/text-generation — SSE-streamed text generation over a transcript. */
+/** POST /v1/tasks/text-generation — SSE-streamed text generation over a transcript. */
 export function textGeneration(service: TextGenerationService): Hono {
   const app = new Hono()
 

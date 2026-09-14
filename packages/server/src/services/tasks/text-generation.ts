@@ -1,6 +1,6 @@
 import { OnnxTextGenerationProvider } from "@nyx/llm"
 import type { LLMEvent, LLMMessage } from "@nyx/llm"
-import { ProviderCache } from "../lib/provider-cache"
+import { ProviderCache } from "../../lib/provider-cache"
 
 /**
  * Runs text-generation inference. Stateless multi-turn: each request carries

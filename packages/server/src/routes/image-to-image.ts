@@ -1,8 +1,8 @@
 import { Hono } from "hono"
-import type { ImageToImageService } from "../services/image-to-image"
+import type { ImageToImageService } from "../services/tasks/image-to-image"
 import type { ImageBase64Input } from "../shared/types"
 
-/** POST /v1/image-to-image — transform an image; responds with image bytes. */
+/** POST /v1/tasks/image-to-image — transform an image; responds with image bytes. */
 export function imageToImage(service: ImageToImageService): Hono {
   const app = new Hono()
 

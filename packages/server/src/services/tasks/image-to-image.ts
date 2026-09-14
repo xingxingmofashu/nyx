@@ -1,7 +1,7 @@
 import { RawImage } from "@huggingface/transformers"
 import { OnnxImageToImageProvider } from "@nyx/llm"
-import type { ImageBase64Input } from "../shared/types"
-import { ProviderCache } from "../lib/provider-cache"
+import type { ImageBase64Input } from "../../shared/types"
+import { ProviderCache } from "../../lib/provider-cache"
 
 /** One generated image: encoded bytes plus the pipeline's shape metadata. */
 export interface GeneratedImage {

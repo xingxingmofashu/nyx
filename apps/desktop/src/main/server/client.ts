@@ -86,7 +86,7 @@ export class NyxServerClient {
     messages: LLMMessage[],
     signal?: AbortSignal,
   ): AsyncIterable<TextGenerationEvent> {
-    const res = await fetch(`${this.baseURL}/v1/text-generation`, {
+    const res = await fetch(`${this.baseURL}/v1/tasks/text-generation`, {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify({ model: modelId, messages }),
@@ -111,7 +111,7 @@ export class NyxServerClient {
   }
 
   async imageToImage(modelId: string, input: ImageBytes): Promise<ImageResult> {
-    const res = await fetch(`${this.baseURL}/v1/image-to-image`, {
+    const res = await fetch(`${this.baseURL}/v1/tasks/image-to-image`, {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify({

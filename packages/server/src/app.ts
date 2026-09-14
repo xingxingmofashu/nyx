@@ -5,9 +5,9 @@ import { imageToImage } from "./routes/image-to-image"
 import { models } from "./routes/models"
 import { textGeneration } from "./routes/text-generation"
 import { AgentService } from "./services/agent"
-import { ImageToImageService } from "./services/image-to-image"
+import { ImageToImageService } from "./services/tasks/image-to-image"
 import { ModelsService } from "./services/models"
-import { TextGenerationService } from "./services/text-generation"
+import { TextGenerationService } from "./services/tasks/text-generation"
 import { ProviderCache } from "./lib/provider-cache"
 
 /** Service dependencies shared by every route, wired once per app instance. */
@@ -41,8 +41,8 @@ export function createApp(options: { token?: string; services?: ServerServices }
   v1.get("/health", (c) => c.json({ ok: true }))
 
   v1.route("/models", models(services.models))
-  v1.route("/text-generation", textGeneration(services.textGeneration))
-  v1.route("/image-to-image", imageToImage(services.imageToImage))
+  v1.route("/tasks/text-generation", textGeneration(services.textGeneration))
+  v1.route("/tasks/image-to-image", imageToImage(services.imageToImage))
   v1.route("/agent", agent(services.agent))
 
   const app = new Hono()
