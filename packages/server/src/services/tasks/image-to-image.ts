@@ -6,6 +6,7 @@ import { ProviderCache } from "../../lib/provider-cache"
 /** One generated image: encoded bytes plus the pipeline's shape metadata. */
 export interface GeneratedImage {
   data: Buffer
+  mimeType: string
   width: number
   height: number
   channels: number
@@ -23,7 +24,8 @@ export class ImageToImageService {
     const output = await provider.generate(source)
 
     return {
-      data: await output.toSharp().toBuffer(),
+      data: await output.toSharp().png().toBuffer(),
+      mimeType: "image/png",
       width: output.width,
       height: output.height,
       channels: output.channels,

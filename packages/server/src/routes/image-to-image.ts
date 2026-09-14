@@ -15,7 +15,7 @@ export function imageToImage(service: ImageToImageService): Hono {
     try {
       const result = await service.generate(model, image)
       return c.body(new Uint8Array(result.data), 200, {
-        "Content-Type": "application/octet-stream",
+        "Content-Type": result.mimeType,
         "X-Image-Width": String(result.width),
         "X-Image-Height": String(result.height),
         "X-Image-Channels": String(result.channels),
