@@ -80,7 +80,14 @@ export function getAgentSettings(): AgentSettings {
     provider[providerId] = { ...entry, options: { ...(entry.options ?? {}), ...envOptions } };
   }
 
-  return { ...agent, model, provider };
+  const tools = { ...(agent.tools ?? {}) };
+  // Only a recognized on/off value overrides settings; ignore empty/unknown so
+  // an exported-but-blank var can't clobber `tools.localModels: true`.
+  const envLocalModels = process.env.NYX_AGENT_LOCAL_MODELS?.toLowerCase();
+  if (envLocalModels === "1" || envLocalModels === "true") tools.localModels = true;
+  else if (envLocalModels === "0" || envLocalModels === "false") tools.localModels = false;
+
+  return { ...agent, model, provider, tools };
 }
 
 /** Provider id from a `<providerId>/<modelId>` ref (undefined when malformed). */

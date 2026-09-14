@@ -78,6 +78,22 @@ The agent loop runs in the local server (`POST /v1/agent`), so API calls go out 
 
 `npm` selects the AI SDK provider package — `@ai-sdk/openai-compatible` (any OpenAI-compatible endpoint: OpenAI, DeepSeek, OpenRouter, vLLM, Ollama, OpenCode Zen/Go, …) or `@ai-sdk/anthropic`. `options` holds `baseURL`/`apiKey`/`headers`; `limit.output` caps generated tokens. Env overrides: `NYX_AGENT_MODEL` replaces the ref, and `NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS` (a JSON object) override the active provider's options. Per-run overrides: `--model` and `--base-url`. Some gateways need extra request headers (e.g. OpenCode Zen/Go requires `x-opencode-session`) — add them under the provider's `options.headers`. The desktop agent UI is not wired yet.
 
+### Local models as tools
+
+With `agent.tools.localModels` enabled (or `NYX_AGENT_LOCAL_MODELS=1`), the locally installed ONNX models are also exposed to the brain: `local_text_generation` runs any cached `text-generation` model and returns its text (auto-run), and `local_image_to_image` transforms an image from the workspace and writes the result back (`y/n` approval).
+
+```json
+{
+  "agent": {
+    "model": "deepseek/deepseek-chat",
+    "provider": { "deepseek": { "npm": "@ai-sdk/openai-compatible", "options": { "baseURL": "https://api.deepseek.com/v1", "apiKey": "sk-..." } } },
+    "tools": { "localModels": true }
+  }
+}
+```
+
+Local inference runs in-process and is not streamed — the agent's reply pauses until the tool finishes — and the tool result (generated text, or the output file path) is sent to the remote brain like any other tool output.
+
 ## Desktop app
 
 The desktop app runs inference in a spawned server child (onnxruntime crashes inside Electron's Node runtime). Build the server bundle first, then start the app:

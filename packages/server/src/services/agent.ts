@@ -2,6 +2,8 @@ import { resolve } from "node:path"
 import { resolveModelConfig, streamAgent, type AgentEvent, type ResolvedAgentModel } from "@nyx/agent"
 import { getAgentSettings } from "@nyx/config"
 import { createAgentTools } from "../lib/agent-tools"
+import { createModelTools } from "../lib/model-tools"
+import { ProviderCache } from "../lib/provider-cache"
 import type { AgentRequest } from "../shared/types"
 
 /**
@@ -11,6 +13,8 @@ import type { AgentRequest } from "../shared/types"
  * approval is answered by re-sending it.
  */
 export class AgentService {
+  constructor(private readonly cache: ProviderCache = new ProviderCache()) {}
+
   /** Stream one agent run over `request.messages`. */
   async *stream(request: AgentRequest, signal?: AbortSignal): AsyncIterable<AgentEvent> {
     const settings = getAgentSettings()
@@ -25,9 +29,13 @@ export class AgentService {
     }
 
     const workspaceDir = request.workspaceDir ? resolve(request.workspaceDir) : process.cwd()
+    const tools = [
+      ...createAgentTools(workspaceDir),
+      ...(settings.tools?.localModels ? createModelTools({ cache: this.cache, workspaceDir }) : []),
+    ]
     yield* streamAgent({
       model,
-      tools: createAgentTools(workspaceDir),
+      tools,
       messages: request.messages,
       workspaceDir,
       systemPrompt: settings.systemPrompt,

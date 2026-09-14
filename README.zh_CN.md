@@ -79,6 +79,22 @@ agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型
 
 `npm` 选择 AI SDK 的 provider 包 —— `@ai-sdk/openai-compatible`（任意 OpenAI 兼容端点：OpenAI、DeepSeek、OpenRouter、vLLM、Ollama、OpenCode Zen/Go 等）或 `@ai-sdk/anthropic`。`options` 承载 `baseURL`/`apiKey`/`headers`；`limit.output` 限制生成 token 数。环境变量覆盖：`NYX_AGENT_MODEL` 替换引用，`NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS`（JSON 对象）覆盖当前 provider 的 options。单次运行覆盖：`--model`、`--base-url`。部分网关需要额外的请求头（例如 OpenCode Zen/Go 需要 `x-opencode-session`），配置在对应 provider 的 `options.headers` 下。桌面端的 agent 界面尚未接入。
 
+### 本地模型作为工具
+
+开启 `agent.tools.localModels`（或 `NYX_AGENT_LOCAL_MODELS=1`）后，本机已安装的 ONNX 模型也会暴露给主脑：`local_text_generation` 用任意已缓存的 `text-generation` 模型生成文本并返回（自动执行）；`local_image_to_image` 对工作区内的图片做变换并把结果写回（需要 `y/n` 审批）。
+
+```json
+{
+  "agent": {
+    "model": "deepseek/deepseek-chat",
+    "provider": { "deepseek": { "npm": "@ai-sdk/openai-compatible", "options": { "baseURL": "https://api.deepseek.com/v1", "apiKey": "sk-..." } } },
+    "tools": { "localModels": true }
+  }
+}
+```
+
+本地推理在进程内执行、不做流式 —— 工具跑完前 agent 回复会停顿 —— 工具结果（生成的文本，或输出文件路径）会像其他工具输出一样发送给远程主脑。
+
 ## 桌面应用
 
 桌面端把推理放在独立启动的 server 子进程中（onnxruntime 在 Electron 的 Node 运行时中会崩溃）。先构建 server 产物，再启动应用：

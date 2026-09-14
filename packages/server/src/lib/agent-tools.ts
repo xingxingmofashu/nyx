@@ -1,10 +1,10 @@
 import { exec } from "node:child_process";
-import { realpathSync } from "node:fs";
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod/v4";
 import type { AgentTool, AgentToolSet } from "@nyx/agent";
+import { realpathNearest, workspacePath } from "./workspace";
 
 const execAsync = promisify(exec);
 
@@ -32,7 +32,7 @@ export function createAgentTools(workspaceDir: string): AgentToolSet {
         limit: z.number().int().positive().optional().describe("Maximum number of lines to read"),
       }),
       execute: async ({ path, offset, limit }) => {
-        const file = within(root, path);
+        const file = workspacePath(root, path);
         const lines = (await readFile(file, "utf8")).split("\n");
         const start = (offset ?? 1) - 1;
         const end = limit ? start + limit : lines.length;
@@ -53,7 +53,7 @@ export function createAgentTools(workspaceDir: string): AgentToolSet {
         content: z.string().describe("Full file content"),
       }),
       execute: async ({ path, content }) => {
-        const file = within(root, path);
+        const file = workspacePath(root, path);
         await mkdir(dirname(file), { recursive: true });
         await writeFile(file, content, "utf8");
         return `Wrote ${Buffer.byteLength(content)} bytes to ${path}`;
@@ -71,7 +71,7 @@ export function createAgentTools(workspaceDir: string): AgentToolSet {
         replaceAll: z.boolean().optional().describe("Replace every occurrence instead of exactly one"),
       }),
       execute: async ({ path, oldString, newString, replaceAll }) => {
-        const file = within(root, path);
+        const file = workspacePath(root, path);
         const raw = await readFile(file, "utf8");
         const count = raw.split(oldString).length - 1;
         if (count === 0) throw new Error(`oldString not found in ${path}`);
@@ -125,7 +125,7 @@ export function createAgentTools(workspaceDir: string): AgentToolSet {
         } catch {
           throw new Error(`invalid regular expression: ${pattern}`);
         }
-        const base = within(root, path ?? ".");
+        const base = workspacePath(root, path ?? ".");
         const filter = glob ? globToRegExp(glob) : null;
         const info = await stat(base).catch(() => null);
         const files = info?.isFile() ? [base] : await walkFiles(base, filter);
@@ -170,36 +170,6 @@ export function createAgentTools(workspaceDir: string): AgentToolSet {
       },
     },
   ] as AgentToolSet;
-}
-
-/**
- * Resolve `p` under `root`, rejecting paths that escape the workspace. Both
- * the lexical path and its symlink-resolved form are checked, so a symlink
- * inside the workspace cannot reach outside it.
- */
-function within(root: string, p: string): string {
-  const resolved = resolve(root, p);
-  assertWithin(root, resolved);
-  assertWithin(root, realpathNearest(resolved));
-  return resolved;
-}
-
-/** Throw when `target` is not `root` or a descendant of it. */
-function assertWithin(root: string, target: string): void {
-  const rel = relative(root, target);
-  const inside = rel === "" || (rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
-  if (!inside) throw new Error(`path escapes workspace: ${target}`);
-}
-
-/** `realpath` the nearest existing ancestor, rejoining the missing tail. */
-function realpathNearest(p: string): string {
-  try {
-    return realpathSync(p);
-  } catch {
-    const parent = dirname(p);
-    if (parent === p) return p;
-    return join(realpathNearest(parent), basename(p));
-  }
 }
 
 function clamp(text: string): string {

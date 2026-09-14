@@ -31,7 +31,7 @@ export function createApp(options: { token?: string; services?: ServerServices }
     models: new ModelsService(cache),
     textGeneration: new TextGenerationService(cache),
     imageToImage: new ImageToImageService(cache),
-    agent: new AgentService(),
+    agent: new AgentService(cache),
   }
 
   const v1 = new Hono()

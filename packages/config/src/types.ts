@@ -14,8 +14,16 @@ export interface AgentSettings {
   model?: string
   /** Named provider definitions the model ref resolves against. */
   provider?: Record<string, AgentProviderEntry>
+  /** Per-tool toggles for the agent. */
+  tools?: AgentToolsSettings
   systemPrompt?: string
   maxSteps?: number
+}
+
+/** Optional agent tool toggles. */
+export interface AgentToolsSettings {
+  /** Expose locally installed ONNX models as tools the brain may call (default false). */
+  localModels?: boolean
 }
 
 /** One provider definition (opencode-style): an AI SDK package + its options. */
