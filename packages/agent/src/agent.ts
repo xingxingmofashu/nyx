@@ -1,8 +1,8 @@
 import {
-  convertToModelMessages,
+  createAgentUIStreamResponse,
   isStepCount,
-  streamText,
   tool as aiTool,
+  ToolLoopAgent,
   type LanguageModel,
   type ToolSet,
 } from "ai";
@@ -45,29 +45,31 @@ function toAiTools(tools: AgentToolSet, workspaceDir: string, signal?: AbortSign
 
 /**
  * Run one agent round-trip and return the AI SDK UI message stream response.
- * The client owns the `UIMessage[]` transcript: tool approvals come back as
- * `tool-approval-response` parts on the next request, and the server stays
- * stateless.
+ * The `ToolLoopAgent` owns the tool-calling loop (default stop: 20 steps) and
+ * `createAgentUIStreamResponse` converts the `UIMessage[]` transcript to model
+ * messages, runs the loop, and emits the UI message stream. The client owns the
+ * transcript: tool approvals come back as `tool-approval-response` parts on the
+ * next request, and the server stays stateless.
  */
 export async function streamAgent(options: AgentRunOptions): Promise<Response> {
-  const { model, tools, messages, workspaceDir, systemPrompt, maxSteps = 20, signal } = options;
+  const { model, tools, messages, workspaceDir, systemPrompt, maxSteps, signal } = options;
   const { tools: aiTools, toolApproval } = toAiTools(tools, workspaceDir, signal);
   const languageModel: LanguageModel = isModelConfig(model) ? resolveModel(model) : model;
   const maxOutputTokens = isModelConfig(model) ? model.maxOutputTokens : undefined;
 
-  const result = streamText({
+  const agent = new ToolLoopAgent({
     model: languageModel,
-    system: systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
-    messages: await convertToModelMessages(messages),
+    instructions: systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
     tools: aiTools,
     toolApproval,
-    stopWhen: isStepCount(maxSteps),
-    maxOutputTokens,
-    abortSignal: signal,
+    ...(maxSteps === undefined ? {} : { stopWhen: isStepCount(maxSteps) }),
+    ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
   });
 
-  return result.toUIMessageStreamResponse({
-    originalMessages: messages,
+  return createAgentUIStreamResponse({
+    agent,
+    uiMessages: messages,
+    abortSignal: signal,
     generateMessageId: () => `msg_${crypto.randomUUID()}`,
     onError: errorMessage,
   });

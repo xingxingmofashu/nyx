@@ -27,7 +27,7 @@ Bun monorepo：
 ```bash
 bun install
 bun run dev -- --help       # 运行 CLI（默认命令启动 agent TUI，见「主脑」）
-bun --cwd apps/coding-agent run src/index.ts --help
+bun run --cwd apps/coding-agent src/index.ts --help
 ```
 
 ### 本地模型
@@ -51,7 +51,7 @@ nyx text-generation --model "<id>" --message "你好"              # 一次性�
 nyx image-to-image <input> --model "<id>" [-o out.png]           # 图生图变换
 ```
 
-agent TUI 中：输入消息回车发送，`/clear` 清空对话，`/quit`（或 Ctrl+C）退出。回复以 markdown 流式显示，工具卡片与 y/n 审批内联展示。
+agent TUI（由 `@ai-sdk/tui` 提供界面）：输入消息回车发送，内联工具审批用 `y`/`n` 回答，`Esc`（或 Ctrl+C）退出。回复以 markdown 流式显示，工具卡片与推理内容内联展示。
 
 ## 主脑（agent）
 
@@ -100,11 +100,11 @@ agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型
 桌面端把推理放在独立启动的 server 子进程中（onnxruntime 在 Electron 的 Node 运行时中会崩溃）。先构建 server 产物，再启动应用：
 
 ```bash
-bun --cwd packages/server run build   # 生成 packages/server/dist/server.cjs
+bun run --cwd packages/server build   # 生成 packages/server/dist/server.cjs
 bun run dev:desktop                   # 启动 Electron 应用
 ```
 
-打包使用 `bun --cwd apps/desktop run make`。
+打包使用 `bun run --cwd apps/desktop make`。
 
 ## 开发
 

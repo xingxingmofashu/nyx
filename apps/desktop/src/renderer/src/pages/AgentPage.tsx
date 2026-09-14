@@ -125,69 +125,75 @@ export function AgentPage() {
               <MessageScroller className="h-full">
                 <MessageScrollerViewport>
                   <MessageScrollerContent className="p-4">
-                    {messages.map((message) => (
-                      <MessageScrollerItem
-                        key={message.id}
-                        messageId={message.id}
-                        scrollAnchor={message.role === "user"}
-                      >
-                        {message.parts.map((part, index) => {
-                          if (part.type === "text") {
-                            return (
-                              <Message key={index} align={message.role === "user" ? "end" : "start"}>
-                                <MessageContent>
-                                  <Bubble
-                                    variant={message.role === "user" ? "default" : "muted"}
-                                    align={message.role === "user" ? "end" : "start"}
-                                  >
-                                    <BubbleContent>
-                                      {message.role === "user" ? (
-                                        <p className="whitespace-pre-wrap">{part.text}</p>
-                                      ) : (
-                                        <MarkdownText text={part.text} />
-                                      )}
-                                    </BubbleContent>
-                                  </Bubble>
-                                </MessageContent>
-                              </Message>
-                            )
-                          }
-                          if (!isToolUIPart(part)) return null
+                    {messages.map((message, messageIndex) => {
+                      const animating =
+                        status === "streaming" &&
+                        messageIndex === messages.length - 1 &&
+                        message.role === "assistant"
+                      return (
+                        <MessageScrollerItem
+                          key={message.id}
+                          messageId={message.id}
+                          scrollAnchor={message.role === "user"}
+                        >
+                          {message.parts.map((part, index) => {
+                            if (part.type === "text") {
+                              return (
+                                <Message key={index} align={message.role === "user" ? "end" : "start"}>
+                                  <MessageContent>
+                                    <Bubble
+                                      variant={message.role === "user" ? "default" : "muted"}
+                                      align={message.role === "user" ? "end" : "start"}
+                                    >
+                                      <BubbleContent>
+                                        {message.role === "user" ? (
+                                          <p className="whitespace-pre-wrap">{part.text}</p>
+                                        ) : (
+                                          <MarkdownText text={part.text} isAnimating={animating} />
+                                        )}
+                                      </BubbleContent>
+                                    </Bubble>
+                                  </MessageContent>
+                                </Message>
+                              )
+                            }
+                            if (!isToolUIPart(part)) return null
 
-                          const name = getToolName(part)
-                          if (part.state === "approval-requested") {
+                            const name = getToolName(part)
+                            if (part.state === "approval-requested") {
+                              return (
+                                <ApprovalCard
+                                  key={part.toolCallId}
+                                  name={name}
+                                  input={part.input}
+                                  onApprove={() =>
+                                    addToolApprovalResponse({ id: part.approval.id, approved: true })
+                                  }
+                                  onDeny={() =>
+                                    addToolApprovalResponse({
+                                      id: part.approval.id,
+                                      approved: false,
+                                      reason: "user denied",
+                                    })
+                                  }
+                                />
+                              )
+                            }
+
                             return (
-                              <ApprovalCard
+                              <ToolCallCard
                                 key={part.toolCallId}
                                 name={name}
                                 input={part.input}
-                                onApprove={() =>
-                                  addToolApprovalResponse({ id: part.approval.id, approved: true })
-                                }
-                                onDeny={() =>
-                                  addToolApprovalResponse({
-                                    id: part.approval.id,
-                                    approved: false,
-                                    reason: "user denied",
-                                  })
-                                }
+                                state={part.state as ToolPartState}
+                                output={part.state === "output-available" ? part.output : undefined}
+                                errorText={part.state === "output-error" ? part.errorText : undefined}
                               />
                             )
-                          }
-
-                          return (
-                            <ToolCallCard
-                              key={part.toolCallId}
-                              name={name}
-                              input={part.input}
-                              state={part.state as ToolPartState}
-                              output={part.state === "output-available" ? part.output : undefined}
-                              errorText={part.state === "output-error" ? part.errorText : undefined}
-                            />
-                          )
-                        })}
-                      </MessageScrollerItem>
-                    ))}
+                          })}
+                        </MessageScrollerItem>
+                      )
+                    })}
                     {status === "submitted" && (
                       <MessageScrollerItem messageId="streaming">
                         <StreamingMarker />

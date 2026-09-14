@@ -27,7 +27,7 @@ Bun monorepo:
 ```bash
 bun install
 bun run dev -- --help       # run the CLI (default command starts the agent TUI; see Master brain)
-bun --cwd apps/coding-agent run src/index.ts --help
+bun run --cwd apps/coding-agent src/index.ts --help
 ```
 
 ### Local models
@@ -50,7 +50,7 @@ nyx text-generation --model "<id>" --message "Hello"             # one-shot text
 nyx image-to-image <input> --model "<id>" [-o out.png]           # image-to-image transform
 ```
 
-In the agent TUI: type a message and press Enter to send, `/clear` resets the transcript, `/quit` (or Ctrl+C) exits. Replies stream in as markdown, with tool cards and inline y/n approval prompts.
+In the agent TUI (powered by `@ai-sdk/tui`): type a message and press Enter to send, `y`/`n` answers the inline tool-approval prompt, and `Esc` (or Ctrl+C) exits. Replies stream in as markdown, with tool cards and reasoning sections.
 
 ## Master brain (agent)
 
@@ -99,11 +99,11 @@ Local inference runs in-process and is not streamed — the agent's reply pauses
 The desktop app runs inference in a spawned server child (onnxruntime crashes inside Electron's Node runtime). Build the server bundle first, then start the app:
 
 ```bash
-bun --cwd packages/server run build   # emit packages/server/dist/server.cjs
+bun run --cwd packages/server build   # emit packages/server/dist/server.cjs
 bun run dev:desktop                   # start the Electron app
 ```
 
-Package it with `bun --cwd apps/desktop run make`.
+Package it with `bun run --cwd apps/desktop make`.
 
 ## Development
 

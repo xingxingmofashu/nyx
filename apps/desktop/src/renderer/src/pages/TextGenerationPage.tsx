@@ -77,34 +77,40 @@ export function TextGenerationPage() {
               <MessageScroller className="h-full">
                 <MessageScrollerViewport>
                   <MessageScrollerContent className="p-4">
-                    {messages.map((message) => (
-                      <MessageScrollerItem
-                        key={message.id}
-                        messageId={message.id}
-                        scrollAnchor={message.role === "user"}
-                      >
-                        {message.parts.map((part, index) =>
-                          part.type === "text" ? (
-                            <Message key={index} align={message.role === "user" ? "end" : "start"}>
-                              <MessageContent>
-                                <Bubble
-                                  variant={message.role === "user" ? "default" : "muted"}
-                                  align={message.role === "user" ? "end" : "start"}
-                                >
-                                  <BubbleContent>
-                                    {message.role === "user" ? (
-                                      <p className="whitespace-pre-wrap">{part.text}</p>
-                                    ) : (
-                                      <MarkdownText text={part.text} />
-                                    )}
-                                  </BubbleContent>
-                                </Bubble>
-                              </MessageContent>
-                            </Message>
-                          ) : null,
-                        )}
-                      </MessageScrollerItem>
-                    ))}
+                    {messages.map((message, messageIndex) => {
+                      const animating =
+                        status === "streaming" &&
+                        messageIndex === messages.length - 1 &&
+                        message.role === "assistant"
+                      return (
+                        <MessageScrollerItem
+                          key={message.id}
+                          messageId={message.id}
+                          scrollAnchor={message.role === "user"}
+                        >
+                          {message.parts.map((part, index) =>
+                            part.type === "text" ? (
+                              <Message key={index} align={message.role === "user" ? "end" : "start"}>
+                                <MessageContent>
+                                  <Bubble
+                                    variant={message.role === "user" ? "default" : "muted"}
+                                    align={message.role === "user" ? "end" : "start"}
+                                  >
+                                    <BubbleContent>
+                                      {message.role === "user" ? (
+                                        <p className="whitespace-pre-wrap">{part.text}</p>
+                                      ) : (
+                                        <MarkdownText text={part.text} isAnimating={animating} />
+                                      )}
+                                    </BubbleContent>
+                                  </Bubble>
+                                </MessageContent>
+                              </Message>
+                            ) : null,
+                          )}
+                        </MessageScrollerItem>
+                      )
+                    })}
                     {status === "submitted" && (
                       <MessageScrollerItem messageId="streaming">
                         <StreamingMarker />

@@ -2,17 +2,20 @@
  * `nyx` (no subcommand) — start the master-brain agent TUI.
  *
  * The brain is a remote model (API key); tools are local coding tools. The
- * agent loop runs in a short-lived local server child process, reached over HTTP.
+ * agent loop runs in a short-lived local server child process, reached over HTTP
+ * with the AI SDK `DefaultChatTransport`; the terminal UI is `@ai-sdk/tui`'s
+ * `runAgentTUI` (streaming output, tool cards, reasoning, approvals).
  */
 
 import { isatty } from "node:tty";
 import { resolve } from "node:path";
 import { log } from "@clack/prompts";
+import { DefaultChatTransport } from "ai";
+import { runAgentTUI } from "@ai-sdk/tui";
 import { start } from "@nyx/server";
 import { getAgentSettings } from "@nyx/config";
 import { resolveModelConfig } from "@nyx/agent";
 import { cmd } from "../utils/cmd";
-import { runAgentTui } from "../../tui";
 
 interface AgentArgs {
   cwd?: string;
@@ -57,12 +60,14 @@ export const AgentCommand = cmd<Record<string, unknown>, AgentArgs>({
     const workspaceDir = resolve(args.cwd ?? process.cwd());
     const server = await start({ port: 0 });
     try {
-      await runAgentTui({
-        serverUrl: server.url,
-        workspaceDir,
-        modelLabel: model ?? "",
-        model: args.model,
-        baseURL: args.baseUrl,
+      await runAgentTUI({
+        title: model ? `nyx agent (${model})` : "nyx agent",
+        transport: new DefaultChatTransport({
+          api: `${server.url}/v1/agent`,
+          body: { workspaceDir, model: args.model, baseURL: args.baseUrl },
+        }),
+        tools: "auto-collapsed",
+        reasoning: "auto-collapsed",
       });
     } finally {
       await server.stop();

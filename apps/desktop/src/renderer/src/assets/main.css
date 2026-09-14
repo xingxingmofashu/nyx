@@ -2,8 +2,10 @@
 @import "tw-animate-css";
 @import "streamdown/styles.css";
 
-/* Streamdown ships Tailwind classes; let Tailwind scan them (dep lives in apps/desktop). */
+/* Streamdown ships Tailwind classes; let Tailwind scan them (deps live in apps/desktop). */
 @source "../../../../node_modules/streamdown/dist/*.js";
+@source "../../../../node_modules/@streamdown/code/dist/*.js";
+@source "../../../../node_modules/@streamdown/cjk/dist/*.js";
 
 @custom-variant dark (&:is(.dark *));
 
