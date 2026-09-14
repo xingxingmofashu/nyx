@@ -2,6 +2,8 @@ import { contextBridge, ipcRenderer } from "electron"
 import { IPC } from "../shared/ipc"
 import type {
   ChatSendRequest,
+  ChatSessionMeta,
+  ChatSessionSaveRequest,
   ChatStreamEvent,
   AudioResult,
   AudioSamples,
@@ -9,6 +11,7 @@ import type {
   ImageResult,
   ModelInfo,
   ModelPullProgress,
+  SaveFileRequest,
   TextToSpeechInput,
   TranscriptResult,
   LLMTask,
@@ -59,9 +62,31 @@ const api: NyxApi = {
     getSettings: () => ipcRenderer.invoke(IPC.config.getSettings),
     setSettings: (patch) => ipcRenderer.invoke(IPC.config.setSettings, patch),
   },
+  sessions: {
+    list: (): Promise<ChatSessionMeta[]> => ipcRenderer.invoke(IPC.sessions.list),
+    get: (id: string) => ipcRenderer.invoke(IPC.sessions.get, id),
+    save: (session: ChatSessionSaveRequest) =>
+      ipcRenderer.invoke(IPC.sessions.save, session),
+    rename: (id: string, title: string) =>
+      ipcRenderer.invoke(IPC.sessions.rename, id, title),
+    setPinned: (id: string, pinned: boolean) =>
+      ipcRenderer.invoke(IPC.sessions.setPinned, id, pinned),
+    remove: (id: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.sessions.remove, id),
+    getActive: (): Promise<string | null> =>
+      ipcRenderer.invoke(IPC.sessions.getActive),
+    setActive: (id: string | null): Promise<void> =>
+      ipcRenderer.invoke(IPC.sessions.setActive, id),
+  },
   dialog: {
     selectDirectory: (): Promise<string | null> =>
       ipcRenderer.invoke(IPC.dialog.selectDirectory),
+    saveFile: (request: SaveFileRequest): Promise<string | null> =>
+      ipcRenderer.invoke(IPC.dialog.saveFile, request),
+  },
+  files: {
+    readDataUrl: (path: string): Promise<string | null> =>
+      ipcRenderer.invoke(IPC.files.readDataUrl, path),
   },
   window: {
     minimize: () => ipcRenderer.send(IPC.window.minimize),

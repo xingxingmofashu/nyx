@@ -6,8 +6,37 @@ interface SpeechOutput {
   path?: string
   seconds?: number
   samplingRate?: number
-  /** `data:audio/wav;base64,…`; present only when the client requested inline audio. */
+  /** Legacy inline `data:` URL (older sessions); new results carry only `path`. */
   audio?: string
+}
+
+/** Load the generated WAV: inline when present, else read it back from the workspace. */
+function useSpeechDataUrl(output: SpeechOutput | undefined): { url?: string; missing: boolean } {
+  const [url, setUrl] = useState<string>()
+  const [missing, setMissing] = useState(false)
+  const inline = output?.audio
+  const path = output?.path
+
+  useEffect(() => {
+    setUrl(undefined)
+    setMissing(false)
+    if (inline) {
+      setUrl(inline)
+      return
+    }
+    if (!path) return
+    let cancelled = false
+    void window.nyx.files.readDataUrl(path).then((dataUrl) => {
+      if (cancelled) return
+      if (dataUrl) setUrl(dataUrl)
+      else setMissing(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [inline, path])
+
+  return { url, missing }
 }
 
 /** Decode a `data:` URL to an object URL so the CSP can keep `media-src` at `blob:`. */
@@ -42,7 +71,8 @@ interface SpeechCardProps {
 /** Tool card for `local_text_to_speech`: plays the agent's spoken reply inline. */
 export function SpeechCard({ toolCallId, name, state, output, errorText }: SpeechCardProps) {
   const data = (output ?? undefined) as SpeechOutput | undefined
-  const url = useObjectUrl(data?.audio)
+  const { url: dataUrl, missing } = useSpeechDataUrl(data)
+  const url = useObjectUrl(dataUrl)
   const detail = data?.path
     ? `${data.path}${data.seconds ? ` · ${data.seconds}s` : ""}${data.samplingRate ? ` @ ${data.samplingRate} Hz` : ""}`
     : undefined
@@ -58,6 +88,7 @@ export function SpeechCard({ toolCallId, name, state, output, errorText }: Speec
           className="w-full"
         />
       )}
+      {missing && <p className="text-xs text-muted-foreground">Audio file is no longer available.</p>}
       {errorText && <p className="text-xs text-destructive">{errorText}</p>}
       {detail && <p className="text-xs text-muted-foreground">{detail}</p>}
     </ToolCardShell>

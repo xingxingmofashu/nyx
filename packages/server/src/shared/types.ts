@@ -75,10 +75,6 @@ export interface AgentRequest {
   messages: import("@nyx/agent").UIMessage[]
   /** Directory all file/bash tools are confined to; defaults to the server cwd. */
   workspaceDir?: string
-  /** Model ref override (`<providerId>/<modelId>`); defaults to agent.model. */
-  model?: string
-  /** Provider base URL override; defaults to the resolved provider's options. */
-  baseURL?: string
   /**
    * When true, local speech tools inline the generated audio in their result so
    * the client can play it (e.g. the desktop chat). Omitted, they play it aloud

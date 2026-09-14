@@ -68,3 +68,22 @@ export interface ModelInfo {
 export interface ModelConfig {
   provider: Record<string, { models: Record<string, ModelInfo> }>
 }
+
+/** Metadata for one saved agent chat session (listed without its transcript). */
+export interface ChatSessionMeta {
+  id: string
+  /** Display title (auto-derived from the first user message, then renamed by hand). */
+  title: string
+  /** Workspace the session belongs to; the UI groups sessions by this. */
+  workspaceDir?: string
+  /** Pinned sessions sort before the rest. */
+  pinned?: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+/** A saved agent chat session with its full AI SDK `UIMessage[]` transcript. */
+export interface ChatSession extends ChatSessionMeta {
+  /** Kept opaque so `@nyx/config` stays free of the AI SDK dependency. */
+  messages: unknown[]
+}

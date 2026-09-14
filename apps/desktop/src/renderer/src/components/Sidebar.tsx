@@ -1,5 +1,7 @@
+import { Fragment } from "react"
 import { AudioLines, Bot, Boxes, Image as ImageIcon, Mic, Sparkles } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
+import { SessionNav } from "./agent/SessionNav"
 import {
   Sidebar,
   SidebarContent,
@@ -56,27 +58,30 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {NAV.map((group) => (
-          <SidebarGroup key={group.label ?? "primary"}>
-            {group.label && (
-              <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">{group.label}</SidebarGroupLabel>
-            )}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.views.map((v) => {
-                  const Icon = v.icon
-                  return (
-                    <SidebarMenuItem key={v.id}>
-                      <SidebarMenuButton render={<NavLink to={v.path} />} isActive={v.path === location.pathname} tooltip={v.label}>
-                        <Icon />
-                        <span>{v.label}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+        {NAV.map((group, index) => (
+          <Fragment key={group.label ?? "primary"}>
+            <SidebarGroup>
+              {group.label && (
+                <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">{group.label}</SidebarGroupLabel>
+              )}
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {group.views.map((v) => {
+                    const Icon = v.icon
+                    return (
+                      <SidebarMenuItem key={v.id}>
+                        <SidebarMenuButton render={<NavLink to={v.path} />} isActive={v.path === location.pathname} tooltip={v.label}>
+                          <Icon />
+                          <span>{v.label}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+            {index === 0 && <SessionNav />}
+          </Fragment>
         ))}
       </SidebarContent>
     </Sidebar>

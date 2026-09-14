@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Bot, FolderOpen, RotateCcw } from "lucide-react"
 import { useChat } from "@ai-sdk/react"
 import { getToolName, isReasoningUIPart, isToolUIPart } from "ai"
 import { agentChat } from "../lib/chat"
+import { baseName } from "../lib/format"
 import { useAgentStore } from "../store/agent"
 import { useModelsStore } from "../store/models"
+import { useSessionsStore } from "../store/sessions"
 import { Button } from "../components/ui/button"
 import {
   Card,
@@ -39,14 +41,8 @@ import { ToolCallCard, type ToolPartState } from "../components/agent/ToolCallCa
 import { SpeechCard } from "../components/agent/SpeechCard"
 import { ApprovalCard } from "../components/agent/ApprovalCard"
 
-/** Last path segment, handling both separators. */
-function baseName(path: string): string {
-  const trimmed = path.replace(/[\\/]+$/, "")
-  return trimmed.split(/[\\/]/).pop() ?? trimmed
-}
-
 export function AgentPage() {
-  const { messages, sendMessage, status, stop, error, setMessages, clearError, addToolApprovalResponse } =
+  const { messages, sendMessage, status, stop, error, clearError, addToolApprovalResponse } =
     useChat({ chat: agentChat })
   const brainLabel = useAgentStore((s) => s.brainLabel)
   const configured = useAgentStore((s) => s.configured)
@@ -54,7 +50,25 @@ export function AgentPage() {
   const init = useAgentStore((s) => s.init)
   const setWorkspace = useAgentStore((s) => s.setWorkspace)
   const voiceModel = useModelsStore((s) => s.selected["automatic-speech-recognition"])
+  const activeId = useSessionsStore((s) => s.activeId)
+  const sessions = useSessionsStore((s) => s.sessions)
+  const createSession = useSessionsStore((s) => s.create)
   const [input, setInput] = useState("")
+  const restored = useRef(false)
+
+  useEffect(() => {
+    void init()
+    // Restore the last opened session once (StrictMode-safe).
+    if (restored.current) return
+    restored.current = true
+    void (async () => {
+      const store = useSessionsStore.getState()
+      await store.load()
+      await store.restoreLast()
+    })()
+  }, [init])
+
+  const title = (activeId ? sessions.find((s) => s.id === activeId)?.title : undefined) ?? "New chat"
 
   useEffect(() => {
     void init()
@@ -75,7 +89,7 @@ export function AgentPage() {
   }
 
   const reset = () => {
-    setMessages([])
+    void createSession()
     clearError()
   }
 
@@ -90,7 +104,7 @@ export function AgentPage() {
       <div className="relative flex min-h-0 flex-1 flex-col p-4">
         <Card className="flex h-full min-h-0 w-full flex-col gap-0">
           <CardHeader className="gap-1 border-b">
-            <CardTitle>Agent</CardTitle>
+            <CardTitle className="truncate">{title}</CardTitle>
             <CardDescription>
               {configured ? brainLabel : "No master brain configured"}
             </CardDescription>

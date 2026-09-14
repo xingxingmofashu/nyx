@@ -11,6 +11,7 @@ import { SettingsPage } from "./pages/SettingsPage"
 import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar"
 import { Toaster, toast } from "./components/ui/toast"
 import { useModelsStore } from "./store/models"
+import { initSessionPersistence } from "./store/sessions"
 import { applyTheme, getTheme } from "./lib/theme"
 
 const PAGE_TITLES: Record<string, string> = {
@@ -43,6 +44,11 @@ function Shell() {
     })
     void useModelsStore.getState().load()
     return unsubscribe
+  }, [])
+
+  // Persist the active chat session whenever a turn settles (module-level guard).
+  useEffect(() => {
+    initSessionPersistence()
   }, [])
 
   // Follow OS preference changes while the theme is set to "system".

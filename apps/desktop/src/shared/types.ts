@@ -14,11 +14,12 @@ import type {
   UIMessage,
   UIMessageChunk,
 } from "@nyx/server/types"
-import type { ModelInfo, Settings } from "@nyx/config"
+import type { ChatSessionMeta, ModelInfo, Settings } from "@nyx/config"
 import type { LLMTask } from "@nyx/llm"
 export type {
   AudioResult,
   AudioSamples,
+  ChatSessionMeta,
   ImageBytes,
   ImageResult,
   TextToSpeechInput,
@@ -41,6 +42,26 @@ export type ChatStreamEvent =
   | { type: "chunk"; streamId: string; chunk: UIMessageChunk }
   | { type: "end"; streamId: string }
   | { type: "error"; streamId: string; message: string }
+
+/** A persisted agent chat session, including its full AI SDK transcript. */
+export interface ChatSession extends ChatSessionMeta {
+  messages: UIMessage[]
+}
+
+/** Upsert payload for a session; the renderer derives the title. */
+export interface ChatSessionSaveRequest {
+  id: string
+  title: string
+  workspaceDir?: string
+  messages: UIMessage[]
+}
+
+/** Native save dialog request; main writes `content` to the chosen path. */
+export interface SaveFileRequest {
+  defaultPath?: string
+  filters?: Array<{ name: string; extensions: string[] }>
+  content: string
+}
 
 export interface ModelPullProgress {
   modelId: string
@@ -91,9 +112,25 @@ export interface NyxApi {
     getSettings: () => Promise<Settings>
     setSettings: (patch: Settings) => Promise<Settings>
   }
+  sessions: {
+    list: () => Promise<ChatSessionMeta[]>
+    get: (id: string) => Promise<ChatSession | null>
+    save: (session: ChatSessionSaveRequest) => Promise<ChatSessionMeta>
+    rename: (id: string, title: string) => Promise<ChatSessionMeta | null>
+    setPinned: (id: string, pinned: boolean) => Promise<ChatSessionMeta | null>
+    remove: (id: string) => Promise<void>
+    getActive: () => Promise<string | null>
+    setActive: (id: string | null) => Promise<void>
+  }
   dialog: {
     /** Native folder picker; resolves the chosen path, or null if cancelled. */
     selectDirectory: () => Promise<string | null>
+    /** Native save dialog; main writes the content and resolves the path (or null). */
+    saveFile: (request: SaveFileRequest) => Promise<string | null>
+  }
+  files: {
+    /** Read a workspace file as a data URL (confined to the workspace); null if unavailable. */
+    readDataUrl: (path: string) => Promise<string | null>
   }
   window: {
     minimize: () => void

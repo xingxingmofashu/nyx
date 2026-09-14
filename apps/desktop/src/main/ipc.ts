@@ -1,7 +1,30 @@
 import { BrowserWindow, dialog, ipcMain } from "electron"
-import { getModelsDir, getSettings, setSettings } from "@nyx/config"
+import { writeFile } from "node:fs/promises"
+import {
+  getActiveSessionId,
+  getModelsDir,
+  getSession,
+  getSettings,
+  listSessions,
+  removeSession,
+  renameSession,
+  saveSession,
+  setActiveSessionId,
+  setSessionPinned,
+  setSettings,
+} from "@nyx/config"
 import { IPC } from "../shared/ipc"
-import type { ImageBytes, LLMTask, Settings, TextToSpeechInput, ChatSendRequest, AudioSamples } from "../shared/types"
+import { readWorkspaceFileDataUrl } from "./lib/workspace-file"
+import type {
+  AudioSamples,
+  ChatSendRequest,
+  ChatSessionSaveRequest,
+  ImageBytes,
+  LLMTask,
+  SaveFileRequest,
+  Settings,
+  TextToSpeechInput,
+} from "../shared/types"
 import { ChatStreamService } from "./services/chat-stream"
 import { ImageToImageService } from "./services/image-to-image"
 import { AutomaticSpeechRecognitionService } from "./services/automatic-speech-recognition"
@@ -72,6 +95,20 @@ export function registerIpc(services: Services): void {
   ipcMain.handle(IPC.config.getSettings, () => getSettings())
   ipcMain.handle(IPC.config.setSettings, (_e, patch: Settings) => setSettings(patch))
 
+  // --- Sessions ---
+  ipcMain.handle(IPC.sessions.list, () => listSessions())
+  ipcMain.handle(IPC.sessions.get, (_e, id: string) => getSession(id) ?? null)
+  ipcMain.handle(IPC.sessions.save, (_e, session: ChatSessionSaveRequest) => saveSession(session))
+  ipcMain.handle(IPC.sessions.rename, (_e, id: string, title: string) => renameSession(id, title) ?? null)
+  ipcMain.handle(IPC.sessions.setPinned, (_e, id: string, pinned: boolean) => setSessionPinned(id, pinned) ?? null)
+  ipcMain.handle(IPC.sessions.remove, (_e, id: string) => {
+    removeSession(id)
+  })
+  ipcMain.handle(IPC.sessions.getActive, () => getActiveSessionId() ?? null)
+  ipcMain.handle(IPC.sessions.setActive, (_e, id: string | null) => {
+    setActiveSessionId(id)
+  })
+
   // --- Dialog ---
   ipcMain.handle(IPC.dialog.selectDirectory, async (e) => {
     const win = BrowserWindow.fromWebContents(e.sender)
@@ -81,6 +118,19 @@ export function registerIpc(services: Services): void {
       : await dialog.showOpenDialog({ properties })
     return result.canceled ? null : (result.filePaths[0] ?? null)
   })
+  ipcMain.handle(IPC.dialog.saveFile, async (e, request: SaveFileRequest) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const options = { defaultPath: request.defaultPath, filters: request.filters }
+    const result = win
+      ? await dialog.showSaveDialog(win, options)
+      : await dialog.showSaveDialog(options)
+    if (result.canceled || !result.filePath) return null
+    await writeFile(result.filePath, request.content, "utf8")
+    return result.filePath
+  })
+
+  // --- Files ---
+  ipcMain.handle(IPC.files.readDataUrl, (_e, path: string) => readWorkspaceFileDataUrl(path))
 
   // --- Window controls (frameless) ---
   ipcMain.on(IPC.window.minimize, (e) =>

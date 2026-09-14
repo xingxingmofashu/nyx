@@ -41,6 +41,7 @@ bun run --cwd apps/coding-agent src/index.ts --help
 ```bash
 nyx                                                              # 主脑 agent TUI（远程模型 + 本地编码工具）
 nyx --cwd ./project                                              # ...指定工作区目录
+nyx --resume                                                     # 选择本工作区的一个已保存会话并继续
 
 nyx model pull <model> --task <image-to-image|text-to-speech|automatic-speech-recognition>   # 预下载模型
 nyx model list                                                   # 列出本地已缓存模型（别名：ls）
@@ -51,6 +52,8 @@ nyx text-to-speech "<文本>" --model "<id>" [-o out.wav]          # 文生语�
 ```
 
 agent TUI（由 `@ai-sdk/tui` 提供界面）：输入消息回车发送，内联工具审批用 `y`/`n` 回答，`Esc`（或 Ctrl+C）退出。回复以 markdown 流式显示，工具卡片与推理内容内联展示。
+
+会话保存在 `~/.nyx/sessions*`，与桌面端共用。`nyx --resume` 会列出当前工作区的会话，把选中的历史作为上下文喂给模型（终端界面无法回放历史，只显示新回复）。
 
 ### 语音输入（桌面端）
 
@@ -80,7 +83,7 @@ agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型
 }
 ```
 
-`npm` 选择 AI SDK 的 provider 包 —— `@ai-sdk/openai-compatible`（任意 OpenAI 兼容端点：OpenAI、DeepSeek、OpenRouter、vLLM、Ollama、OpenCode Zen/Go 等）或 `@ai-sdk/anthropic`。`options` 承载 `baseURL`/`apiKey`/`headers`；`limit.output` 限制生成 token 数。环境变量覆盖：`NYX_AGENT_MODEL` 替换引用，`NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS`（JSON 对象）覆盖当前 provider 的 options。单次运行覆盖：`--model`、`--base-url`。部分网关需要额外的请求头（例如 OpenCode Zen/Go 需要 `x-opencode-session`），配置在对应 provider 的 `options.headers` 下。桌面端内置同一个 agent，并作为默认页面：在顶部选择工作区目录、对话、在内联卡片里审批工具调用。
+`npm` 选择 AI SDK 的 provider 包 —— `@ai-sdk/openai-compatible`（任意 OpenAI 兼容端点：OpenAI、DeepSeek、OpenRouter、vLLM、Ollama、OpenCode Zen/Go 等）或 `@ai-sdk/anthropic`。`options` 承载 `baseURL`/`apiKey`/`headers`；`limit.output` 限制生成 token 数。环境变量覆盖：`NYX_AGENT_MODEL` 替换引用，`NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS`（JSON 对象）覆盖当前 provider 的 options。部分网关需要额外的请求头（例如 OpenCode Zen/Go 需要 `x-opencode-session`），配置在对应 provider 的 `options.headers` 下。桌面端内置同一个 agent，并作为默认页面：在顶部选择工作区目录、对话、在内联卡片里审批工具调用。
 
 ### 本地模型作为工具
 
@@ -108,6 +111,8 @@ bun run dev:desktop                   # 启动 Electron 应用
 ```
 
 打包使用 `bun run --cwd apps/desktop make`。
+
+Agent 页面会保存对话历史（侧栏 **Chats** 分组，按工作区分组）：新建/切换/重命名/置顶/复制/导出/删除、标题搜索，并在启动时恢复上次的会话。生成的语音 WAV 写入工作区，会话里只引用路径，因此会话文件很小；播放时按需重新读取该文件。
 
 ## 开发
 

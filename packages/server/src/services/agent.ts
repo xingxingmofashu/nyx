@@ -21,8 +21,7 @@ export class AgentService {
 
     let model: ResolvedAgentModel
     try {
-      const resolved = resolveModelConfig({ ...settings, model: request.model ?? settings.model })
-      model = request.baseURL ? { ...resolved, baseURL: request.baseURL } : resolved
+      model = resolveModelConfig(settings)
     } catch (error) {
       return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 400 })
     }

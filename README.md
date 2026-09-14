@@ -41,6 +41,7 @@ Models are cached in `~/.nyx/models/` and auto-downloaded from Hugging Face on f
 ```bash
 nyx                                                              # master-brain agent TUI (remote model + coding tools)
 nyx --cwd ./project                                              # ...with an explicit workspace directory
+nyx --resume                                                     # pick a saved session for this workspace and continue it
 
 nyx model pull <model> --task <image-to-image|text-to-speech|automatic-speech-recognition>  # pre-download a model
 nyx model list                                                   # list locally cached models (alias: ls)
@@ -51,6 +52,8 @@ nyx text-to-speech "<text>" --model "<id>" [-o out.wav]          # text-to-speec
 ```
 
 In the agent TUI (powered by `@ai-sdk/tui`): type a message and press Enter to send, `y`/`n` answers the inline tool-approval prompt, and `Esc` (or Ctrl+C) exits. Replies stream in as markdown, with tool cards and reasoning sections.
+
+Sessions are saved under `~/.nyx/sessions*` and shared with the desktop app. `nyx --resume` lists the sessions for the current workspace and feeds the chosen one to the model as context (the terminal UI cannot re-render past turns, so only new replies are shown).
 
 ### Voice input (desktop)
 
@@ -80,7 +83,7 @@ The agent loop runs in the local server (`POST /v1/agent`), so API calls go out 
 }
 ```
 
-`npm` selects the AI SDK provider package — `@ai-sdk/openai-compatible` (any OpenAI-compatible endpoint: OpenAI, DeepSeek, OpenRouter, vLLM, Ollama, OpenCode Zen/Go, …) or `@ai-sdk/anthropic`. `options` holds `baseURL`/`apiKey`/`headers`; `limit.output` caps generated tokens. Env overrides: `NYX_AGENT_MODEL` replaces the ref, and `NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS` (a JSON object) override the active provider's options. Per-run overrides: `--model` and `--base-url`. Some gateways need extra request headers (e.g. OpenCode Zen/Go requires `x-opencode-session`) — add them under the provider's `options.headers`. The desktop app ships the same agent as its default page: pick a workspace folder in the header, chat, and approve tool calls inline.
+`npm` selects the AI SDK provider package — `@ai-sdk/openai-compatible` (any OpenAI-compatible endpoint: OpenAI, DeepSeek, OpenRouter, vLLM, Ollama, OpenCode Zen/Go, …) or `@ai-sdk/anthropic`. `options` holds `baseURL`/`apiKey`/`headers`; `limit.output` caps generated tokens. Env overrides: `NYX_AGENT_MODEL` replaces the ref, and `NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS` (a JSON object) override the active provider's options. Some gateways need extra request headers (e.g. OpenCode Zen/Go requires `x-opencode-session`) — add them under the provider's `options.headers`. The desktop app ships the same agent as its default page: pick a workspace folder in the header, chat, and approve tool calls inline.
 
 ### Local models as tools
 
@@ -108,6 +111,8 @@ bun run dev:desktop                   # start the Electron app
 ```
 
 Package it with `bun run --cwd apps/desktop make`.
+
+The Agent page keeps a chat history (sidebar **Chats**, grouped by workspace): new/switch/rename/pin/duplicate/export/delete, title search, and the last session is restored on launch. Generated WAV replies are written into the workspace and only referenced from the transcript, so sessions stay small; playback re-reads the file on demand.
 
 ## Development
 

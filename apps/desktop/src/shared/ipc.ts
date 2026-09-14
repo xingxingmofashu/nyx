@@ -31,8 +31,24 @@ export const IPC = {
     getSettings: "config:getSettings",
     setSettings: "config:setSettings",
   },
+  /** Persisted agent chat sessions (transcripts live in ~/.nyx/sessions). */
+  sessions: {
+    list: "sessions:list",
+    get: "sessions:get",
+    save: "sessions:save",
+    rename: "sessions:rename",
+    setPinned: "sessions:setPinned",
+    remove: "sessions:remove",
+    getActive: "sessions:getActive",
+    setActive: "sessions:setActive",
+  },
   dialog: {
     selectDirectory: "dialog:selectDirectory",
+    saveFile: "dialog:saveFile",
+  },
+  /** Read a generated workspace file (e.g. a spoken reply) back for playback. */
+  files: {
+    readDataUrl: "files:readDataUrl",
   },
   window: {
     minimize: "window:minimize",

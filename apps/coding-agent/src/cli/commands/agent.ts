@@ -5,23 +5,25 @@
  * agent loop runs in a short-lived local server child process, reached over HTTP
  * with the AI SDK `DefaultChatTransport`; the terminal UI is `@ai-sdk/tui`'s
  * `runAgentTUI` (streaming output, tool cards, reasoning, approvals).
+ *
+ * `--resume` picks a saved session (same store as the desktop) and feeds its
+ * history to the model as context; `@ai-sdk/tui` cannot re-render past turns.
  */
 
 import { isatty } from "node:tty";
 import { resolve } from "node:path";
-import { log } from "@clack/prompts";
-import { DefaultChatTransport } from "ai";
+import { isCancel, log, select } from "@clack/prompts";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import { runAgentTUI } from "@ai-sdk/tui";
 import { start } from "@nyx/server";
-import { getAgentSettings } from "@nyx/config";
+import { getAgentSettings, getSession, listSessions, saveSession } from "@nyx/config";
 import { resolveModelConfig } from "@nyx/agent";
 import { cmd } from "../utils/cmd";
+import { SessionTransport, newSessionId } from "../session-transport";
 
 interface AgentArgs {
   cwd?: string;
-  model?: string;
-  /** yargs camelizes `--base-url`; mapped to `baseURL` on the request. */
-  baseUrl?: string;
+  resume?: boolean;
 }
 
 export const AgentCommand = cmd<Record<string, unknown>, AgentArgs>({
@@ -33,13 +35,9 @@ export const AgentCommand = cmd<Record<string, unknown>, AgentArgs>({
         type: "string",
         description: "Workspace directory (default: current directory)",
       })
-      .option("model", {
-        type: "string",
-        description: 'Override the brain model ref ("<providerId>/<modelId>")',
-      })
-      .option("base-url", {
-        type: "string",
-        description: "Override the resolved provider base URL",
+      .option("resume", {
+        type: "boolean",
+        description: "Pick a saved session for this workspace and resume it (history as context)",
       }),
   handler: async (args: AgentArgs) => {
     if (!isatty(process.stdin.fd)) {
@@ -48,9 +46,8 @@ export const AgentCommand = cmd<Record<string, unknown>, AgentArgs>({
     }
 
     const settings = getAgentSettings();
-    const model = args.model ?? settings.model;
     try {
-      resolveModelConfig({ ...settings, model });
+      resolveModelConfig(settings);
     } catch (error) {
       log.error(error instanceof Error ? error.message : String(error));
       log.info("Configure it in ~/.nyx/settings.json under agent.{model,provider}.");
@@ -58,14 +55,56 @@ export const AgentCommand = cmd<Record<string, unknown>, AgentArgs>({
     }
 
     const workspaceDir = resolve(args.cwd ?? process.cwd());
+    let history: UIMessage[] = [];
+    let resumed: { id: string; title: string } | undefined;
+
+    if (args.resume) {
+      const metas = listSessions().filter((meta) => (meta.workspaceDir ?? "") === workspaceDir);
+      if (metas.length === 0) {
+        log.warn(`No saved sessions for ${workspaceDir}.`);
+      } else {
+        const picked = await select({
+          message: "Resume a session",
+          options: metas.map((meta) => ({
+            value: meta.id,
+            label: meta.title,
+            hint: new Date(meta.updatedAt).toLocaleString(),
+          })),
+        });
+        if (isCancel(picked)) return;
+        const stored = getSession(picked);
+        if (stored) {
+          history = stored.messages as UIMessage[];
+          resumed = { id: stored.id, title: stored.title };
+          log.info(`Resumed "${stored.title}" — ${history.length} messages of context (prior turns are not re-rendered).`);
+        }
+      }
+    }
+
     const server = await start({ port: 0 });
     try {
-      await runAgentTUI({
-        title: model ? `nyx agent (${model})` : "nyx agent",
-        transport: new DefaultChatTransport({
+      const transport = new SessionTransport(
+        new DefaultChatTransport({
           api: `${server.url}/v1/agent`,
-          body: { workspaceDir, model: args.model, baseURL: args.baseUrl },
+          body: { workspaceDir },
         }),
+        {
+          history,
+          sessionId: resumed?.id ?? newSessionId(),
+          workspaceDir,
+          onTurn: (id, dir, messages) => {
+            try {
+              saveSession({ id, title: resumed?.title ?? titleFor(messages), workspaceDir: dir, messages });
+            } catch (error) {
+              log.warn(`Failed to save session: ${error instanceof Error ? error.message : String(error)}`);
+            }
+          },
+        },
+      );
+
+      await runAgentTUI({
+        title: settings.model ? `nyx agent (${settings.model})` : "nyx agent",
+        transport,
         tools: "auto-collapsed",
         reasoning: "auto-collapsed",
       });
@@ -74,3 +113,16 @@ export const AgentCommand = cmd<Record<string, unknown>, AgentArgs>({
     }
   },
 });
+
+/** Title from the first user text message (first line, truncated). */
+function titleFor(messages: UIMessage[]): string {
+  for (const message of messages) {
+    if (message.role !== "user") continue;
+    for (const part of message.parts) {
+      if (part.type !== "text") continue;
+      const line = part.text.trim().split("\n")[0]?.trim() ?? "";
+      if (line) return line.length > 48 ? `${line.slice(0, 48)}…` : line;
+    }
+  }
+  return "CLI session";
+}

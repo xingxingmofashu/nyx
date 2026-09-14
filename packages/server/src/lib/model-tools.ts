@@ -92,7 +92,10 @@ export function createModelTools(options: { cache: ProviderCache; workspaceDir: 
         const path = relative(root, target).split(sep).join("/");
         const seconds = Number((audio.audio.length / audio.sampling_rate).toFixed(1));
         if (inlineAudio) {
-          return { path, seconds, samplingRate: audio.sampling_rate, audio: `data:audio/wav;base64,${wav.toString("base64")}` };
+          // The desktop plays the WAV by reading it back from the workspace, so
+          // return only the reference: keeps the transcript (and its session
+          // file) small instead of embedding the whole clip as base64.
+          return { path, seconds, samplingRate: audio.sampling_rate };
         }
         // Terminal clients cannot render audio: play it on this machine so the
         // agent still answers out loud, and keep the result a one-line string.

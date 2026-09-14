@@ -1,14 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { defu } from "defu";
+import { getConfigDir } from "./paths.ts";
 import type { ModelInfo, ModelConfig, Settings, AgentSettings } from "./types.ts";
-
-const CONFIG_DIR_NAME = ".nyx";
-
-function getConfigDir(): string {
-  return join(homedir(), CONFIG_DIR_NAME);
-}
 
 /** Model weight cache dir; overridable via NYX_MODELS_DIR. */
 export function getModelsDir(): string {
@@ -164,4 +158,5 @@ function readdirSafe(dir: string): string[] {
   }
 }
 
+export * from "./sessions.ts";
 export * from "./types.ts";
