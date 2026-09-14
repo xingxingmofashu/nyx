@@ -13,7 +13,7 @@ import type {
   UIMessageChunk,
 } from "@nyx/server/types"
 import type { ModelInfo, Settings } from "@nyx/config"
-import type { LLMMessage, LLMTask } from "@nyx/llm"
+import type { LLMTask } from "@nyx/llm"
 export type {
   AudioResult,
   ImageBytes,
@@ -21,19 +21,14 @@ export type {
   TextToAudioInput,
   UIMessage,
   UIMessageChunk,
-  LLMMessage,
   LLMTask,
   ModelInfo,
   Settings,
 }
 
-/** Which server endpoint a chat stream targets. */
-export type ChatEndpoint = "agent" | "text-generation"
-
-/** Start a chat stream. `body` is the endpoint-specific JSON request body. */
+/** Start an agent chat stream; `body` is the `/v1/agent` JSON request body. */
 export interface ChatSendRequest {
   streamId: string
-  endpoint: ChatEndpoint
   body: Record<string, unknown>
 }
 

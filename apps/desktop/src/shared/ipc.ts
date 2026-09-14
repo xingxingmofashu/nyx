@@ -8,7 +8,7 @@ export const IPC = {
       run: "text-to-audio:run",
     },
   },
-  /** Generic chat streaming (AI SDK UI message stream) for the agent + local text generation. */
+  /** Agent chat streaming (AI SDK UI message stream). */
   chat: {
     send: "chat:send",
     abort: "chat:abort",

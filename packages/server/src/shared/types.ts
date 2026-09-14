@@ -29,6 +29,8 @@ export interface TextToAudioInput {
   speaker?: string
   /** Optional playback speed (models that support it). */
   speed?: number
+  /** Optional generation length in audio tokens (MusicGen only). */
+  maxNewTokens?: number
 }
 
 /** Synthesized audio bytes as they cross the IPC boundary (structured-cloneable). */
@@ -39,13 +41,6 @@ export interface AudioResult {
   /** Sample rate of the waveform, in Hz. */
   samplingRate: number
 }
-
-/**
- * Transcript contract: `{ role, content }` turns fed straight to the
- * transformers.js pipeline (chat template applied internally). Each request
- * carries the full transcript; no session is stored server-side.
- */
-export type { LLMMessage } from "@nyx/llm"
 
 /**
  * Agent transcript: the AI SDK UI-message shape, including prior assistant

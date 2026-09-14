@@ -16,13 +16,11 @@ import { toast } from "../components/ui/toast"
 import { cn } from "../lib/utils"
 
 const TASK_OPTIONS: Array<{ id: LLMTask; label: string }> = [
-  { id: "text-generation", label: "Text generation" },
   { id: "image-to-image", label: "Image to image" },
   { id: "text-to-audio", label: "Text to audio" },
 ]
 
 const TASK_LABEL: Record<string, string> = {
-  "text-generation": "Text generation",
   "image-to-image": "Image to image",
   "text-to-audio": "Text to audio",
 }
@@ -42,7 +40,7 @@ export function ModelsPage() {
   const { startPull, cancelPull, remove } = useModelsStore()
 
   const [modelId, setModelId] = useState("")
-  const [task, setTask] = useState<LLMTask>("text-generation")
+  const [task, setTask] = useState<LLMTask>("image-to-image")
 
   const downloads = Object.entries(pulling)
 
@@ -102,7 +100,7 @@ export function ModelsPage() {
               <Select
                 value={task}
                 onValueChange={(v) => {
-                  if (v === "text-generation" || v === "image-to-image" || v === "text-to-audio") setTask(v)
+                  if (v === "image-to-image" || v === "text-to-audio") setTask(v)
                 }}
               >
                 <SelectTrigger id="task" size="sm" className="w-40">

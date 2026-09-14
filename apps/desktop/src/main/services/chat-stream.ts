@@ -4,9 +4,9 @@ import { IPC } from "../../shared/ipc"
 import type { ChatSendRequest, ChatStreamEvent } from "../../shared/types"
 
 /**
- * Stateless proxy for streamed chats (the master-brain agent and local text
- * generation). Each stream is identified by a renderer-generated id so chunks
- * can be routed back to the right `useChat` transport and aborted individually.
+ * Stateless proxy for the master-brain agent chat. Each stream is identified by
+ * a renderer-generated id so chunks can be routed back to the right `useChat`
+ * transport and aborted individually.
  */
 export class ChatStreamService {
   private readonly manager: NyxServerProcess
@@ -28,11 +28,11 @@ export class ChatStreamService {
   }
 
   /** Start a stream; chunks are pushed to all attached windows until it ends. */
-  async send({ streamId, endpoint, body }: ChatSendRequest): Promise<void> {
+  async send({ streamId, body }: ChatSendRequest): Promise<void> {
     const controller = new AbortController()
     this.controllers.set(streamId, controller)
     try {
-      for await (const chunk of this.manager.client.chat(endpoint, body, controller.signal)) {
+      for await (const chunk of this.manager.client.agent(body, controller.signal)) {
         this.broadcast({ type: "chunk", streamId, chunk })
       }
       this.broadcast({ type: "end", streamId })

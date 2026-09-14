@@ -10,6 +10,7 @@ interface TextToAudioArgs {
   model?: string;
   speaker?: string;
   speed?: number;
+  maxNewTokens?: number;
 }
 
 export const TextToAudioCommand = cmd<Record<string, unknown>, TextToAudioArgs>({
@@ -38,6 +39,10 @@ export const TextToAudioCommand = cmd<Record<string, unknown>, TextToAudioArgs>(
       .option("speed", {
         type: "number",
         description: "Optional playback speed (models that support it)",
+      })
+      .option("max-new-tokens", {
+        type: "number",
+        description: "Generation length in audio tokens (MusicGen only)",
       }),
   handler: async (args: TextToAudioArgs) => {
     if (!args.text || !args.model) {
@@ -54,6 +59,7 @@ export const TextToAudioCommand = cmd<Record<string, unknown>, TextToAudioArgs>(
     const audio = await provider.generate(args.text, {
       ...(args.speaker ? { speaker: args.speaker } : {}),
       ...(args.speed !== undefined ? { speed: args.speed } : {}),
+      ...(args.maxNewTokens !== undefined ? { maxNewTokens: args.maxNewTokens } : {}),
     });
     await audio.save(output);
     spin.stop("Done");

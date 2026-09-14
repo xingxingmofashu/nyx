@@ -6,8 +6,8 @@ A local ONNX inference tool — fully local, no cloud, your data never leaves yo
 
 nyx runs transformers.js-compatible ONNX models locally:
 
-- **Text generation** — small instruct models (e.g. Qwen2.5-0.5B-Instruct), one-shot or interactive TUI
 - **Image-to-image** — super-resolution and other image transforms (e.g. 4x_APISR_GRL_GAN)
+- **Text-to-audio** — speech (e.g. MMS-TTS) and music (e.g. MusicGen) synthesis, WAV output
 - **Master brain (agent)** — an optional remote model (bring your own API key) that orchestrates local coding tools; the agent loop runs in the local server, files/bash stay on your machine
 - **CLI and desktop** — a terminal CLI plus an Electron desktop app sharing the same local model cache
 
@@ -18,8 +18,8 @@ Bun monorepo:
 - `packages/config` — `~/.nyx` paths, the model registry (`~/.nyx/models.json`), and user settings (`~/.nyx/settings.json`)
 - `packages/llm` — model runtime + tasks (`runtime.ts` shared loader, `tasks/*`), built on onnxruntime-node / transformers.js
 - `packages/agent` — the master-brain agent core (Vercel AI SDK: providers + tool loop), no onnx dependency
-- `packages/server` — Hono HTTP service under `/v1` (models / tasks/text-generation / tasks/image-to-image / tasks/text-to-audio / agent), spawned as a plain Node child so onnxruntime runs outside Electron
-- `apps/coding-agent` — terminal CLI (yargs): `nyx` (agent TUI), `nyx text-generation`, `nyx image-to-image`, `nyx text-to-audio`, `nyx model ...`
+- `packages/server` — Hono HTTP service under `/v1` (models / tasks/image-to-image / tasks/text-to-audio / agent), spawned as a plain Node child so onnxruntime runs outside Electron
+- `apps/coding-agent` — terminal CLI (yargs): `nyx` (agent TUI), `nyx image-to-image`, `nyx text-to-audio`, `nyx model ...`
 - `apps/desktop` — Electron desktop app (forge + vite + React)
 
 ## Quick start
@@ -42,11 +42,10 @@ Models are cached in `~/.nyx/models/` and auto-downloaded from Hugging Face on f
 nyx                                                              # master-brain agent TUI (remote model + coding tools)
 nyx --cwd ./project                                              # ...with an explicit workspace directory
 
-nyx model pull <model> --task <text-generation|image-to-image|text-to-audio>   # pre-download a model
+nyx model pull <model> --task <image-to-image|text-to-audio>            # pre-download a model
 nyx model list                                                   # list locally cached models (alias: ls)
 nyx model remove <model> [--yes]                                 # delete a cached model
 
-nyx text-generation --model "<id>" --message "Hello"             # one-shot text generation
 nyx image-to-image <input> --model "<id>" [-o out.png]           # image-to-image transform
 nyx text-to-audio "<text>" --model "<id>" [-o out.wav]           # text-to-audio synthesis
 ```
@@ -81,7 +80,7 @@ The agent loop runs in the local server (`POST /v1/agent`), so API calls go out 
 
 ### Local models as tools
 
-With `agent.tools.localModels` enabled (or `NYX_AGENT_LOCAL_MODELS=1`), the locally installed ONNX models are also exposed to the brain: `local_text_generation` runs any cached `text-generation` model and returns its text (auto-run), `local_image_to_image` transforms an image from the workspace and writes the result back (`y/n` approval), and `local_text_to_audio` synthesizes a WAV into the workspace (`y/n` approval).
+With `agent.tools.localModels` enabled (or `NYX_AGENT_LOCAL_MODELS=1`), the locally installed ONNX models are also exposed to the brain: `local_image_to_image` transforms an image from the workspace and writes the result back (`y/n` approval), and `local_text_to_audio` synthesizes a WAV into the workspace (`y/n` approval).
 
 ```json
 {
@@ -93,7 +92,7 @@ With `agent.tools.localModels` enabled (or `NYX_AGENT_LOCAL_MODELS=1`), the loca
 }
 ```
 
-Local inference runs in-process and is not streamed — the agent's reply pauses until the tool finishes — and the tool result (generated text, or the output file path) is sent to the remote brain like any other tool output.
+Local inference runs in-process and is not streamed — the agent's reply pauses until the tool finishes — and the tool result (the output file path) is sent to the remote brain like any other tool output.
 
 ## Desktop app
 

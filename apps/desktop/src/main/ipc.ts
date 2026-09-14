@@ -40,7 +40,7 @@ export function registerIpc(services: Services): void {
       textToAudio.run(modelId, input),
   )
 
-  // --- Chat (agent + local text generation) ---
+  // --- Agent chat ---
   ipcMain.handle(IPC.chat.send, (_e, request: ChatSendRequest) =>
     chat.send(request),
   )

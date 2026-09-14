@@ -1,8 +1,6 @@
 import { Chat } from "@ai-sdk/react"
 import { lastAssistantMessageIsCompleteWithApprovalResponses, type ChatTransport, type UIMessage, type UIMessageChunk } from "ai"
-import type { ChatEndpoint } from "../../../shared/types"
 import { useAgentStore } from "../store/agent"
-import { useModelsStore } from "../store/models"
 
 /** Unique-ish id without relying on a secure-context `crypto.randomUUID`. */
 function streamId(): string {
@@ -11,13 +9,10 @@ function streamId(): string {
 
 /**
  * Bridges the AI SDK's `ChatTransport` to Electron IPC: the renderer never
- * talks HTTP directly, `main` streams the server's UI message chunks back.
+ * talks HTTP directly, `main` streams the agent's UI message chunks back.
  */
 class IpcChatTransport implements ChatTransport<UIMessage> {
-  constructor(
-    private readonly endpoint: ChatEndpoint,
-    private readonly body: () => Record<string, unknown>,
-  ) {}
+  constructor(private readonly body: () => Record<string, unknown>) {}
 
   async sendMessages({ messages, abortSignal }: Parameters<ChatTransport<UIMessage>["sendMessages"]>[0]): Promise<ReadableStream<UIMessageChunk>> {
     const id = streamId()
@@ -56,7 +51,7 @@ class IpcChatTransport implements ChatTransport<UIMessage> {
     })
 
     void window.nyx.chat
-      .send({ streamId: id, endpoint: this.endpoint, body: { messages, ...this.body() } })
+      .send({ streamId: id, body: { messages, ...this.body() } })
       .catch((error: unknown) => {
         close()
         controller?.error(error instanceof Error ? error : new Error(String(error)))
@@ -71,19 +66,13 @@ class IpcChatTransport implements ChatTransport<UIMessage> {
 }
 
 /**
- * One long-lived `Chat` per endpoint, created at module scope so the
- * conversation survives route changes. Approvals auto-resubmit once the whole
- * assistant message is answered.
+ * One long-lived `Chat`, created at module scope so the conversation survives
+ * route changes. Approvals auto-resubmit once the whole assistant message is
+ * answered.
  */
 export const agentChat = new Chat<UIMessage>({
-  transport: new IpcChatTransport("agent", () => ({
+  transport: new IpcChatTransport(() => ({
     workspaceDir: useAgentStore.getState().workspaceDir || undefined,
   })),
   sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
-})
-
-export const textGenerationChat = new Chat<UIMessage>({
-  transport: new IpcChatTransport("text-generation", () => ({
-    model: useModelsStore.getState().selected["text-generation"],
-  })),
 })

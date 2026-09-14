@@ -1,7 +1,6 @@
 import type { LLMTask } from "@nyx/llm"
 import type { ModelInfo } from "@nyx/config"
 import type {
-  ChatEndpoint,
   AudioResult,
   ImageBytes,
   ImageResult,
@@ -88,14 +87,12 @@ export class NyxServerClient {
     })
   }
 
-  /** Stream a chat turn over the AI SDK UI message protocol (agent or local text generation). */
-  async *chat(
-    endpoint: ChatEndpoint,
+  /** Stream one agent turn over the AI SDK UI message protocol. */
+  async *agent(
     body: Record<string, unknown>,
     signal?: AbortSignal,
   ): AsyncIterable<UIMessageChunk> {
-    const path = endpoint === "agent" ? "/v1/agent" : "/v1/tasks/text-generation"
-    const res = await fetch(`${this.baseURL}${path}`, {
+    const res = await fetch(`${this.baseURL}/v1/agent`, {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify(body),
@@ -104,7 +101,7 @@ export class NyxServerClient {
 
     if (!res.ok) {
       const errorBody = (await res.json().catch(() => ({}))) as { error?: string }
-      throw new Error(errorBody.error ?? `${endpoint} failed: ${res.status}`)
+      throw new Error(errorBody.error ?? `agent failed: ${res.status}`)
     }
     if (!res.body) throw new Error("no response body")
 
@@ -148,6 +145,7 @@ export class NyxServerClient {
         text: input.text,
         ...(input.speaker ? { speaker: input.speaker } : {}),
         ...(input.speed !== undefined ? { speed: input.speed } : {}),
+        ...(input.maxNewTokens !== undefined ? { maxNewTokens: input.maxNewTokens } : {}),
       }),
     })
     if (!res.ok) {

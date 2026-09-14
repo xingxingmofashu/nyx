@@ -16,6 +16,7 @@ export function textToAudio(service: TextToAudioService): Hono {
       const result = await service.generate(model, input.text, {
         ...(input.speaker ? { speaker: input.speaker } : {}),
         ...(typeof input.speed === "number" ? { speed: input.speed } : {}),
+        ...(typeof input.maxNewTokens === "number" ? { maxNewTokens: input.maxNewTokens } : {}),
       })
       return c.body(new Uint8Array(result.data), 200, {
         "Content-Type": result.mimeType,

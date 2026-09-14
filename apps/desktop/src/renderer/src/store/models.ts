@@ -109,7 +109,7 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
       })
       return
     }
-    const task = p.task ?? get().pulling[p.modelId]?.task ?? "text-generation"
+    const task = p.task ?? get().pulling[p.modelId]?.task ?? "image-to-image"
     set((state) => {
       const current = state.pulling[p.modelId]
       return {
