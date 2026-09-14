@@ -1,15 +1,17 @@
 import { BrowserWindow, dialog, ipcMain } from "electron"
 import { getModelsDir, getSettings, setSettings } from "@nyx/config"
 import { IPC } from "../shared/ipc"
-import type { ImageBytes, LLMTask, Settings, ChatSendRequest } from "../shared/types"
+import type { ImageBytes, LLMTask, Settings, TextToAudioInput, ChatSendRequest } from "../shared/types"
 import { ChatStreamService } from "./services/chat-stream"
 import { ImageToImageService } from "./services/image-to-image"
+import { TextToAudioService } from "./services/text-to-audio"
 import { ModelsService } from "./services/models"
 import type { NyxServerProcess } from "./server"
 
 interface Services {
   tasks: {
     imageToImage: ImageToImageService
+    textToAudio: TextToAudioService
   }
   chat: ChatStreamService
   models: ModelsService
@@ -19,7 +21,7 @@ interface Services {
 /** Register all ipcMain handlers. Must run after app is ready. */
 export function registerIpc(services: Services): void {
   const {
-    tasks: { imageToImage },
+    tasks: { imageToImage, textToAudio },
     chat,
     models,
   } = services
@@ -29,6 +31,13 @@ export function registerIpc(services: Services): void {
     IPC.tasks.imageToImage.run,
     (_e, modelId: string, input: ImageBytes) =>
       imageToImage.run(modelId, input),
+  )
+
+  // --- Text-to-audio ---
+  ipcMain.handle(
+    IPC.tasks.textToAudio.run,
+    (_e, modelId: string, input: TextToAudioInput) =>
+      textToAudio.run(modelId, input),
   )
 
   // --- Chat (agent + local text generation) ---

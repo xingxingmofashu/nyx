@@ -4,6 +4,9 @@ export const IPC = {
     imageToImage: {
       run: "image-to-image:run",
     },
+    textToAudio: {
+      run: "text-to-audio:run",
+    },
   },
   /** Generic chat streaming (AI SDK UI message stream) for the agent + local text generation. */
   chat: {

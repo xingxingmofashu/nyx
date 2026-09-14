@@ -6,6 +6,7 @@ import {
   list,
   OnnxImageToImageProvider,
   OnnxTextGenerationProvider,
+  OnnxTextToAudioProvider,
   type LLMMessage,
 } from "@nyx/llm";
 import { z } from "zod/v4";
@@ -28,6 +29,7 @@ export function createModelTools(options: { cache: ProviderCache; workspaceDir: 
   const installed = list();
   const textModels = installed.filter((m) => m.task === "text-generation").map((m) => m.id);
   const imageModels = installed.filter((m) => m.task === "image-to-image").map((m) => m.id);
+  const audioModels = installed.filter((m) => m.task === "text-to-audio").map((m) => m.id);
 
   const tools: AgentToolSet = [];
 
@@ -93,6 +95,35 @@ export function createModelTools(options: { cache: ProviderCache; workspaceDir: 
     });
   }
 
+  if (audioModels.length > 0) {
+    tools.push({
+      name: "local_text_to_audio",
+      description:
+        `Synthesize speech/audio from text with a local ONNX model and write a WAV file into the workspace (requires approval). ` +
+        `Installed text-to-audio models: ${audioModels.join(", ")}.`,
+      approval: "always",
+      inputSchema: z.object({
+        model: z.enum(audioModels as [string, ...string[]]).describe("Installed local text-to-audio model id"),
+        text: z.string().describe("Text to synthesize into speech"),
+        speaker: z.string().optional().describe("Optional speaker/voice embeddings path or URL (models that require them)"),
+        outputPath: z.string().optional().describe("Output .wav path relative to the workspace root (default: <model>.wav)"),
+      }),
+      execute: async ({ model, text, speaker, outputPath }, ctx) => {
+        const provider = cache.get(model, () => new OnnxTextToAudioProvider({ model }));
+        const audio = await provider.generate(text, speaker ? { speaker } : {});
+        throwIfAborted(ctx.signal);
+
+        const target = outputPath
+          ? workspacePath(root, outputPath)
+          : uniqueOutputPath(workspacePath(root, defaultAudioOutputPath(model)));
+        await mkdir(dirname(target), { recursive: true });
+        await writeFile(target, Buffer.from(audio.toWav()));
+        const seconds = (audio.audio.length / audio.sampling_rate).toFixed(1);
+        return `Wrote ${relative(root, target).split(sep).join("/")} (${seconds}s @ ${audio.sampling_rate} Hz)`;
+      },
+    });
+  }
+
   return tools;
 }
 
@@ -101,6 +132,12 @@ function defaultOutputPath(inputPath: string, model: string): string {
   const stem = inputPath.replace(/\.[^./\\]+$/, "");
   const slug = (model.split("/").pop() ?? model).replace(/[^a-zA-Z0-9_-]/g, "_");
   return `${stem}-${slug}.png`;
+}
+
+/** Default WAV path named after the model slug. */
+function defaultAudioOutputPath(model: string): string {
+  const slug = (model.split("/").pop() ?? model).replace(/[^a-zA-Z0-9_-]/g, "_");
+  return `${slug}.wav`;
 }
 
 /** Avoid clobbering an existing derived output: append -1, -2, … before `.png`. */

@@ -18,8 +18,8 @@ Bun monorepo：
 - `packages/config` — `~/.nyx` 路径、模型注册表（`~/.nyx/models.json`）与用户设置（`~/.nyx/settings.json`）
 - `packages/llm` — 模型运行时 + 任务（`runtime.ts` 共享加载器、`tasks/*`），基于 onnxruntime-node / transformers.js
 - `packages/agent` — 主脑 agent 核心（Vercel AI SDK：provider 注册表 + 工具循环），不依赖 onnx
-- `packages/server` — `/v1` 下的 Hono HTTP 服务（models / tasks/text-generation / tasks/image-to-image / agent），以纯 Node 子进程方式启动，使 onnxruntime 运行在 Electron 之外
-- `apps/coding-agent` — 终端 CLI（yargs）：`nyx`（agent TUI）、`nyx text-generation`、`nyx image-to-image`、`nyx model ...`
+- `packages/server` — `/v1` 下的 Hono HTTP 服务（models / tasks/text-generation / tasks/image-to-image / tasks/text-to-audio / agent），以纯 Node 子进程方式启动，使 onnxruntime 运行在 Electron 之外
+- `apps/coding-agent` — 终端 CLI（yargs）：`nyx`（agent TUI）、`nyx text-generation`、`nyx image-to-image`、`nyx text-to-audio`、`nyx model ...`
 - `apps/desktop` — Electron 桌面应用（forge + vite + React）
 
 ## 快速开始
@@ -42,13 +42,13 @@ bun run --cwd apps/coding-agent src/index.ts --help
 nyx                                                              # 主脑 agent TUI（远程模型 + 本地编码工具）
 nyx --cwd ./project                                              # ...指定工作区目录
 
-nyx model pull <model> --task <text-generation|image-to-image>   # 预下载模型
+nyx model pull <model> --task <text-generation|image-to-image|text-to-audio>   # 预下载模型
 nyx model list                                                   # 列出本地已缓存模型（别名：ls）
 nyx model remove <model> [--yes]                                 # 删除已缓存模型
 
-nyx chat --model "<id>"                                          # 本地 ONNX 聊天 TUI（需要终端）
 nyx text-generation --model "<id>" --message "你好"              # 一次性文本生成
 nyx image-to-image <input> --model "<id>" [-o out.png]           # 图生图变换
+nyx text-to-audio "<文本>" --model "<id>" [-o out.wav]           # 文生音频合成
 ```
 
 agent TUI（由 `@ai-sdk/tui` 提供界面）：输入消息回车发送，内联工具审批用 `y`/`n` 回答，`Esc`（或 Ctrl+C）退出。回复以 markdown 流式显示，工具卡片与推理内容内联展示。
@@ -81,7 +81,7 @@ agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型
 
 ### 本地模型作为工具
 
-开启 `agent.tools.localModels`（或 `NYX_AGENT_LOCAL_MODELS=1`）后，本机已安装的 ONNX 模型也会暴露给主脑：`local_text_generation` 用任意已缓存的 `text-generation` 模型生成文本并返回（自动执行）；`local_image_to_image` 对工作区内的图片做变换并把结果写回（需要 `y/n` 审批）。
+开启 `agent.tools.localModels`（或 `NYX_AGENT_LOCAL_MODELS=1`）后，本机已安装的 ONNX 模型也会暴露给主脑：`local_text_generation` 用任意已缓存的 `text-generation` 模型生成文本并返回（自动执行）；`local_image_to_image` 对工作区内的图片做变换并把结果写回（需要 `y/n` 审批）；`local_text_to_audio` 合成 WAV 写入工作区（需要 `y/n` 审批）。
 
 ```json
 {

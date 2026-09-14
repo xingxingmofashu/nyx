@@ -18,11 +18,13 @@ import { cn } from "../lib/utils"
 const TASK_OPTIONS: Array<{ id: LLMTask; label: string }> = [
   { id: "text-generation", label: "Text generation" },
   { id: "image-to-image", label: "Image to image" },
+  { id: "text-to-audio", label: "Text to audio" },
 ]
 
 const TASK_LABEL: Record<string, string> = {
   "text-generation": "Text generation",
   "image-to-image": "Image to image",
+  "text-to-audio": "Text to audio",
 }
 
 /** Bytes → human readable ("4.2 GB"). */
@@ -100,7 +102,7 @@ export function ModelsPage() {
               <Select
                 value={task}
                 onValueChange={(v) => {
-                  if (v === "text-generation" || v === "image-to-image") setTask(v)
+                  if (v === "text-generation" || v === "image-to-image" || v === "text-to-audio") setTask(v)
                 }}
               >
                 <SelectTrigger id="task" size="sm" className="w-40">

@@ -5,6 +5,7 @@ import { SettingsMenu } from "./components/SettingsMenu"
 import { AgentPage } from "./pages/AgentPage"
 import { TextGenerationPage } from "./pages/TextGenerationPage"
 import { ImageToImagePage } from "./pages/ImageToImagePage"
+import { TextToAudioPage } from "./pages/TextToAudioPage"
 import { ModelsPage } from "./pages/ModelsPage"
 import { SettingsPage } from "./pages/SettingsPage"
 import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar"
@@ -16,6 +17,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/agent": "Agent",
   "/text-generation": "Text generation",
   "/image-to-image": "Image to image",
+  "/text-to-audio": "Text to audio",
   "/models": "Models",
   "/settings": "Settings",
 }
@@ -72,6 +74,7 @@ function Shell() {
                 <Route path="/agent" element={<AgentPage />} />
                 <Route path="/text-generation" element={<TextGenerationPage />} />
                 <Route path="/image-to-image" element={<ImageToImagePage />} />
+                <Route path="/text-to-audio" element={<TextToAudioPage />} />
                 <Route path="/models" element={<ModelsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Routes>

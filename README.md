@@ -18,8 +18,8 @@ Bun monorepo:
 - `packages/config` — `~/.nyx` paths, the model registry (`~/.nyx/models.json`), and user settings (`~/.nyx/settings.json`)
 - `packages/llm` — model runtime + tasks (`runtime.ts` shared loader, `tasks/*`), built on onnxruntime-node / transformers.js
 - `packages/agent` — the master-brain agent core (Vercel AI SDK: providers + tool loop), no onnx dependency
-- `packages/server` — Hono HTTP service under `/v1` (models / tasks/text-generation / tasks/image-to-image / agent), spawned as a plain Node child so onnxruntime runs outside Electron
-- `apps/coding-agent` — terminal CLI (yargs): `nyx` (agent TUI), `nyx text-generation`, `nyx image-to-image`, `nyx model ...`
+- `packages/server` — Hono HTTP service under `/v1` (models / tasks/text-generation / tasks/image-to-image / tasks/text-to-audio / agent), spawned as a plain Node child so onnxruntime runs outside Electron
+- `apps/coding-agent` — terminal CLI (yargs): `nyx` (agent TUI), `nyx text-generation`, `nyx image-to-image`, `nyx text-to-audio`, `nyx model ...`
 - `apps/desktop` — Electron desktop app (forge + vite + React)
 
 ## Quick start
@@ -42,12 +42,13 @@ Models are cached in `~/.nyx/models/` and auto-downloaded from Hugging Face on f
 nyx                                                              # master-brain agent TUI (remote model + coding tools)
 nyx --cwd ./project                                              # ...with an explicit workspace directory
 
-nyx model pull <model> --task <text-generation|image-to-image>   # pre-download a model
+nyx model pull <model> --task <text-generation|image-to-image|text-to-audio>   # pre-download a model
 nyx model list                                                   # list locally cached models (alias: ls)
 nyx model remove <model> [--yes]                                 # delete a cached model
 
 nyx text-generation --model "<id>" --message "Hello"             # one-shot text generation
 nyx image-to-image <input> --model "<id>" [-o out.png]           # image-to-image transform
+nyx text-to-audio "<text>" --model "<id>" [-o out.wav]           # text-to-audio synthesis
 ```
 
 In the agent TUI (powered by `@ai-sdk/tui`): type a message and press Enter to send, `y`/`n` answers the inline tool-approval prompt, and `Esc` (or Ctrl+C) exits. Replies stream in as markdown, with tool cards and reasoning sections.
@@ -80,7 +81,7 @@ The agent loop runs in the local server (`POST /v1/agent`), so API calls go out 
 
 ### Local models as tools
 
-With `agent.tools.localModels` enabled (or `NYX_AGENT_LOCAL_MODELS=1`), the locally installed ONNX models are also exposed to the brain: `local_text_generation` runs any cached `text-generation` model and returns its text (auto-run), and `local_image_to_image` transforms an image from the workspace and writes the result back (`y/n` approval).
+With `agent.tools.localModels` enabled (or `NYX_AGENT_LOCAL_MODELS=1`), the locally installed ONNX models are also exposed to the brain: `local_text_generation` runs any cached `text-generation` model and returns its text (auto-run), `local_image_to_image` transforms an image from the workspace and writes the result back (`y/n` approval), and `local_text_to_audio` synthesizes a WAV into the workspace (`y/n` approval).
 
 ```json
 {

@@ -3,10 +3,12 @@ import { IPC } from "../shared/ipc"
 import type {
   ChatSendRequest,
   ChatStreamEvent,
+  AudioResult,
   ImageBytes,
   ImageResult,
   ModelInfo,
   ModelPullProgress,
+  TextToAudioInput,
   LLMTask,
   NyxApi,
 } from "../shared/types"
@@ -16,6 +18,10 @@ const api: NyxApi = {
     imageToImage: {
       run: (modelId: string, input: ImageBytes): Promise<ImageResult> =>
         ipcRenderer.invoke(IPC.tasks.imageToImage.run, modelId, input),
+    },
+    textToAudio: {
+      run: (modelId: string, input: TextToAudioInput): Promise<AudioResult> =>
+        ipcRenderer.invoke(IPC.tasks.textToAudio.run, modelId, input),
     },
   },
   chat: {

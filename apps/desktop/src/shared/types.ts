@@ -4,12 +4,21 @@
  */
 
 // HTTP wire types live in @nyx/server/types.
-import type { ImageBytes, ImageResult, UIMessage, UIMessageChunk } from "@nyx/server/types"
+import type {
+  AudioResult,
+  ImageBytes,
+  ImageResult,
+  TextToAudioInput,
+  UIMessage,
+  UIMessageChunk,
+} from "@nyx/server/types"
 import type { ModelInfo, Settings } from "@nyx/config"
 import type { LLMMessage, LLMTask } from "@nyx/llm"
 export type {
+  AudioResult,
   ImageBytes,
   ImageResult,
+  TextToAudioInput,
   UIMessage,
   UIMessageChunk,
   LLMMessage,
@@ -55,6 +64,9 @@ export interface NyxApi {
   tasks: {
     imageToImage: {
       run: (modelId: string, input: ImageBytes) => Promise<ImageResult>
+    }
+    textToAudio: {
+      run: (modelId: string, input: TextToAudioInput) => Promise<AudioResult>
     }
   }
   chat: {

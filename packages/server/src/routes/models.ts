@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 import { streamSSE } from "hono/streaming"
-import { PullAbortedError, type LLMTask, type ProgressInfo } from "@nyx/llm"
+import { PullAbortedError, LLM_TASKS, type LLMTask, type ProgressInfo } from "@nyx/llm"
 import type { ModelsService } from "../services/models"
 
 /** /v1/models — list, download, cancel, and delete cached models. */
@@ -15,7 +15,7 @@ export function models(store: ModelsService): Hono {
       const body = await c.req.json().catch(() => ({}))
       const model = (body as { model?: string }).model
       const task = (body as { task?: string }).task
-      if (!model || (task !== "text-generation" && task !== "image-to-image")) {
+      if (!model || !LLM_TASKS.includes(task as LLMTask)) {
         await stream.writeSSE({
           event: "error",
           data: JSON.stringify({ message: "model and a valid task are required" }),

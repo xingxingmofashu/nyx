@@ -21,6 +21,25 @@ export interface ImageResult {
   height: number
 }
 
+/** HTTP text-to-audio input (JSON request body). */
+export interface TextToAudioInput {
+  /** Text to synthesize. */
+  text: string
+  /** Optional speaker/voice embeddings: a path/URL to a `.bin` file (models that require them). */
+  speaker?: string
+  /** Optional playback speed (models that support it). */
+  speed?: number
+}
+
+/** Synthesized audio bytes as they cross the IPC boundary (structured-cloneable). */
+export interface AudioResult {
+  /** Encoded WAV bytes. */
+  data: Uint8Array
+  mimeType: string
+  /** Sample rate of the waveform, in Hz. */
+  samplingRate: number
+}
+
 /**
  * Transcript contract: `{ role, content }` turns fed straight to the
  * transformers.js pipeline (chat template applied internally). Each request

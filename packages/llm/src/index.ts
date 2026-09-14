@@ -10,6 +10,8 @@ export type {
   TextProvider,
   ImageProvider,
   ImageSource,
+  TextToAudioOptions,
+  AudioProvider,
 } from "./types.ts";
 export { LLM_TASKS } from "./types.ts";
 export type { LLMTask } from "./types.ts";
@@ -24,3 +26,5 @@ export { OnnxTextGenerationProvider } from "./tasks/text-generation.ts";
 export type { OnnxTextGenerationOptions } from "./tasks/text-generation.ts";
 export { OnnxImageToImageProvider } from "./tasks/image-to-image.ts";
 export type { OnnxImageToImageOptions } from "./tasks/image-to-image.ts";
+export { OnnxTextToAudioProvider } from "./tasks/text-to-audio.ts";
+export type { OnnxTextToAudioOptions } from "./tasks/text-to-audio.ts";

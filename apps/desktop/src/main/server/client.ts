@@ -2,9 +2,11 @@ import type { LLMTask } from "@nyx/llm"
 import type { ModelInfo } from "@nyx/config"
 import type {
   ChatEndpoint,
+  AudioResult,
   ImageBytes,
   ImageResult,
   ModelPullProgress,
+  TextToAudioInput,
   UIMessageChunk,
 } from "../../shared/types"
 
@@ -134,6 +136,31 @@ export class NyxServerClient {
       mimeType: res.headers.get("content-type") ?? "image/png",
       width: Number.isFinite(width) ? width : 0,
       height: Number.isFinite(height) ? height : 0,
+    }
+  }
+
+  async textToAudio(modelId: string, input: TextToAudioInput): Promise<AudioResult> {
+    const res = await fetch(`${this.baseURL}/v1/tasks/text-to-audio`, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify({
+        model: modelId,
+        text: input.text,
+        ...(input.speaker ? { speaker: input.speaker } : {}),
+        ...(input.speed !== undefined ? { speed: input.speed } : {}),
+      }),
+    })
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: string }
+      throw new Error(body.error ?? `text-to-audio failed: ${res.status}`)
+    }
+    // Response is the audio stream; the sample rate rides in a header.
+    const buf = await res.arrayBuffer()
+    const samplingRate = Number(res.headers.get("x-audio-sampling-rate"))
+    return {
+      data: new Uint8Array(buf),
+      mimeType: res.headers.get("content-type") ?? "audio/wav",
+      samplingRate: Number.isFinite(samplingRate) ? samplingRate : 0,
     }
   }
 }
