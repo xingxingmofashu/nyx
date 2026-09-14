@@ -1,17 +1,17 @@
 import { BrowserWindow, dialog, ipcMain } from "electron"
 import { getModelsDir, getSettings, setSettings } from "@nyx/config"
 import { IPC } from "../shared/ipc"
-import type { ImageBytes, LLMTask, Settings, TextToAudioInput, ChatSendRequest } from "../shared/types"
+import type { ImageBytes, LLMTask, Settings, TextToSpeechInput, ChatSendRequest } from "../shared/types"
 import { ChatStreamService } from "./services/chat-stream"
 import { ImageToImageService } from "./services/image-to-image"
-import { TextToAudioService } from "./services/text-to-audio"
+import { TextToSpeechService } from "./services/text-to-speech"
 import { ModelsService } from "./services/models"
 import type { NyxServerProcess } from "./server"
 
 interface Services {
   tasks: {
     imageToImage: ImageToImageService
-    textToAudio: TextToAudioService
+    textToSpeech: TextToSpeechService
   }
   chat: ChatStreamService
   models: ModelsService
@@ -21,7 +21,7 @@ interface Services {
 /** Register all ipcMain handlers. Must run after app is ready. */
 export function registerIpc(services: Services): void {
   const {
-    tasks: { imageToImage, textToAudio },
+    tasks: { imageToImage, textToSpeech },
     chat,
     models,
   } = services
@@ -33,11 +33,11 @@ export function registerIpc(services: Services): void {
       imageToImage.run(modelId, input),
   )
 
-  // --- Text-to-audio ---
+  // --- Text-to-speech ---
   ipcMain.handle(
-    IPC.tasks.textToAudio.run,
-    (_e, modelId: string, input: TextToAudioInput) =>
-      textToAudio.run(modelId, input),
+    IPC.tasks.textToSpeech.run,
+    (_e, modelId: string, input: TextToSpeechInput) =>
+      textToSpeech.run(modelId, input),
   )
 
   // --- Agent chat ---

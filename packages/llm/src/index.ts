@@ -4,8 +4,8 @@ export type {
   LLMProvider,
   ImageProvider,
   ImageSource,
-  TextToAudioOptions,
-  AudioProvider,
+  TextToSpeechOptions,
+  SpeechProvider,
 } from "./types.ts";
 export { LLM_TASKS } from "./types.ts";
 export type { LLMTask } from "./types.ts";
@@ -15,8 +15,9 @@ export type { ModelRuntimeOptions, ProgressInfo } from "./runtime.ts";
 
 export { list, pull, find } from "./models.ts";
 export { PullAbortedError } from "./models.ts";
+export { encodeWavPcm16 } from "./wav.ts";
 
 export { OnnxImageToImageProvider } from "./tasks/image-to-image.ts";
 export type { OnnxImageToImageOptions } from "./tasks/image-to-image.ts";
-export { OnnxTextToAudioProvider } from "./tasks/text-to-audio.ts";
-export type { OnnxTextToAudioOptions } from "./tasks/text-to-audio.ts";
+export { OnnxTextToSpeechProvider } from "./tasks/text-to-speech.ts";
+export type { OnnxTextToSpeechOptions } from "./tasks/text-to-speech.ts";

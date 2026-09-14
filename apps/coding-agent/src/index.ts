@@ -6,7 +6,7 @@ import { log } from "@clack/prompts";
 import pkg from "../package.json";
 import { AgentCommand } from "./cli/commands/agent";
 import { ImageToImageCommand } from "./cli/commands/tasks/image-to-image";
-import { TextToAudioCommand } from "./cli/commands/tasks/text-to-audio";
+import { TextToSpeechCommand } from "./cli/commands/tasks/text-to-speech";
 import { ModelCommand } from "./cli/commands/model";
 
 const cli = yargs(hideBin(process.argv))
@@ -19,7 +19,7 @@ const cli = yargs(hideBin(process.argv))
   .alias("v", ["version"])
   .command(AgentCommand)
   .command(ImageToImageCommand)
-  .command(TextToAudioCommand)
+  .command(TextToSpeechCommand)
   .command(ModelCommand)
   .strict();
 

@@ -1,20 +1,20 @@
-/** `nyx text-to-audio <text>` — synthesize speech with a local ONNX text-to-audio model. */
+/** `nyx text-to-speech <text>` — synthesize speech with a local ONNX text-to-speech model. */
 
 import { log, spinner } from "@clack/prompts";
+import { writeFile } from "node:fs/promises";
 import { cmd } from "../../utils/cmd";
-import { OnnxTextToAudioProvider } from "@nyx/llm";
+import { encodeWavPcm16, OnnxTextToSpeechProvider } from "@nyx/llm";
 
-interface TextToAudioArgs {
+interface TextToSpeechArgs {
   text?: string;
   output?: string;
   model?: string;
   speaker?: string;
   speed?: number;
-  maxNewTokens?: number;
 }
 
-export const TextToAudioCommand = cmd<Record<string, unknown>, TextToAudioArgs>({
-  command: "text-to-audio <text>",
+export const TextToSpeechCommand = cmd<Record<string, unknown>, TextToSpeechArgs>({
+  command: "text-to-speech <text>",
   describe: "Synthesize speech from text with a local ONNX model",
   builder: (yargs) =>
     yargs
@@ -30,7 +30,7 @@ export const TextToAudioCommand = cmd<Record<string, unknown>, TextToAudioArgs>(
       .option("model", {
         type: "string",
         demandOption: true,
-        description: "Local ONNX text-to-audio model id",
+        description: "Local ONNX text-to-speech model id",
       })
       .option("speaker", {
         type: "string",
@@ -39,14 +39,10 @@ export const TextToAudioCommand = cmd<Record<string, unknown>, TextToAudioArgs>(
       .option("speed", {
         type: "number",
         description: "Optional playback speed (models that support it)",
-      })
-      .option("max-new-tokens", {
-        type: "number",
-        description: "Generation length in audio tokens (MusicGen only)",
       }),
-  handler: async (args: TextToAudioArgs) => {
+  handler: async (args: TextToSpeechArgs) => {
     if (!args.text || !args.model) {
-      log.error("Usage: nyx text-to-audio <text> --model <id> [--output <path>]");
+      log.error("Usage: nyx text-to-speech <text> --model <id> [--output <path>]");
       process.exit(1);
     }
 
@@ -55,17 +51,16 @@ export const TextToAudioCommand = cmd<Record<string, unknown>, TextToAudioArgs>(
 
     const spin = spinner();
     spin.start("Loading local ONNX model (first run downloads)...");
-    const provider = new OnnxTextToAudioProvider({ model: args.model });
+    const provider = new OnnxTextToSpeechProvider({ model: args.model });
     const audio = await provider.generate(args.text, {
       ...(args.speaker ? { speaker: args.speaker } : {}),
       ...(args.speed !== undefined ? { speed: args.speed } : {}),
-      ...(args.maxNewTokens !== undefined ? { maxNewTokens: args.maxNewTokens } : {}),
     });
-    await audio.save(output);
+    await writeFile(output, encodeWavPcm16(audio.audio, audio.sampling_rate));
     spin.stop("Done");
 
     const seconds = (audio.audio.length / audio.sampling_rate).toFixed(1);
-    log.success(`Text-to-audio -> ${output} (${seconds}s @ ${audio.sampling_rate} Hz)`);
+    log.success(`Text-to-speech -> ${output} (${seconds}s @ ${audio.sampling_rate} Hz)`);
     console.log(output);
   },
 });

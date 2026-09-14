@@ -4,8 +4,8 @@ export const IPC = {
     imageToImage: {
       run: "image-to-image:run",
     },
-    textToAudio: {
-      run: "text-to-audio:run",
+    textToSpeech: {
+      run: "text-to-speech:run",
     },
   },
   /** Agent chat streaming (AI SDK UI message stream). */

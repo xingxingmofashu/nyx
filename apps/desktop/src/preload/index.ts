@@ -8,7 +8,7 @@ import type {
   ImageResult,
   ModelInfo,
   ModelPullProgress,
-  TextToAudioInput,
+  TextToSpeechInput,
   LLMTask,
   NyxApi,
 } from "../shared/types"
@@ -19,9 +19,9 @@ const api: NyxApi = {
       run: (modelId: string, input: ImageBytes): Promise<ImageResult> =>
         ipcRenderer.invoke(IPC.tasks.imageToImage.run, modelId, input),
     },
-    textToAudio: {
-      run: (modelId: string, input: TextToAudioInput): Promise<AudioResult> =>
-        ipcRenderer.invoke(IPC.tasks.textToAudio.run, modelId, input),
+    textToSpeech: {
+      run: (modelId: string, input: TextToSpeechInput): Promise<AudioResult> =>
+        ipcRenderer.invoke(IPC.tasks.textToSpeech.run, modelId, input),
     },
   },
   chat: {

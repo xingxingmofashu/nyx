@@ -7,7 +7,7 @@ A local ONNX inference tool — fully local, no cloud, your data never leaves yo
 nyx runs transformers.js-compatible ONNX models locally:
 
 - **Image-to-image** — super-resolution and other image transforms (e.g. 4x_APISR_GRL_GAN)
-- **Text-to-audio** — speech (e.g. MMS-TTS) and music (e.g. MusicGen) synthesis, WAV output
+- **Text-to-speech** — speech synthesis (e.g. MMS-TTS), WAV output
 - **Master brain (agent)** — an optional remote model (bring your own API key) that orchestrates local coding tools; the agent loop runs in the local server, files/bash stay on your machine
 - **CLI and desktop** — a terminal CLI plus an Electron desktop app sharing the same local model cache
 
@@ -18,8 +18,8 @@ Bun monorepo:
 - `packages/config` — `~/.nyx` paths, the model registry (`~/.nyx/models.json`), and user settings (`~/.nyx/settings.json`)
 - `packages/llm` — model runtime + tasks (`runtime.ts` shared loader, `tasks/*`), built on onnxruntime-node / transformers.js
 - `packages/agent` — the master-brain agent core (Vercel AI SDK: providers + tool loop), no onnx dependency
-- `packages/server` — Hono HTTP service under `/v1` (models / tasks/image-to-image / tasks/text-to-audio / agent), spawned as a plain Node child so onnxruntime runs outside Electron
-- `apps/coding-agent` — terminal CLI (yargs): `nyx` (agent TUI), `nyx image-to-image`, `nyx text-to-audio`, `nyx model ...`
+- `packages/server` — Hono HTTP service under `/v1` (models / tasks/image-to-image / tasks/text-to-speech / agent), spawned as a plain Node child so onnxruntime runs outside Electron
+- `apps/coding-agent` — terminal CLI (yargs): `nyx` (agent TUI), `nyx image-to-image`, `nyx text-to-speech`, `nyx model ...`
 - `apps/desktop` — Electron desktop app (forge + vite + React)
 
 ## Quick start
@@ -42,12 +42,12 @@ Models are cached in `~/.nyx/models/` and auto-downloaded from Hugging Face on f
 nyx                                                              # master-brain agent TUI (remote model + coding tools)
 nyx --cwd ./project                                              # ...with an explicit workspace directory
 
-nyx model pull <model> --task <image-to-image|text-to-audio>            # pre-download a model
+nyx model pull <model> --task <image-to-image|text-to-speech>           # pre-download a model
 nyx model list                                                   # list locally cached models (alias: ls)
 nyx model remove <model> [--yes]                                 # delete a cached model
 
 nyx image-to-image <input> --model "<id>" [-o out.png]           # image-to-image transform
-nyx text-to-audio "<text>" --model "<id>" [-o out.wav]           # text-to-audio synthesis
+nyx text-to-speech "<text>" --model "<id>" [-o out.wav]          # text-to-speech synthesis
 ```
 
 In the agent TUI (powered by `@ai-sdk/tui`): type a message and press Enter to send, `y`/`n` answers the inline tool-approval prompt, and `Esc` (or Ctrl+C) exits. Replies stream in as markdown, with tool cards and reasoning sections.
@@ -80,7 +80,7 @@ The agent loop runs in the local server (`POST /v1/agent`), so API calls go out 
 
 ### Local models as tools
 
-With `agent.tools.localModels` enabled (or `NYX_AGENT_LOCAL_MODELS=1`), the locally installed ONNX models are also exposed to the brain: `local_image_to_image` transforms an image from the workspace and writes the result back (`y/n` approval), and `local_text_to_audio` synthesizes a WAV into the workspace (`y/n` approval).
+With `agent.tools.localModels` enabled (or `NYX_AGENT_LOCAL_MODELS=1`), the locally installed ONNX models are also exposed to the brain: `local_image_to_image` transforms an image from the workspace and writes the result back (`y/n` approval), and `local_text_to_speech` synthesizes a WAV into the workspace (`y/n` approval).
 
 ```json
 {

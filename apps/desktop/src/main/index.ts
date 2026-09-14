@@ -3,7 +3,7 @@ import { join } from "node:path"
 import { registerIpc } from "./ipc"
 import { ChatStreamService } from "./services/chat-stream"
 import { ImageToImageService } from "./services/image-to-image"
-import { TextToAudioService } from "./services/text-to-audio"
+import { TextToSpeechService } from "./services/text-to-speech"
 import { ModelsService } from "./services/models"
 import { NyxServerProcess } from "./server"
 import { IPC } from "../shared/ipc"
@@ -87,12 +87,12 @@ app.whenReady().then(async () => {
 
   const chatService = new ChatStreamService(server)
   const imageToImageService = new ImageToImageService(server)
-  const textToAudioService = new TextToAudioService(server)
+  const textToSpeechService = new TextToSpeechService(server)
   const modelsService = new ModelsService(server)
   registerIpc({
     tasks: {
       imageToImage: imageToImageService,
-      textToAudio: textToAudioService,
+      textToSpeech: textToSpeechService,
     },
     chat: chatService,
     models: modelsService,

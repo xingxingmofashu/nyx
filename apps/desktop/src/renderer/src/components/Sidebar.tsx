@@ -12,7 +12,7 @@ import {
   SidebarMenuButton,
 } from "./ui/sidebar"
 
-export type ViewId = "agent" | "image-to-image" | "text-to-audio" | "models"
+export type ViewId = "agent" | "image-to-image" | "text-to-speech" | "models"
 
 interface ViewDef {
   id: ViewId
@@ -30,7 +30,7 @@ const NAV: Array<{ label?: string; views: ViewDef[] }> = [
     label: "Tools",
     views: [
       { id: "image-to-image", path: "/image-to-image", label: "Image to image", icon: ImageIcon },
-      { id: "text-to-audio", path: "/text-to-audio", label: "Text to audio", icon: AudioLines },
+      { id: "text-to-speech", path: "/text-to-speech", label: "Text to speech", icon: AudioLines },
     ],
   },
   {

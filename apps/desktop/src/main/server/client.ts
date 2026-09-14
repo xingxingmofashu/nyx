@@ -5,7 +5,7 @@ import type {
   ImageBytes,
   ImageResult,
   ModelPullProgress,
-  TextToAudioInput,
+  TextToSpeechInput,
   UIMessageChunk,
 } from "../../shared/types"
 
@@ -136,8 +136,8 @@ export class NyxServerClient {
     }
   }
 
-  async textToAudio(modelId: string, input: TextToAudioInput): Promise<AudioResult> {
-    const res = await fetch(`${this.baseURL}/v1/tasks/text-to-audio`, {
+  async textToSpeech(modelId: string, input: TextToSpeechInput): Promise<AudioResult> {
+    const res = await fetch(`${this.baseURL}/v1/tasks/text-to-speech`, {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify({
@@ -145,12 +145,11 @@ export class NyxServerClient {
         text: input.text,
         ...(input.speaker ? { speaker: input.speaker } : {}),
         ...(input.speed !== undefined ? { speed: input.speed } : {}),
-        ...(input.maxNewTokens !== undefined ? { maxNewTokens: input.maxNewTokens } : {}),
       }),
     })
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string }
-      throw new Error(body.error ?? `text-to-audio failed: ${res.status}`)
+      throw new Error(body.error ?? `text-to-speech failed: ${res.status}`)
     }
     // Response is the audio stream; the sample rate rides in a header.
     const buf = await res.arrayBuffer()

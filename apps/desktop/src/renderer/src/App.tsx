@@ -4,7 +4,7 @@ import { AppSidebar } from "./components/Sidebar"
 import { SettingsMenu } from "./components/SettingsMenu"
 import { AgentPage } from "./pages/AgentPage"
 import { ImageToImagePage } from "./pages/ImageToImagePage"
-import { TextToAudioPage } from "./pages/TextToAudioPage"
+import { TextToSpeechPage } from "./pages/TextToSpeechPage"
 import { ModelsPage } from "./pages/ModelsPage"
 import { SettingsPage } from "./pages/SettingsPage"
 import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar"
@@ -15,7 +15,7 @@ import { applyTheme, getTheme } from "./lib/theme"
 const PAGE_TITLES: Record<string, string> = {
   "/agent": "Agent",
   "/image-to-image": "Image to image",
-  "/text-to-audio": "Text to audio",
+  "/text-to-speech": "Text to speech",
   "/models": "Models",
   "/settings": "Settings",
 }
@@ -71,7 +71,7 @@ function Shell() {
                 <Route path="/" element={<Navigate to="/agent" replace />} />
                 <Route path="/agent" element={<AgentPage />} />
                 <Route path="/image-to-image" element={<ImageToImagePage />} />
-                <Route path="/text-to-audio" element={<TextToAudioPage />} />
+                <Route path="/text-to-speech" element={<TextToSpeechPage />} />
                 <Route path="/models" element={<ModelsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Routes>

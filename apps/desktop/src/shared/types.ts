@@ -8,7 +8,7 @@ import type {
   AudioResult,
   ImageBytes,
   ImageResult,
-  TextToAudioInput,
+  TextToSpeechInput,
   UIMessage,
   UIMessageChunk,
 } from "@nyx/server/types"
@@ -18,7 +18,7 @@ export type {
   AudioResult,
   ImageBytes,
   ImageResult,
-  TextToAudioInput,
+  TextToSpeechInput,
   UIMessage,
   UIMessageChunk,
   LLMTask,
@@ -60,8 +60,8 @@ export interface NyxApi {
     imageToImage: {
       run: (modelId: string, input: ImageBytes) => Promise<ImageResult>
     }
-    textToAudio: {
-      run: (modelId: string, input: TextToAudioInput) => Promise<AudioResult>
+    textToSpeech: {
+      run: (modelId: string, input: TextToSpeechInput) => Promise<AudioResult>
     }
   }
   chat: {

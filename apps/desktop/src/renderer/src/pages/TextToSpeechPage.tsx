@@ -23,12 +23,11 @@ interface AudioPreview {
   seconds: number | null
 }
 
-export function TextToAudioPage() {
-  const selectedModel = useModelsStore((s) => s.selected["text-to-audio"])
+export function TextToSpeechPage() {
+  const selectedModel = useModelsStore((s) => s.selected["text-to-speech"])
   const [text, setText] = useState("")
   const [speaker, setSpeaker] = useState("")
   const [speed, setSpeed] = useState("")
-  const [maxNewTokens, setMaxNewTokens] = useState("")
   const [result, setResult] = useState<AudioPreview | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -56,12 +55,10 @@ export function TextToAudioPage() {
     setError(null)
     try {
       const parsedSpeed = Number.parseFloat(speed)
-      const parsedTokens = Number.parseInt(maxNewTokens, 10)
-      const output = await window.nyx.tasks.textToAudio.run(selectedModel, {
+      const output = await window.nyx.tasks.textToSpeech.run(selectedModel, {
         text: prompt,
         ...(speaker.trim() ? { speaker: speaker.trim() } : {}),
         ...(Number.isFinite(parsedSpeed) ? { speed: parsedSpeed } : {}),
-        ...(Number.isFinite(parsedTokens) && parsedTokens > 0 ? { maxNewTokens: parsedTokens } : {}),
       })
       if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current)
       const url = toObjectUrl(output)
@@ -110,18 +107,6 @@ export function TextToAudioPage() {
               placeholder="1.0"
             />
           </div>
-          <div className="flex w-full flex-col gap-1.5 sm:w-32">
-            <Label htmlFor="tts-tokens">Max tokens (MusicGen)</Label>
-            <Input
-              id="tts-tokens"
-              type="number"
-              step="1"
-              min="1"
-              value={maxNewTokens}
-              onChange={(e) => setMaxNewTokens(e.target.value)}
-              placeholder="512"
-            />
-          </div>
         </div>
       </div>
 
@@ -154,7 +139,7 @@ export function TextToAudioPage() {
       )}
 
       <div className="mt-auto flex items-center gap-3 border-t bg-card px-4 py-3">
-        <ModelPicker task="text-to-audio" />
+        <ModelPicker task="text-to-speech" />
         <div className="ml-auto flex gap-2">
           <Button variant="secondary" onClick={clear} disabled={!result}>
             <X data-icon="inline-start" /> Clear

@@ -21,16 +21,14 @@ export interface ImageResult {
   height: number
 }
 
-/** HTTP text-to-audio input (JSON request body). */
-export interface TextToAudioInput {
+/** HTTP text-to-speech input (JSON request body). */
+export interface TextToSpeechInput {
   /** Text to synthesize. */
   text: string
   /** Optional speaker/voice embeddings: a path/URL to a `.bin` file (models that require them). */
   speaker?: string
   /** Optional playback speed (models that support it). */
   speed?: number
-  /** Optional generation length in audio tokens (MusicGen only). */
-  maxNewTokens?: number
 }
 
 /** Synthesized audio bytes as they cross the IPC boundary (structured-cloneable). */

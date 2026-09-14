@@ -3,11 +3,11 @@ import { auth } from "./middleware/auth"
 import { agent } from "./routes/agent"
 import { imageToImage } from "./routes/image-to-image"
 import { models } from "./routes/models"
-import { textToAudio } from "./routes/text-to-audio"
+import { textToSpeech } from "./routes/text-to-speech"
 import { AgentService } from "./services/agent"
 import { ImageToImageService } from "./services/tasks/image-to-image"
 import { ModelsService } from "./services/models"
-import { TextToAudioService } from "./services/tasks/text-to-audio"
+import { TextToSpeechService } from "./services/tasks/text-to-speech"
 import { ProviderCache } from "./lib/provider-cache"
 
 /** Service dependencies shared by every route, wired once per app instance. */
@@ -16,8 +16,8 @@ export interface ServerServices {
   models: ModelsService
   /** Runs image-to-image transforms. */
   imageToImage: ImageToImageService
-  /** Synthesizes audio from text. */
-  textToAudio: TextToAudioService
+  /** Synthesizes speech from text. */
+  textToSpeech: TextToSpeechService
   /** Runs the remote master-brain agent loop. */
   agent: AgentService
 }
@@ -30,7 +30,7 @@ export function createApp(options: { token?: string; services?: ServerServices }
   const services: ServerServices = options.services ?? {
     models: new ModelsService(cache),
     imageToImage: new ImageToImageService(cache),
-    textToAudio: new TextToAudioService(cache),
+    textToSpeech: new TextToSpeechService(cache),
     agent: new AgentService(cache),
   }
 
@@ -42,7 +42,7 @@ export function createApp(options: { token?: string; services?: ServerServices }
 
   v1.route("/models", models(services.models))
   v1.route("/tasks/image-to-image", imageToImage(services.imageToImage))
-  v1.route("/tasks/text-to-audio", textToAudio(services.textToAudio))
+  v1.route("/tasks/text-to-speech", textToSpeech(services.textToSpeech))
   v1.route("/agent", agent(services.agent))
 
   const app = new Hono()
