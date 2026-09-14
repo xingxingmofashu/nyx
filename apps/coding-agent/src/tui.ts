@@ -8,10 +8,12 @@ import {
   TuiMainScreen,
   matchesKey,
   type Component,
+  type SlashCommand,
   type TUI,
   type TuiInputListenerResult,
 } from "@earendil-works/pi-tui";
 import type { AgentEvent, ModelMessage } from "@nyx/agent";
+import { WorkspaceAutocompleteProvider } from "./autocomplete";
 import { AssistantMessageComponent } from "./components/assistant-message";
 import { ToolCallComponent } from "./components/tool-call";
 import { UserMessageComponent } from "./components/user-message";
@@ -21,11 +23,22 @@ import { getEditorTheme, theme } from "./theme";
 /** Safety cap on approval continuations within a single user turn. */
 const MAX_APPROVAL_ROUNDS = 25;
 
+/** Slash commands offered by the editor's autocomplete menu. */
+const SLASH_COMMANDS: SlashCommand[] = [
+  { name: "clear", description: "Reset the conversation transcript" },
+  { name: "quit", description: "Exit the TUI" },
+  { name: "exit", description: "Alias of /quit" },
+];
+
 interface ChatTuiOptions {
   /** Header title line, e.g. `nyx agent (provider/model)`. */
   title: string;
   /** Header hint lines (already themed). */
   hint: string;
+  /** Slash commands shown in the editor's `/` autocomplete menu. */
+  slashCommands: SlashCommand[];
+  /** Base directory for `@file` autocomplete. */
+  basePath: string;
   /** Reset the conversation transcript; the chat view is cleared automatically. */
   onClear: () => void;
   /** Handle a submitted non-command message. */
@@ -60,6 +73,9 @@ class ChatTui {
     document.addChild(this.chatContainer);
 
     this.editor = new Editor(this.tui, getEditorTheme() as never);
+    this.editor.setAutocompleteProvider(
+      new WorkspaceAutocompleteProvider(options.slashCommands, options.basePath),
+    );
     this.editorContainer.addChild(this.editor);
 
     header.addChild(new Spacer());
@@ -132,22 +148,23 @@ class ChatTui {
     const trimmed = text.trim();
     if (!trimmed || this.isBusy) return;
 
-    if (trimmed === "/quit" || trimmed === "/exit") {
-      this.editor.setText("");
-      this.shutdown();
-      return;
-    }
-    if (trimmed === "/clear") {
-      this.editor.setText("");
-      this.chatContainer.clear();
-      this.options.onClear();
-      this.tui.requestRender();
-      return;
-    }
     if (trimmed.startsWith("/")) {
+      const name = trimmed.slice(1).split(/\s+/, 1)[0] ?? "";
       this.editor.setText("");
-      this.addComponent(new Text(theme.fg("muted", `Unknown command: ${trimmed}`)));
-      return;
+      switch (name) {
+        case "quit":
+        case "exit":
+          this.shutdown();
+          return;
+        case "clear":
+          this.chatContainer.clear();
+          this.options.onClear();
+          this.tui.requestRender();
+          return;
+        default:
+          this.addComponent(new Text(theme.fg("muted", `Unknown command: ${name ? `/${name}` : trimmed}`)));
+          return;
+      }
     }
 
     this.editor.setText("");
@@ -406,7 +423,9 @@ export async function runAgentTui(options: AgentTuiOptions): Promise<void> {
     hint:
       theme.fg("muted", `Workspace: ${options.workspaceDir}`) +
       "\n" +
-      theme.fg("muted", "Type a message. /clear resets, /quit exits."),
+      theme.fg("muted", "Type a message. / for commands, @ for files, /quit exits."),
+    slashCommands: SLASH_COMMANDS,
+    basePath: options.workspaceDir,
     onClear: () => {
       transcript.length = 0;
     },
