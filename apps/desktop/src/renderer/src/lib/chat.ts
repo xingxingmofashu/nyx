@@ -73,6 +73,9 @@ class IpcChatTransport implements ChatTransport<UIMessage> {
 export const agentChat = new Chat<UIMessage>({
   transport: new IpcChatTransport(() => ({
     workspaceDir: useAgentStore.getState().workspaceDir || undefined,
+    // The desktop can render audio inline, so speech tools return it instead of
+    // playing it on the server machine.
+    inlineAudio: true,
   })),
   sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
 })

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { Wrench } from "lucide-react"
 import { Badge } from "../ui/badge"
 import { Spinner } from "../ui/spinner"
@@ -43,9 +44,8 @@ interface ToolCallCardProps {
   errorText?: string
 }
 
-/** Compact card for one agent tool call: name, status, args and result. */
-export function ToolCallCard({ name, input, state, output, errorText }: ToolCallCardProps) {
-  const result = errorText ?? (output === undefined ? "" : formatJson(output))
+/** Shared tool-call card chrome: tool name, status badge and a body slot. */
+export function ToolCardShell({ name, state, children }: { name: string; state: ToolPartState; children: ReactNode }) {
   return (
     <div className="w-full rounded-md border bg-muted/30 text-sm">
       <div className="flex items-center gap-2 border-b px-2.5 py-1.5">
@@ -56,18 +56,26 @@ export function ToolCallCard({ name, input, state, output, errorText }: ToolCall
           <Badge variant={STATUS_VARIANT[state]}>{STATUS_LABEL[state]}</Badge>
         </span>
       </div>
-      <div className="flex flex-col gap-2 p-2.5">
-        {input !== undefined && (
-          <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded bg-background/60 p-2 text-xs">
-            {formatJson(input)}
-          </pre>
-        )}
-        {result && (
-          <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded bg-background/60 p-2 text-xs">
-            {result}
-          </pre>
-        )}
-      </div>
+      <div className="flex flex-col gap-2 p-2.5">{children}</div>
     </div>
+  )
+}
+
+/** Compact card for one agent tool call: name, status, args and result. */
+export function ToolCallCard({ name, input, state, output, errorText }: ToolCallCardProps) {
+  const result = errorText ?? (output === undefined ? "" : formatJson(output))
+  return (
+    <ToolCardShell name={name} state={state}>
+      {input !== undefined && (
+        <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded bg-background/60 p-2 text-xs">
+          {formatJson(input)}
+        </pre>
+      )}
+      {result && (
+        <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded bg-background/60 p-2 text-xs">
+          {result}
+        </pre>
+      )}
+    </ToolCardShell>
   )
 }

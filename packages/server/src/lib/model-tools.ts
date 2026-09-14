@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, relative, resolve, sep } from "node:path";
@@ -19,8 +20,8 @@ import { realpathNearest, workspacePath } from "./workspace";
  * the shared cache, so the agent reuses loaded weights. Both tasks write into
  * the workspace, so they need approval.
  */
-export function createModelTools(options: { cache: ProviderCache; workspaceDir: string }): AgentToolSet {
-  const { cache, workspaceDir } = options;
+export function createModelTools(options: { cache: ProviderCache; workspaceDir: string; inlineAudio?: boolean }): AgentToolSet {
+  const { cache, workspaceDir, inlineAudio = false } = options;
   const root = realpathNearest(resolve(workspaceDir));
   const installed = list();
   const imageModels = installed.filter((m) => m.task === "image-to-image").map((m) => m.id);
@@ -64,7 +65,7 @@ export function createModelTools(options: { cache: ProviderCache; workspaceDir: 
     tools.push({
       name: "local_text_to_speech",
       description:
-        `Synthesize speech from text with a local ONNX model and write a WAV file into the workspace (requires approval). ` +
+        `Synthesize speech from text with a local ONNX model and write a WAV file into the workspace; the client plays it back (requires approval). ` +
         `Installed text-to-speech models: ${speechModels.join(", ")}.`,
       approval: "always",
       inputSchema: z.object({
@@ -73,6 +74,10 @@ export function createModelTools(options: { cache: ProviderCache; workspaceDir: 
         speaker: z.string().optional().describe("Optional speaker/voice embeddings path or URL (models that require them)"),
         outputPath: z.string().optional().describe("Output .wav path relative to the workspace root (default: <model>.wav)"),
       }),
+      toModelOutput: (output) =>
+        typeof output === "string"
+          ? output
+          : `Wrote ${output.path} (${output.seconds}s @ ${output.samplingRate} Hz)`,
       execute: async ({ model, text, speaker, outputPath }, ctx) => {
         const provider = cache.get(model, () => new OnnxTextToSpeechProvider({ model }));
         const audio = await provider.generate(text, speaker ? { speaker } : {});
@@ -82,9 +87,17 @@ export function createModelTools(options: { cache: ProviderCache; workspaceDir: 
           ? workspacePath(root, outputPath)
           : uniqueOutputPath(workspacePath(root, defaultSpeechOutputPath(model)));
         await mkdir(dirname(target), { recursive: true });
-        await writeFile(target, Buffer.from(encodeWavPcm16(audio.audio, audio.sampling_rate)));
-        const seconds = (audio.audio.length / audio.sampling_rate).toFixed(1);
-        return `Wrote ${relative(root, target).split(sep).join("/")} (${seconds}s @ ${audio.sampling_rate} Hz)`;
+        const wav = Buffer.from(encodeWavPcm16(audio.audio, audio.sampling_rate));
+        await writeFile(target, wav);
+        const path = relative(root, target).split(sep).join("/");
+        const seconds = Number((audio.audio.length / audio.sampling_rate).toFixed(1));
+        if (inlineAudio) {
+          return { path, seconds, samplingRate: audio.sampling_rate, audio: `data:audio/wav;base64,${wav.toString("base64")}` };
+        }
+        // Terminal clients cannot render audio: play it on this machine so the
+        // agent still answers out loud, and keep the result a one-line string.
+        playAloud(target);
+        return `Wrote ${path} (${seconds}s @ ${audio.sampling_rate} Hz)`;
       },
     });
   }
@@ -118,6 +131,18 @@ function uniqueOutputPath(path: string): string {
 
 function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted) throw new Error("cancelled");
+}
+
+/** Play a local WAV aloud on macOS (detached, so it does not block the agent). No-op elsewhere. */
+function playAloud(path: string): void {
+  if (process.platform !== "darwin") return;
+  try {
+    spawn("afplay", [path], { detached: true, stdio: "ignore" })
+      .on("error", () => undefined)
+      .unref();
+  } catch {
+    // Playback is best-effort; the file is still written.
+  }
 }
 
 /** Best-effort image MIME from the file extension; defaults to PNG. */

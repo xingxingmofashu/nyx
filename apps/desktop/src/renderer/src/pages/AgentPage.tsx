@@ -34,6 +34,7 @@ import { ChatComposer } from "../components/chat/ChatComposer"
 import { MarkdownText } from "../components/chat/MarkdownText"
 import { StreamingMarker } from "../components/chat/StreamingMarker"
 import { ToolCallCard, type ToolPartState } from "../components/agent/ToolCallCard"
+import { SpeechCard } from "../components/agent/SpeechCard"
 import { ApprovalCard } from "../components/agent/ApprovalCard"
 
 /** Last path segment, handling both separators. */
@@ -195,6 +196,19 @@ export function AgentPage() {
                                       reason: "user denied",
                                     })
                                   }
+                                />
+                              )
+                            }
+
+                            if (name === "local_text_to_speech") {
+                              return (
+                                <SpeechCard
+                                  key={part.toolCallId}
+                                  toolCallId={part.toolCallId}
+                                  name={name}
+                                  state={part.state as ToolPartState}
+                                  output={part.state === "output-available" ? part.output : undefined}
+                                  errorText={part.state === "output-error" ? part.errorText : undefined}
                                 />
                               )
                             }

@@ -56,4 +56,10 @@ export interface AgentRequest {
   model?: string
   /** Provider base URL override; defaults to the resolved provider's options. */
   baseURL?: string
+  /**
+   * When true, local speech tools inline the generated audio in their result so
+   * the client can play it (e.g. the desktop chat). Omitted, they play it aloud
+   * on the server machine instead (for terminal clients).
+   */
+  inlineAudio?: boolean
 }

@@ -37,6 +37,9 @@ function toAiTools(tools: AgentToolSet, workspaceDir: string, signal?: AbortSign
       description: t.description,
       inputSchema: t.inputSchema,
       execute: (input, { abortSignal }) => t.execute(input, { workspaceDir, signal: abortSignal ?? signal }),
+      ...(t.toModelOutput
+        ? { toModelOutput: ({ output }) => ({ type: "text" as const, value: t.toModelOutput!(output) }) }
+        : {}),
     });
     toolApproval[t.name] = t.approval === "always" ? "user-approval" : "not-applicable";
   }

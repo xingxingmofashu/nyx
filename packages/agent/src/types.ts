@@ -31,8 +31,9 @@ export interface AgentToolContext {
 }
 
 /**
- * A tool the brain may call. `execute` returns plain text, which the AI SDK
- * feeds back to the model as the tool result.
+ * A tool the brain may call. `execute` returns a JSON-serializable output, which
+ * the AI SDK feeds back to the model as the tool result (mapped through
+ * `toModelOutput` when provided).
  */
 export interface AgentTool<Input = unknown, Output = string> {
   name: string;
@@ -40,6 +41,12 @@ export interface AgentTool<Input = unknown, Output = string> {
   inputSchema: ZodType<Input>;
   approval: AgentToolApproval;
   execute: (input: Input, ctx: AgentToolContext) => Promise<Output> | Output;
+  /**
+   * Optional mapping from the `execute` output to the text the model sees. Use
+   * it when `execute` returns a rich payload (e.g. inline audio for client-side
+   * playback) that should not be fed to the model verbatim.
+   */
+  toModelOutput?: (output: Output) => string;
 }
 
 /**
