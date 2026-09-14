@@ -8,6 +8,7 @@ nyx runs transformers.js-compatible ONNX models locally:
 
 - **Text generation** — small instruct models (e.g. Qwen2.5-0.5B-Instruct), one-shot or interactive TUI
 - **Image-to-image** — super-resolution and other image transforms (e.g. 4x_APISR_GRL_GAN)
+- **Master brain (agent)** — an optional remote model (bring your own API key) that orchestrates local coding tools; the agent loop runs in the local server, files/bash stay on your machine
 - **CLI and desktop** — a terminal CLI plus an Electron desktop app sharing the same local model cache
 
 ## Architecture
@@ -16,15 +17,16 @@ Bun monorepo:
 
 - `packages/config` — `~/.nyx` paths, the model registry (`~/.nyx/models.json`), and user settings (`~/.nyx/settings.json`)
 - `packages/llm` — model runtime + tasks (`runtime.ts` shared loader, `tasks/*`), built on onnxruntime-node / transformers.js
-- `packages/server` — Hono HTTP service under `/v1` (models / text-generation / image-to-image), spawned as a plain Node child so onnxruntime runs outside Electron
-- `apps/coding-agent` — terminal CLI (yargs): `nyx` (interactive TUI), `nyx text-generation`, `nyx image-to-image`, `nyx model ...`
+- `packages/agent` — the master-brain agent core (Vercel AI SDK: providers + tool loop), no onnx dependency
+- `packages/server` — Hono HTTP service under `/v1` (models / text-generation / image-to-image / agent), spawned as a plain Node child so onnxruntime runs outside Electron
+- `apps/coding-agent` — terminal CLI (yargs): `nyx` (agent TUI), `nyx text-generation`, `nyx image-to-image`, `nyx model ...`
 - `apps/desktop` — Electron desktop app (forge + vite + React)
 
 ## Quick start
 
 ```bash
 bun install
-bun run dev -- --help       # run the CLI (default command starts the TUI, which needs --model)
+bun run dev -- --help       # run the CLI (default command starts the agent TUI; see Master brain)
 bun --cwd apps/coding-agent run src/index.ts --help
 ```
 
@@ -34,19 +36,40 @@ Models are cached in `~/.nyx/models/` and auto-downloaded from Hugging Face on f
 
 ## Commands
 
-Task commands require an explicit `--model <id>` (any transformers.js-compatible ONNX model); `model` subcommands take the model id as a positional argument.
+`nyx` (no subcommand) is the master-brain agent and needs a configured remote model (see below). Local task commands require an explicit `--model <id>` (any transformers.js-compatible ONNX model); `model` subcommands take the model id as a positional argument.
 
 ```bash
+nyx                                                              # master-brain agent TUI (remote model + coding tools)
+nyx --cwd ./project                                              # ...with an explicit workspace directory
+
 nyx model pull <model> --task <text-generation|image-to-image>   # pre-download a model
 nyx model list                                                   # list locally cached models (alias: ls)
 nyx model remove <model> [--yes]                                 # delete a cached model
 
-nyx --model "<id>"                                               # interactive chat TUI (requires a terminal)
 nyx text-generation --model "<id>" --message "Hello"             # one-shot text generation
 nyx image-to-image <input> --model "<id>" [-o out.png]           # image-to-image transform
 ```
 
-In the chat TUI: type a message and press Enter to send, `/clear` resets the transcript, `/quit` (or Ctrl+C) exits. Replies stream in as markdown.
+In the agent TUI: type a message and press Enter to send, `/clear` resets the transcript, `/quit` (or Ctrl+C) exits. Replies stream in as markdown, with tool cards and inline y/n approval prompts.
+
+## Master brain (agent)
+
+The default `nyx` command is an agent whose **brain is a remote model** (bring your own API key) and whose tools are local coding tools (`read_file`, `grep`, `glob`, `write_file`, `edit_file`, `bash`). Read-only tools run automatically; writes and shell commands ask for `y/n` approval. Everything runs inside a `--cwd` workspace (default: current directory).
+
+The agent loop runs in the local server (`POST /v1/agent`), so API calls go out but files and commands stay on your machine. Configure the brain in `~/.nyx/settings.json`:
+
+```json
+{
+  "agent": {
+    "provider": "openai-compatible",
+    "model": "deepseek-chat",
+    "baseUrl": "https://api.deepseek.com/v1",
+    "apiKey": "sk-..."
+  }
+}
+```
+
+`provider` is `openai-compatible` (any OpenAI-compatible endpoint: OpenAI, DeepSeek, OpenRouter, vLLM, Ollama, OpenCode Zen/Go, …) or `anthropic`. Env vars override each field: `NYX_AGENT_PROVIDER`, `NYX_AGENT_MODEL`, `NYX_AGENT_BASE_URL`, `NYX_AGENT_API_KEY`, `NYX_AGENT_HEADERS` (a JSON object). Per-run overrides: `--model`, `--provider`, `--base-url`. Some gateways need extra request headers (e.g. OpenCode Zen/Go requires `x-opencode-session`) — add them under `agent.headers`. The desktop agent UI is not wired yet.
 
 ## Desktop app
 

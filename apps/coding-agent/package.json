@@ -16,8 +16,10 @@
   "dependencies": {
     "@clack/prompts": "1.7.0",
     "@earendil-works/pi-tui": "0.84.4",
+    "@nyx/agent": "workspace:*",
     "@nyx/config": "workspace:*",
     "@nyx/llm": "workspace:*",
+    "@nyx/server": "workspace:*",
     "@types/yargs": "17.0.35",
     "chalk": "6.0.0",
     "yargs": "catalog:"

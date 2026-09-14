@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { defu } from "defu";
-import type { ModelInfo, ModelConfig, Settings } from "./types.ts";
+import type { ModelInfo, ModelConfig, Settings, AgentSettings } from "./types.ts";
 
 const CONFIG_DIR_NAME = ".nyx";
 
@@ -56,6 +56,34 @@ export function setSettings(patch: Settings): Settings {
   mkdirSync(getConfigDir(), { recursive: true });
   writeFileSync(getSettingsPath(), JSON.stringify(merged, null, 2));
   return merged;
+}
+
+/**
+ * Agent settings from ~/.nyx/settings.json, with NYX_AGENT_* env vars taking
+ * precedence per field. Fields stay optional; the consumer validates them.
+ */
+export function getAgentSettings(): AgentSettings {
+  const settings = getSettings().agent ?? {};
+  return {
+    provider: process.env.NYX_AGENT_PROVIDER ?? settings.provider,
+    model: process.env.NYX_AGENT_MODEL ?? settings.model,
+    baseUrl: process.env.NYX_AGENT_BASE_URL ?? settings.baseUrl,
+    apiKey: process.env.NYX_AGENT_API_KEY ?? settings.apiKey,
+    headers: parseHeadersEnv(process.env.NYX_AGENT_HEADERS) ?? settings.headers,
+    systemPrompt: settings.systemPrompt,
+    maxSteps: settings.maxSteps,
+  };
+}
+
+/** Parse NYX_AGENT_HEADERS (a JSON object); undefined when unset or malformed. */
+function parseHeadersEnv(value: string | undefined): Record<string, string> | undefined {
+  if (!value) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, string>) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Deep-merge one installed model into the config file (via defu). */

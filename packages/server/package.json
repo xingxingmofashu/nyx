@@ -16,8 +16,11 @@
   },
   "dependencies": {
     "@hono/node-server": "catalog:",
+    "@nyx/agent": "workspace:*",
+    "@nyx/config": "workspace:*",
     "@nyx/llm": "workspace:*",
-    "hono": "catalog:"
+    "hono": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "vite": "7.0.0"

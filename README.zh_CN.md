@@ -8,6 +8,7 @@ nyx 通过 transformers.js 本地运行兼容的 ONNX 模型：
 
 - **文本生成**：小型 instruct 模型（如 Qwen2.5-0.5B-Instruct），支持一次性提示与交互式 TUI
 - **图生图**：超分等图像变换（如 4x_APISR_GRL_GAN）
+- **主脑（agent）**：可选的远程模型（自带 API key），负责编排本地编码工具；agent 循环运行在本地 server 中，文件与命令都不出本机
 - **CLI 与桌面端**：终端 CLI 与 Electron 桌面应用共享同一份本地模型缓存
 
 ## 架构
@@ -16,15 +17,16 @@ Bun monorepo：
 
 - `packages/config` — `~/.nyx` 路径、模型注册表（`~/.nyx/models.json`）与用户设置（`~/.nyx/settings.json`）
 - `packages/llm` — 模型运行时 + 任务（`runtime.ts` 共享加载器、`tasks/*`），基于 onnxruntime-node / transformers.js
-- `packages/server` — `/v1` 下的 Hono HTTP 服务（models / text-generation / image-to-image），以纯 Node 子进程方式启动，使 onnxruntime 运行在 Electron 之外
-- `apps/coding-agent` — 终端 CLI（yargs）：`nyx`（交互式 TUI）、`nyx text-generation`、`nyx image-to-image`、`nyx model ...`
+- `packages/agent` — 主脑 agent 核心（Vercel AI SDK：provider 注册表 + 工具循环），不依赖 onnx
+- `packages/server` — `/v1` 下的 Hono HTTP 服务（models / text-generation / image-to-image / agent），以纯 Node 子进程方式启动，使 onnxruntime 运行在 Electron 之外
+- `apps/coding-agent` — 终端 CLI（yargs）：`nyx`（agent TUI）、`nyx text-generation`、`nyx image-to-image`、`nyx model ...`
 - `apps/desktop` — Electron 桌面应用（forge + vite + React）
 
 ## 快速开始
 
 ```bash
 bun install
-bun run dev -- --help       # 运行 CLI（默认命令启动 TUI，需指定 --model）
+bun run dev -- --help       # 运行 CLI（默认命令启动 agent TUI，见「主脑」）
 bun --cwd apps/coding-agent run src/index.ts --help
 ```
 
@@ -34,19 +36,41 @@ bun --cwd apps/coding-agent run src/index.ts --help
 
 ## 命令
 
-任务类命令需显式指定 `--model <id>`（任意 transformers.js 兼容的 ONNX 模型）；`model` 子命令以位置参数传入模型 id。
+`nyx`（无子命令）是主脑 agent，需要先配置远程模型（见下）。本地任务命令需显式指定 `--model <id>`（任意 transformers.js 兼容的 ONNX 模型）；`model` 子命令以位置参数传入模型 id。
 
 ```bash
+nyx                                                              # 主脑 agent TUI（远程模型 + 本地编码工具）
+nyx --cwd ./project                                              # ...指定工作区目录
+
 nyx model pull <model> --task <text-generation|image-to-image>   # 预下载模型
 nyx model list                                                   # 列出本地已缓存模型（别名：ls）
 nyx model remove <model> [--yes]                                 # 删除已缓存模型
 
-nyx --model "<id>"                                               # 交互式聊天 TUI（需要终端）
+nyx chat --model "<id>"                                          # 本地 ONNX 聊天 TUI（需要终端）
 nyx text-generation --model "<id>" --message "你好"              # 一次性文本生成
 nyx image-to-image <input> --model "<id>" [-o out.png]           # 图生图变换
 ```
 
 chat TUI 中：输入消息回车发送，`/clear` 清空对话，`/quit`（或 Ctrl+C）退出。回复以 markdown 流式显示。
+
+## 主脑（agent）
+
+默认的 `nyx` 命令是一个 agent：**主脑是远程模型**（自带 API key），工具是本地编码工具（`read_file`、`grep`、`glob`、`write_file`、`edit_file`、`bash`）。只读工具自动执行；写文件与 shell 命令需要 `y/n` 审批。所有操作限制在 `--cwd` 工作区内（默认当前目录）。
+
+agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型请求，文件与命令都不出本机。在 `~/.nyx/settings.json` 中配置主脑：
+
+```json
+{
+  "agent": {
+    "provider": "openai-compatible",
+    "model": "deepseek-chat",
+    "baseUrl": "https://api.deepseek.com/v1",
+    "apiKey": "sk-..."
+  }
+}
+```
+
+`provider` 可为 `openai-compatible`（任意 OpenAI 兼容端点：OpenAI、DeepSeek、OpenRouter、vLLM、Ollama、OpenCode Zen/Go 等）或 `anthropic`。环境变量可逐字段覆盖：`NYX_AGENT_PROVIDER`、`NYX_AGENT_MODEL`、`NYX_AGENT_BASE_URL`、`NYX_AGENT_API_KEY`、`NYX_AGENT_HEADERS`（JSON 对象）。单次运行覆盖：`--model`、`--provider`、`--base-url`。部分网关需要额外的请求头（例如 OpenCode Zen/Go 需要 `x-opencode-session`），配置在 `agent.headers` 下。桌面端的 agent 界面尚未接入。
 
 ## 桌面应用
 

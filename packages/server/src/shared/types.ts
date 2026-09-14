@@ -25,3 +25,20 @@ export interface ImageResult {
  * carries the full transcript; no session is stored server-side.
  */
 export type { LLMMessage } from "@nyx/llm"
+
+/**
+ * Agent transcript: full message history, including prior assistant tool calls
+ * and tool results / approval responses. Caller-owned; the server is stateless.
+ */
+export type { AgentEvent, ModelMessage } from "@nyx/agent"
+
+/** POST /v1/agent body: one agent run over a full transcript. */
+export interface AgentRequest {
+  messages: import("@nyx/agent").ModelMessage[]
+  /** Directory all file/bash tools are confined to; defaults to the server cwd. */
+  workspaceDir?: string
+  /** Overrides for the configured brain (env/settings are the default). */
+  model?: string
+  provider?: string
+  baseUrl?: string
+}

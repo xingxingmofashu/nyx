@@ -4,7 +4,7 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { log } from "@clack/prompts";
 import pkg from "../package.json";
-import { TuiCommand } from "./cli/commands/tui";
+import { AgentCommand } from "./cli/commands/agent";
 import { TextGenerationCommand } from "./cli/commands/tasks/text-generation";
 import { ImageToImageCommand } from "./cli/commands/tasks/image-to-image";
 import { ModelCommand } from "./cli/commands/model";
@@ -17,7 +17,7 @@ const cli = yargs(hideBin(process.argv))
   .alias("h", ["help"])
   .version("version", pkg.version)
   .alias("v", ["version"])
-  .command(TuiCommand)
+  .command(AgentCommand)
   .command(TextGenerationCommand)
   .command(ImageToImageCommand)
   .command(ModelCommand)
