@@ -26,8 +26,7 @@ const MAX_APPROVAL_ROUNDS = 25;
 /** Slash commands offered by the editor's autocomplete menu. */
 const SLASH_COMMANDS: SlashCommand[] = [
   { name: "clear", description: "Reset the conversation transcript" },
-  { name: "quit", description: "Exit the TUI" },
-  { name: "exit", description: "Alias of /quit" },
+  { name: "quit", description: "Exit the TUI (alias: /exit)" },
 ];
 
 interface ChatTuiOptions {
