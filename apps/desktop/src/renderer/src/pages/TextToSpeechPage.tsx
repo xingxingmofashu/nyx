@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AudioLines, Download, Sparkles, X } from "lucide-react"
+import { AudioLines, Sparkles, X } from "lucide-react"
 import { useModelsStore } from "../store/models"
 import type { AudioResult } from "../../../shared/types"
 import { ModelPicker } from "../components/ModelPicker"
@@ -144,11 +144,6 @@ export function TextToSpeechPage() {
           <Button variant="secondary" onClick={clear} disabled={!result}>
             <X data-icon="inline-start" /> Clear
           </Button>
-          {result && (
-            <Button variant="secondary" render={<a href={result.url} download="audio.wav" />}>
-              <Download data-icon="inline-start" /> Save
-            </Button>
-          )}
           <Button onClick={() => void run()} disabled={!text.trim() || !selectedModel || busy}>
             {busy ? (
               <>
