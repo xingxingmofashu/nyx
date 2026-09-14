@@ -10,13 +10,14 @@ import { resolve } from "node:path";
 import { log } from "@clack/prompts";
 import { start } from "@nyx/server";
 import { getAgentSettings } from "@nyx/config";
+import { resolveModelConfig } from "@nyx/agent";
 import { cmd } from "../utils/cmd";
 import { runAgentTui } from "../../tui";
 
 interface AgentArgs {
   cwd?: string;
   model?: string;
-  provider?: string;
+  /** yargs camelizes `--base-url`; mapped to `baseURL` on the request. */
   baseUrl?: string;
 }
 
@@ -31,15 +32,11 @@ export const AgentCommand = cmd<Record<string, unknown>, AgentArgs>({
       })
       .option("model", {
         type: "string",
-        description: "Override the configured brain model",
-      })
-      .option("provider", {
-        type: "string",
-        description: "Override the configured brain provider",
+        description: 'Override the brain model ref ("<providerId>/<modelId>")',
       })
       .option("base-url", {
         type: "string",
-        description: "Override the configured brain base URL",
+        description: "Override the resolved provider base URL",
       }),
   handler: async (args: AgentArgs) => {
     if (!isatty(process.stdin.fd)) {
@@ -48,20 +45,12 @@ export const AgentCommand = cmd<Record<string, unknown>, AgentArgs>({
     }
 
     const settings = getAgentSettings();
-    const provider = args.provider ?? settings.provider;
     const model = args.model ?? settings.model;
-    if (!provider || !model || !settings.apiKey) {
-      log.error(
-        "Master brain is not configured. Set agent.{provider,model,apiKey} in ~/.nyx/settings.json " +
-          "or NYX_AGENT_PROVIDER / NYX_AGENT_MODEL / NYX_AGENT_API_KEY.",
-      );
-      process.exit(1);
-    }
-    if (provider === "openai-compatible" && !(args.baseUrl ?? settings.baseUrl)) {
-      log.error(
-        "Provider openai-compatible needs a base URL. Set agent.baseUrl in ~/.nyx/settings.json " +
-          "or NYX_AGENT_BASE_URL (or pass --base-url).",
-      );
+    try {
+      resolveModelConfig({ ...settings, model });
+    } catch (error) {
+      log.error(error instanceof Error ? error.message : String(error));
+      log.info("Configure it in ~/.nyx/settings.json under agent.{model,provider}.");
       process.exit(1);
     }
 
@@ -71,10 +60,9 @@ export const AgentCommand = cmd<Record<string, unknown>, AgentArgs>({
       await runAgentTui({
         serverUrl: server.url,
         workspaceDir,
-        modelLabel: `${provider}/${model}`,
+        modelLabel: model ?? "",
         model: args.model,
-        provider: args.provider,
-        baseUrl: args.baseUrl,
+        baseURL: args.baseUrl,
       });
     } finally {
       await server.stop();

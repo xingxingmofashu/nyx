@@ -8,18 +8,40 @@ export interface Settings {
   agent?: AgentSettings
 }
 
-/** Remote brain configuration; every field can be overridden by a NYX_AGENT_* env var. */
+/** Remote brain configuration; every field can be overridden by an env var. */
 export interface AgentSettings {
-  /** Provider id understood by @nyx/agent (e.g. "openai-compatible", "anthropic"). */
-  provider?: string
+  /** Active model as `<providerId>/<modelId>`, e.g. "opencode/mimo-v2.5". */
   model?: string
-  /** API base URL (required for the openai-compatible provider). */
-  baseUrl?: string
-  apiKey?: string
-  /** Extra request headers (some gateways require e.g. a session header). */
-  headers?: Record<string, string>
+  /** Named provider definitions the model ref resolves against. */
+  provider?: Record<string, AgentProviderEntry>
   systemPrompt?: string
   maxSteps?: number
+}
+
+/** One provider definition (opencode-style): an AI SDK package + its options. */
+export interface AgentProviderEntry {
+  /** AI SDK provider package, e.g. "@ai-sdk/openai-compatible" or "@ai-sdk/anthropic". */
+  npm: string
+  /** Display name. */
+  name?: string
+  /** Options forwarded to the provider factory (baseURL, apiKey, headers, …). */
+  options?: AgentProviderOptions
+  /** Token limits; `output` caps max output tokens, `context` is metadata only. */
+  limit?: AgentProviderLimit
+}
+
+export interface AgentProviderOptions {
+  baseURL?: string
+  apiKey?: string
+  headers?: Record<string, string>
+  [key: string]: unknown
+}
+
+export interface AgentProviderLimit {
+  /** Context window (stored as metadata only). */
+  context?: number | string
+  /** Max output tokens, forwarded to the model. */
+  output?: number
 }
 
 /** A locally installed model record. */

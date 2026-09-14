@@ -1,12 +1,14 @@
 /** Wire types for the nyx inference server HTTP API (shared server/client). */
 
-export interface ImageInput {
+/** HTTP image input: base64-encoded image bytes (JSON request body). */
+export interface ImageBase64Input {
   /** base64-encoded image bytes. */
   data: string
   mimeType: string
 }
 
-export interface ImagePayload {
+/** Raw image bytes as they cross the IPC boundary (structured-cloneable). */
+export interface ImageBytes {
   /** Raw encoded image bytes (png/jpeg/webp). */
   data: Uint8Array
   mimeType: string
@@ -37,8 +39,8 @@ export interface AgentRequest {
   messages: import("@nyx/agent").ModelMessage[]
   /** Directory all file/bash tools are confined to; defaults to the server cwd. */
   workspaceDir?: string
-  /** Overrides for the configured brain (env/settings are the default). */
+  /** Model ref override (`<providerId>/<modelId>`); defaults to agent.model. */
   model?: string
-  provider?: string
-  baseUrl?: string
+  /** Provider base URL override; defaults to the resolved provider's options. */
+  baseURL?: string
 }

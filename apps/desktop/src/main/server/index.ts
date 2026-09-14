@@ -17,17 +17,17 @@ const READY_TIMEOUT_MS = 15_000
  * to 127.0.0.1 with a random bearer token and prints `nyx-server-ready <url>`
  * on stdout once listening.
  */
-export class NyxServer {
+export class NyxServerProcess {
   private child: ChildProcess | null = null
   private token = ""
-  private baseUrl = ""
+  private baseURL = ""
   private serverClient: NyxServerClient | null = null
   private ready: Promise<void> | null = null
 
   /** Resolved server location; throws when the server has not started. */
   get url(): string {
-    if (!this.baseUrl) throw new Error("nyx server is not running")
-    return this.baseUrl
+    if (!this.baseURL) throw new Error("nyx server is not running")
+    return this.baseURL
   }
 
   get authToken(): string {
@@ -69,7 +69,7 @@ export class NyxServer {
         const match = stdoutBuf.match(/nyx-server-ready (\S+)/)
         if (match) {
           clearTimeout(timer)
-          this.baseUrl = match[1]!
+          this.baseURL = match[1]!
           resolve()
         }
       })
@@ -79,7 +79,7 @@ export class NyxServer {
       child.on("exit", () => {
         clearTimeout(timer)
         this.child = null
-        this.baseUrl = ""
+        this.baseURL = ""
         reject(new Error("nyx server exited during startup"))
       })
       child.on("error", (error) => {
@@ -103,7 +103,7 @@ export class NyxServer {
     this.child = null
     this.ready = null
     this.serverClient = null
-    this.baseUrl = ""
+    this.baseURL = ""
     if (!child || child.exitCode !== null) return
 
     child.kill()

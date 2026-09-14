@@ -1,6 +1,6 @@
 import type { BrowserWindow } from "electron"
 import type { ModelInfo } from "@nyx/config"
-import type { NyxServer } from "../server"
+import type { NyxServerProcess } from "../server"
 import { IPC } from "../../shared/ipc"
 import type { LLMTask, ModelPullProgress } from "../../shared/types"
 import { PullCancelledError } from "../server/client"
@@ -11,10 +11,10 @@ import { PullCancelledError } from "../server/client"
  * SSE stream is broadcast to all attached windows on `IPC.models.progress`.
  */
 export class ModelsService {
-  private readonly server: NyxServer
+  private readonly server: NyxServerProcess
   private windows = new Set<BrowserWindow>()
 
-  constructor(manager: NyxServer) {
+  constructor(manager: NyxServerProcess) {
     this.server = manager
   }
 

@@ -4,10 +4,10 @@
  */
 
 // HTTP wire types live in @nyx/server/types.
-import type { ImagePayload, ImageResult } from "@nyx/server/types"
+import type { ImageBytes, ImageResult } from "@nyx/server/types"
 import type { ModelInfo, Settings } from "@nyx/config"
 import type { LLMMessage, LLMTask } from "@nyx/llm"
-export type { ImagePayload, ImageResult, LLMMessage, LLMTask, ModelInfo, Settings }
+export type { ImageBytes, ImageResult, LLMMessage, LLMTask, ModelInfo, Settings }
 
 /** A message as displayed in the text-generation UI. */
 export interface DisplayMessage {
@@ -51,7 +51,7 @@ export interface NyxApi {
       onEvent: (cb: (e: TextGenerationEvent) => void) => () => void
     }
     imageToImage: {
-      run: (modelId: string, input: ImagePayload) => Promise<ImageResult>
+      run: (modelId: string, input: ImageBytes) => Promise<ImageResult>
     }
   }
   models: {

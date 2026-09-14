@@ -1,8 +1,7 @@
 // Public surface of @nyx/agent; everything else in the package is internal.
 
 export type {
-  AgentProviderId,
-  AgentModelConfig,
+  ResolvedAgentModel,
   AgentToolApproval,
   AgentToolContext,
   AgentTool,
@@ -12,5 +11,5 @@ export type {
   ModelMessage,
 } from "./types.ts";
 
-export { resolveModel } from "./providers.ts";
+export { resolveModel, resolveModelConfig } from "./providers.ts";
 export { streamAgent } from "./agent.ts";

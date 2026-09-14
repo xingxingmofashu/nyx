@@ -51,26 +51,33 @@ nyx text-generation --model "<id>" --message "你好"              # 一次性�
 nyx image-to-image <input> --model "<id>" [-o out.png]           # 图生图变换
 ```
 
-chat TUI 中：输入消息回车发送，`/clear` 清空对话，`/quit`（或 Ctrl+C）退出。回复以 markdown 流式显示。
+agent TUI 中：输入消息回车发送，`/clear` 清空对话，`/quit`（或 Ctrl+C）退出。回复以 markdown 流式显示，工具卡片与 y/n 审批内联展示。
 
 ## 主脑（agent）
 
 默认的 `nyx` 命令是一个 agent：**主脑是远程模型**（自带 API key），工具是本地编码工具（`read_file`、`grep`、`glob`、`write_file`、`edit_file`、`bash`）。只读工具自动执行；写文件与 shell 命令需要 `y/n` 审批。所有操作限制在 `--cwd` 工作区内（默认当前目录）。
 
-agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型请求，文件与命令都不出本机。在 `~/.nyx/settings.json` 中配置主脑：
+agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型请求，文件与命令都不出本机。在 `~/.nyx/settings.json` 中配置主脑 —— `agent.model` 是指向 `agent.provider` 的 `<providerId>/<modelId>` 引用：
 
 ```json
 {
   "agent": {
-    "provider": "openai-compatible",
-    "model": "deepseek-chat",
-    "baseUrl": "https://api.deepseek.com/v1",
-    "apiKey": "sk-..."
+    "model": "deepseek/deepseek-chat",
+    "provider": {
+      "deepseek": {
+        "npm": "@ai-sdk/openai-compatible",
+        "options": {
+          "baseURL": "https://api.deepseek.com/v1",
+          "apiKey": "sk-..."
+        },
+        "limit": { "output": 4096 }
+      }
+    }
   }
 }
 ```
 
-`provider` 可为 `openai-compatible`（任意 OpenAI 兼容端点：OpenAI、DeepSeek、OpenRouter、vLLM、Ollama、OpenCode Zen/Go 等）或 `anthropic`。环境变量可逐字段覆盖：`NYX_AGENT_PROVIDER`、`NYX_AGENT_MODEL`、`NYX_AGENT_BASE_URL`、`NYX_AGENT_API_KEY`、`NYX_AGENT_HEADERS`（JSON 对象）。单次运行覆盖：`--model`、`--provider`、`--base-url`。部分网关需要额外的请求头（例如 OpenCode Zen/Go 需要 `x-opencode-session`），配置在 `agent.headers` 下。桌面端的 agent 界面尚未接入。
+`npm` 选择 AI SDK 的 provider 包 —— `@ai-sdk/openai-compatible`（任意 OpenAI 兼容端点：OpenAI、DeepSeek、OpenRouter、vLLM、Ollama、OpenCode Zen/Go 等）或 `@ai-sdk/anthropic`。`options` 承载 `baseURL`/`apiKey`/`headers`；`limit.output` 限制生成 token 数。环境变量覆盖：`NYX_AGENT_MODEL` 替换引用，`NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS`（JSON 对象）覆盖当前 provider 的 options。单次运行覆盖：`--model`、`--base-url`。部分网关需要额外的请求头（例如 OpenCode Zen/Go 需要 `x-opencode-session`），配置在对应 provider 的 `options.headers` 下。桌面端的 agent 界面尚未接入。
 
 ## 桌面应用
 

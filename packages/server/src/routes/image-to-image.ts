@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 import type { ImageToImageService } from "../services/image-to-image"
-import type { ImageInput } from "../shared/types"
+import type { ImageBase64Input } from "../shared/types"
 
 /** POST /v1/image-to-image — transform an image; responds with image bytes. */
 export function imageToImage(service: ImageToImageService): Hono {
@@ -9,7 +9,7 @@ export function imageToImage(service: ImageToImageService): Hono {
   app.post("/", async (c) => {
     const body = await c.req.json().catch(() => ({}))
     const model = (body as { model?: string }).model
-    const image = (body as { image?: ImageInput }).image
+    const image = (body as { image?: ImageBase64Input }).image
     if (!model || !image?.data) return c.json({ error: "model and image are required" }, 400)
 
     try {

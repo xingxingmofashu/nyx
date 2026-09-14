@@ -6,18 +6,18 @@ import type { ZodType } from "zod/v4";
  * the caller injects a model config, a set of tools, and the full transcript.
  */
 
-/** Provider id resolved through the registry in providers.ts. */
-export type AgentProviderId = "openai-compatible" | "anthropic" | (string & {});
-
-/** Remote brain configuration (resolved from ~/.nyx/settings.json + env). */
-export interface AgentModelConfig {
-  provider: AgentProviderId;
+/** Resolved remote-brain model: built from settings by resolveModelConfig. */
+export interface ResolvedAgentModel {
+  /** AI SDK provider package, e.g. "@ai-sdk/openai-compatible" or "@ai-sdk/anthropic". */
+  npm: string;
   model: string;
   apiKey?: string;
-  /** Required for the openai-compatible provider; optional for anthropic. */
-  baseUrl?: string;
+  /** Provider base URL (required by the openai-compatible provider). */
+  baseURL?: string;
   /** Extra request headers (e.g. a routing/session header some gateways require). */
   headers?: Record<string, string>;
+  /** Cap on generated tokens, from the provider's `limit.output`. */
+  maxOutputTokens?: number;
 }
 
 /** Whether a tool runs automatically or pauses for user approval. */
@@ -51,8 +51,8 @@ export type AgentToolSet = Array<AgentTool<any, any>>;
 
 /** Everything needed for one agent run; the transcript is caller-owned. */
 export interface AgentRunOptions {
-  /** A provider config (resolved via the registry) or a pre-built model. */
-  model: AgentModelConfig | LanguageModel;
+  /** A resolved model (built from settings) or a pre-built model. */
+  model: ResolvedAgentModel | LanguageModel;
   tools: AgentToolSet;
   messages: ModelMessage[];
   workspaceDir: string;

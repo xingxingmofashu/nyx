@@ -198,18 +198,17 @@ export interface AgentTuiOptions {
   serverUrl: string;
   workspaceDir: string;
   modelLabel: string;
+  /** Model ref override (`<providerId>/<modelId>`). */
   model?: string;
-  provider?: string;
-  /** Brain base URL override (the CLI `--base-url` flag). */
-  baseUrl?: string;
+  /** Provider base URL override. */
+  baseURL?: string;
 }
 
 interface AgentStreamRequest {
   messages: ModelMessage[];
   workspaceDir: string;
   model?: string;
-  provider?: string;
-  baseUrl?: string;
+  baseURL?: string;
 }
 
 /** POST the transcript to `/v1/agent` and yield the SSE `AgentEvent`s. */
@@ -283,7 +282,7 @@ interface ApprovalResponse {
  */
 export async function runAgentTui(options: AgentTuiOptions): Promise<void> {
   const transcript: ModelMessage[] = [];
-  const overrides = { model: options.model, provider: options.provider, baseUrl: options.baseUrl };
+  const overrides = { model: options.model, baseURL: options.baseURL };
   let approvalResolver: ((approved: boolean) => void) | null = null;
   let shell!: ChatTui;
 

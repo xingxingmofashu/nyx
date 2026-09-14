@@ -11,7 +11,7 @@ import { TextGenerationService } from "./services/text-generation"
 import { ProviderCache } from "./lib/provider-cache"
 
 /** Service dependencies shared by every route, wired once per app instance. */
-export interface Services {
+export interface ServerServices {
   /** Downloads/removes models: list, pull, cancel, remove. */
   models: ModelsService
   /** Streams text-generation turns. */
@@ -23,11 +23,11 @@ export interface Services {
 }
 
 /** Assemble a fully-wired app: mount services under `/v1`. */
-export function createApp(options: { token?: string; services?: Services } = {}): Hono {
+export function createApp(options: { token?: string; services?: ServerServices } = {}): Hono {
   // Share one provider cache between the task services and the model service so
   // removing a model also evicts its loaded weights.
   const cache = new ProviderCache()
-  const services: Services = options.services ?? {
+  const services: ServerServices = options.services ?? {
     models: new ModelsService(cache),
     textGeneration: new TextGenerationService(cache),
     imageToImage: new ImageToImageService(cache),

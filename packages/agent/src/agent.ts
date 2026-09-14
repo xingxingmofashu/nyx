@@ -1,6 +1,6 @@
 import { isStepCount, streamText, tool as aiTool, type LanguageModel, type ModelMessage, type ToolSet } from "ai";
 import { resolveModel } from "./providers.ts";
-import type { AgentEvent, AgentModelConfig, AgentRunOptions, AgentToolSet } from "./types.ts";
+import type { AgentEvent, AgentRunOptions, AgentToolSet, ResolvedAgentModel } from "./types.ts";
 
 const DEFAULT_SYSTEM_PROMPT = [
   "You are nyx, a coding agent operating inside a single workspace directory.",
@@ -13,9 +13,9 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** A provider config object; anything else is already a LanguageModel. */
-function isModelConfig(value: AgentRunOptions["model"]): value is AgentModelConfig {
-  return typeof value === "object" && value !== null && "provider" in value && "model" in value;
+/** A resolved provider config object; anything else is already a LanguageModel. */
+function isModelConfig(value: AgentRunOptions["model"]): value is ResolvedAgentModel {
+  return typeof value === "object" && value !== null && "npm" in value && "model" in value;
 }
 
 /** Adapt our declarative AgentTool[] into AI SDK tools + approval policy. */
@@ -45,6 +45,7 @@ export async function* streamAgent(options: AgentRunOptions): AsyncIterable<Agen
   const { model, tools, messages, workspaceDir, systemPrompt, maxSteps = 20, signal } = options;
   const { tools: aiTools, toolApproval } = toAiTools(tools, workspaceDir, signal);
   const languageModel: LanguageModel = isModelConfig(model) ? resolveModel(model) : model;
+  const maxOutputTokens = isModelConfig(model) ? model.maxOutputTokens : undefined;
 
   const result = streamText({
     model: languageModel,
@@ -53,6 +54,7 @@ export async function* streamAgent(options: AgentRunOptions): AsyncIterable<Agen
     tools: aiTools,
     toolApproval,
     stopWhen: isStepCount(maxSteps),
+    maxOutputTokens,
     abortSignal: signal,
   });
 

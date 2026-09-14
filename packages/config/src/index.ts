@@ -59,20 +59,35 @@ export function setSettings(patch: Settings): Settings {
 }
 
 /**
- * Agent settings from ~/.nyx/settings.json, with NYX_AGENT_* env vars taking
- * precedence per field. Fields stay optional; the consumer validates them.
+ * Agent settings from ~/.nyx/settings.json, with env overrides: NYX_AGENT_MODEL
+ * replaces the model ref, and NYX_AGENT_{API_KEY,BASE_URL,HEADERS} override the
+ * active provider's `options` (the active provider is the model ref's prefix).
  */
 export function getAgentSettings(): AgentSettings {
-  const settings = getSettings().agent ?? {};
-  return {
-    provider: process.env.NYX_AGENT_PROVIDER ?? settings.provider,
-    model: process.env.NYX_AGENT_MODEL ?? settings.model,
-    baseUrl: process.env.NYX_AGENT_BASE_URL ?? settings.baseUrl,
-    apiKey: process.env.NYX_AGENT_API_KEY ?? settings.apiKey,
-    headers: parseHeadersEnv(process.env.NYX_AGENT_HEADERS) ?? settings.headers,
-    systemPrompt: settings.systemPrompt,
-    maxSteps: settings.maxSteps,
-  };
+  const agent = getSettings().agent ?? {};
+  const model = process.env.NYX_AGENT_MODEL ?? agent.model;
+
+  const envOptions: Record<string, unknown> = {};
+  if (process.env.NYX_AGENT_API_KEY) envOptions.apiKey = process.env.NYX_AGENT_API_KEY;
+  if (process.env.NYX_AGENT_BASE_URL) envOptions.baseURL = process.env.NYX_AGENT_BASE_URL;
+  const envHeaders = parseHeadersEnv(process.env.NYX_AGENT_HEADERS);
+  if (envHeaders) envOptions.headers = envHeaders;
+
+  const provider = { ...(agent.provider ?? {}) };
+  const providerId = providerIdOf(model);
+  const entry = providerId ? provider[providerId] : undefined;
+  if (providerId && entry && Object.keys(envOptions).length > 0) {
+    provider[providerId] = { ...entry, options: { ...(entry.options ?? {}), ...envOptions } };
+  }
+
+  return { ...agent, model, provider };
+}
+
+/** Provider id from a `<providerId>/<modelId>` ref (undefined when malformed). */
+export function providerIdOf(model: string | undefined): string | undefined {
+  if (!model) return undefined;
+  const slash = model.indexOf("/");
+  return slash > 0 ? model.slice(0, slash) : undefined;
 }
 
 /** Parse NYX_AGENT_HEADERS (a JSON object); undefined when unset or malformed. */

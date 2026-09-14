@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer } from "electron"
 import { IPC } from "../shared/ipc"
 import type {
   TextGenerationEvent,
-  ImagePayload,
+  ImageBytes,
   ImageResult,
   ModelInfo,
   ModelPullProgress,
@@ -27,7 +27,7 @@ const api: NyxApi = {
       },
     },
     imageToImage: {
-      run: (modelId: string, input: ImagePayload): Promise<ImageResult> =>
+      run: (modelId: string, input: ImageBytes): Promise<ImageResult> =>
         ipcRenderer.invoke(IPC.tasks.imageToImage.run, modelId, input),
     },
   },

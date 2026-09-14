@@ -56,20 +56,27 @@ In the agent TUI: type a message and press Enter to send, `/clear` resets the tr
 
 The default `nyx` command is an agent whose **brain is a remote model** (bring your own API key) and whose tools are local coding tools (`read_file`, `grep`, `glob`, `write_file`, `edit_file`, `bash`). Read-only tools run automatically; writes and shell commands ask for `y/n` approval. Everything runs inside a `--cwd` workspace (default: current directory).
 
-The agent loop runs in the local server (`POST /v1/agent`), so API calls go out but files and commands stay on your machine. Configure the brain in `~/.nyx/settings.json`:
+The agent loop runs in the local server (`POST /v1/agent`), so API calls go out but files and commands stay on your machine. Configure the brain in `~/.nyx/settings.json` — `agent.model` is a `<providerId>/<modelId>` ref into the `agent.provider` map:
 
 ```json
 {
   "agent": {
-    "provider": "openai-compatible",
-    "model": "deepseek-chat",
-    "baseUrl": "https://api.deepseek.com/v1",
-    "apiKey": "sk-..."
+    "model": "deepseek/deepseek-chat",
+    "provider": {
+      "deepseek": {
+        "npm": "@ai-sdk/openai-compatible",
+        "options": {
+          "baseURL": "https://api.deepseek.com/v1",
+          "apiKey": "sk-..."
+        },
+        "limit": { "output": 4096 }
+      }
+    }
   }
 }
 ```
 
-`provider` is `openai-compatible` (any OpenAI-compatible endpoint: OpenAI, DeepSeek, OpenRouter, vLLM, Ollama, OpenCode Zen/Go, …) or `anthropic`. Env vars override each field: `NYX_AGENT_PROVIDER`, `NYX_AGENT_MODEL`, `NYX_AGENT_BASE_URL`, `NYX_AGENT_API_KEY`, `NYX_AGENT_HEADERS` (a JSON object). Per-run overrides: `--model`, `--provider`, `--base-url`. Some gateways need extra request headers (e.g. OpenCode Zen/Go requires `x-opencode-session`) — add them under `agent.headers`. The desktop agent UI is not wired yet.
+`npm` selects the AI SDK provider package — `@ai-sdk/openai-compatible` (any OpenAI-compatible endpoint: OpenAI, DeepSeek, OpenRouter, vLLM, Ollama, OpenCode Zen/Go, …) or `@ai-sdk/anthropic`. `options` holds `baseURL`/`apiKey`/`headers`; `limit.output` caps generated tokens. Env overrides: `NYX_AGENT_MODEL` replaces the ref, and `NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS` (a JSON object) override the active provider's options. Per-run overrides: `--model` and `--base-url`. Some gateways need extra request headers (e.g. OpenCode Zen/Go requires `x-opencode-session`) — add them under the provider's `options.headers`. The desktop agent UI is not wired yet.
 
 ## Desktop app
 

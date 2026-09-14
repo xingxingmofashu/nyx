@@ -1,11 +1,11 @@
 import { BrowserWindow, ipcMain } from "electron"
 import { getModelsDir, getSettings, setSettings } from "@nyx/config"
 import { IPC } from "../shared/ipc"
-import type { LLMMessage, ImagePayload, LLMTask, Settings } from "../shared/types"
+import type { LLMMessage, ImageBytes, LLMTask, Settings } from "../shared/types"
 import { TextGenerationService } from "./services/text-generation"
 import { ImageToImageService } from "./services/image-to-image"
 import { ModelsService } from "./services/models"
-import type { NyxServer } from "./server"
+import type { NyxServerProcess } from "./server"
 
 interface Services {
   tasks: {
@@ -13,7 +13,7 @@ interface Services {
     imageToImage: ImageToImageService
   }
   models: ModelsService
-  server: NyxServer
+  server: NyxServerProcess
 }
 
 /** Register all ipcMain handlers. Must run after app is ready. */
@@ -34,7 +34,7 @@ export function registerIpc(services: Services): void {
   // --- Image-to-image ---
   ipcMain.handle(
     IPC.tasks.imageToImage.run,
-    (_e, modelId: string, input: ImagePayload) =>
+    (_e, modelId: string, input: ImageBytes) =>
       imageToImage.run(modelId, input),
   )
 

@@ -14,7 +14,7 @@ import { dirname, join, resolve } from "node:path"
  * (onnxruntime-node crashes inside Electron). That child cannot read the asar,
  * so `packageAfterCopy` stages the server bundle (`server.cjs`) and its full
  * native/runtime closure into `Resources/runtime/` as real files — the layout
- * `NyxServer` resolves in production.
+ * `NyxServerProcess` resolves in production.
  *
  * Bun layout: packages live in the root `node_modules/.bun/<store>` store and
  * `apps/desktop/node_modules` holds only symlinks (asar rejects out-of-package
@@ -97,7 +97,7 @@ const config: ForgeConfig = {
      *     server.cjs                (@nyx/server vite bundle)
      *     node_modules/…            dereferenced transformers + native closure
      *
-     * A child spawned by NyxServer (the app's own binary under
+     * A child spawned by NyxServerProcess (the app's own binary under
      * `ELECTRON_RUN_AS_NODE=1`) loads server.cjs from here; because the files
      * are real (not inside the asar), it resolves the runtime dependencies by
      * walking up from server.cjs to runtime/node_modules.

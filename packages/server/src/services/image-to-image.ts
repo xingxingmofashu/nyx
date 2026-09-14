@@ -1,10 +1,10 @@
 import { RawImage } from "@huggingface/transformers"
 import { OnnxImageToImageProvider } from "@nyx/llm"
-import type { ImageInput } from "../shared/types"
+import type { ImageBase64Input } from "../shared/types"
 import { ProviderCache } from "../lib/provider-cache"
 
-/** Raw RGBA/RGB pixels of an image output, ready to stream back. */
-export interface ImageOutput {
+/** One generated image: encoded bytes plus the pipeline's shape metadata. */
+export interface GeneratedImage {
   data: Buffer
   width: number
   height: number
@@ -16,7 +16,7 @@ export class ImageToImageService {
   constructor(private readonly cache: ProviderCache = new ProviderCache()) {}
 
   /** Transform a single image with an image-to-image model. */
-  async generate(modelId: string, input: ImageInput): Promise<ImageOutput> {
+  async generate(modelId: string, input: ImageBase64Input): Promise<GeneratedImage> {
     const provider = this.cache.get(modelId, () => new OnnxImageToImageProvider({ model: modelId }))
     const bytes = Buffer.from(input.data, "base64")
     const source = await RawImage.fromBlob(new Blob([bytes], { type: input.mimeType }))

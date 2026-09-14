@@ -1,6 +1,6 @@
 import type { LLMMessage, LLMTask } from "@nyx/llm"
 import type { ModelInfo } from "@nyx/config"
-import type { TextGenerationEvent, ImagePayload, ImageResult, ModelPullProgress } from "../../shared/types"
+import type { TextGenerationEvent, ImageBytes, ImageResult, ModelPullProgress } from "../../shared/types"
 
 /** Thrown when a pull was cancelled (server sent the `cancelled` SSE event). */
 export class PullCancelledError extends Error {
@@ -13,7 +13,7 @@ export class PullCancelledError extends Error {
 /** HTTP transport for the @nyx/server child (main talks to it over HTTP; onnxruntime cannot run inside Electron). */
 export class NyxServerClient {
   constructor(
-    private readonly baseUrl: string,
+    private readonly baseURL: string,
     private readonly token: string,
   ) {}
 
@@ -22,7 +22,7 @@ export class NyxServerClient {
   }
 
   private async requestJson<T>(path: string, init?: RequestInit): Promise<T> {
-    const res = await fetch(`${this.baseUrl}${path}`, { ...init, headers: { ...this.headers(), ...init?.headers } })
+    const res = await fetch(`${this.baseURL}${path}`, { ...init, headers: { ...this.headers(), ...init?.headers } })
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string }
       throw new Error(body.error ?? `${path} failed: ${res.status}`)
@@ -40,7 +40,7 @@ export class NyxServerClient {
     task: LLMTask,
     onProgress?: (p: Omit<ModelPullProgress, "modelId" | "done">) => void,
   ): Promise<void> {
-    const res = await fetch(`${this.baseUrl}/v1/models/pull`, {
+    const res = await fetch(`${this.baseURL}/v1/models/pull`, {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify({ model: modelId, task }),
@@ -86,7 +86,7 @@ export class NyxServerClient {
     messages: LLMMessage[],
     signal?: AbortSignal,
   ): AsyncIterable<TextGenerationEvent> {
-    const res = await fetch(`${this.baseUrl}/v1/text-generation`, {
+    const res = await fetch(`${this.baseURL}/v1/text-generation`, {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify({ model: modelId, messages }),
@@ -110,8 +110,8 @@ export class NyxServerClient {
     }
   }
 
-  async imageToImage(modelId: string, input: ImagePayload): Promise<ImageResult> {
-    const res = await fetch(`${this.baseUrl}/v1/image-to-image`, {
+  async imageToImage(modelId: string, input: ImageBytes): Promise<ImageResult> {
+    const res = await fetch(`${this.baseURL}/v1/image-to-image`, {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify({

@@ -4,7 +4,7 @@ import { registerIpc } from "./ipc"
 import { TextGenerationService } from "./services/text-generation"
 import { ImageToImageService } from "./services/image-to-image"
 import { ModelsService } from "./services/models"
-import { NyxServer } from "./server"
+import { NyxServerProcess } from "./server"
 import { IPC } from "../shared/ipc"
 
 // Single instance: local model cache is a single set of files.
@@ -21,7 +21,7 @@ if (!gotLock) {
   })
 }
 
-const server = new NyxServer()
+const server = new NyxServerProcess()
 const windows = new Set<BrowserWindow>()
 
 function createWindow(): BrowserWindow {

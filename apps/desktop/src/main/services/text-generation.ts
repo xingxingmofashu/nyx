@@ -1,15 +1,15 @@
 import type { BrowserWindow } from "electron"
-import type { NyxServer } from "../server"
+import type { NyxServerProcess } from "../server"
 import { IPC } from "../../shared/ipc"
 import type { TextGenerationEvent, LLMMessage } from "../../shared/types"
 
 /** Stateless proxy: each turn passes model + full transcript; server SSE events forward verbatim. */
 export class TextGenerationService {
-  private readonly manager: NyxServer
+  private readonly manager: NyxServerProcess
   private windows = new Set<BrowserWindow>()
   private abortController: AbortController | null = null
 
-  constructor(manager: NyxServer) {
+  constructor(manager: NyxServerProcess) {
     this.manager = manager
   }
 
