@@ -100,7 +100,10 @@ export function TextGenerationPage() {
                                       {message.role === "user" ? (
                                         <p className="whitespace-pre-wrap">{part.text}</p>
                                       ) : (
-                                        <MarkdownText text={part.text} isAnimating={animating} />
+                                        <MarkdownText
+                                          text={part.text}
+                                          isAnimating={animating && index === message.parts.length - 1}
+                                        />
                                       )}
                                     </BubbleContent>
                                   </Bubble>

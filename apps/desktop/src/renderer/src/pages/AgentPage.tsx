@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { Bot, FolderOpen, RotateCcw } from "lucide-react"
 import { useChat } from "@ai-sdk/react"
-import { getToolName, isToolUIPart } from "ai"
+import { getToolName, isReasoningUIPart, isToolUIPart } from "ai"
 import { agentChat } from "../lib/chat"
 import { useAgentStore } from "../store/agent"
 import { Button } from "../components/ui/button"
@@ -149,8 +149,27 @@ export function AgentPage() {
                                         {message.role === "user" ? (
                                           <p className="whitespace-pre-wrap">{part.text}</p>
                                         ) : (
-                                          <MarkdownText text={part.text} isAnimating={animating} />
+                                          <MarkdownText
+                                            text={part.text}
+                                            isAnimating={animating && index === message.parts.length - 1}
+                                          />
                                         )}
+                                      </BubbleContent>
+                                    </Bubble>
+                                  </MessageContent>
+                                </Message>
+                              )
+                            }
+                            if (isReasoningUIPart(part)) {
+                              return (
+                                <Message key={index} align="start">
+                                  <MessageContent>
+                                    <Bubble variant="ghost" align="start">
+                                      <BubbleContent>
+                                        <MarkdownText
+                                          text={part.text}
+                                          className="text-xs text-muted-foreground"
+                                        />
                                       </BubbleContent>
                                     </Bubble>
                                   </MessageContent>

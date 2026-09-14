@@ -43,7 +43,7 @@
     "test": "bun run --filter='@nyx/*' test"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "devDependencies": {
     "@tsconfig/bun": "1.0.11",
