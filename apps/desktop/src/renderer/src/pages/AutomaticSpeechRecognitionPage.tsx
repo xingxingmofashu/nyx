@@ -20,6 +20,12 @@ export function AutomaticSpeechRecognitionPage() {
     if (error) toast.add({ title: "Microphone error", description: error, type: "error" })
   }, [error])
 
+  useEffect(() => {
+    // Models can be pulled from the CLI while the app is running; refresh so a
+    // freshly installed model becomes selectable without a restart.
+    void useModelsStore.getState().load()
+  }, [])
+
   const toggle = async () => {
     if (transcribing) return
     if (!recording) {
@@ -72,7 +78,11 @@ export function AutomaticSpeechRecognitionPage() {
           )}
         </Button>
         <p className="text-xs text-muted-foreground">
-          {recording ? "Listening — press stop when you're done" : "Press record and speak"}
+          {!selectedModel
+            ? "Install an automatic speech recognition model in Manage models."
+            : recording
+              ? "Listening — press stop when you're done"
+              : "Press record and speak"}
         </p>
       </div>
 

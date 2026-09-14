@@ -26,20 +26,25 @@ export function useRecorder() {
     chunksRef.current = []
   }, [])
 
-  // Stop the mic if the component unmounts while recording or opening.
-  useEffect(
-    () => () => {
+  // Stop the mic if the component unmounts while recording or opening. Reset the
+  // flag in the effect body: StrictMode mounts/unmounts/remounts in dev, and the
+  // simulated unmount would otherwise leave the hook permanently "unmounted".
+  useEffect(() => {
+    unmountedRef.current = false
+    return () => {
       unmountedRef.current = true
       release()
-    },
-    [release],
-  )
+    }
+  }, [release])
 
   const start = useCallback(async () => {
     if (recorderRef.current || startingRef.current) return
     startingRef.current = true
     setError(null)
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("Microphone is unavailable in this context")
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,

@@ -30,7 +30,8 @@ export class OnnxAutomaticSpeechRecognitionProvider implements TranscriptionProv
 
   /**
    * Transcribe mono audio at the model's expected rate (16 kHz for Whisper).
-   * Language is auto-detected unless `options.language` is set.
+   * Language is auto-detected unless `options.language` is set. Whisper's
+   * non-speech placeholders are stripped, so silence/noise yields "".
    */
   async transcribe(samples: Float32Array, options: AutomaticSpeechRecognitionOptions = {}): Promise<string> {
     const pipe = await this.load();
@@ -39,7 +40,7 @@ export class OnnxAutomaticSpeechRecognitionProvider implements TranscriptionProv
       ...(options.task !== undefined ? { task: options.task } : {}),
     });
     const result = Array.isArray(output) ? output[0] : output;
-    return result?.text?.trim() ?? "";
+    return cleanTranscript(result?.text ?? "");
   }
 
   private async load(): Promise<AutomaticSpeechRecognitionPipeline> {
@@ -50,3 +51,16 @@ export class OnnxAutomaticSpeechRecognitionProvider implements TranscriptionProv
     });
   }
 }
+
+/**
+ * Whisper emits bracketed placeholders for non-speech audio (e.g.
+ * `[BLANK_AUDIO]`, `[inaudible]`, `[MUSIC]`, `(笑声)`). Strip them so a
+ * silent/noisy recording reads as "no speech" instead of leaking the marker.
+ */
+const NON_SPEECH_MARKER =
+  /\[\s*(?:blank_audio|inaudible|silence|noise|music|applause|laughter)\s*\]|\(\s*(?:inaudible|silence|noise|music|applause|laughter|笑|笑声|笑聲|鼓掌)\s*\)/giu;
+
+function cleanTranscript(text: string): string {
+  return text.replace(NON_SPEECH_MARKER, "").replace(/\s+/g, " ").trim();
+}
+

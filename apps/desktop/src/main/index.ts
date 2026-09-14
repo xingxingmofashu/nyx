@@ -84,7 +84,7 @@ app.whenReady().then(async () => {
   // for copy actions).
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback, details) => {
     if (permission === "media") {
-      const mediaTypes = (details as { mediaTypes?: string[] }).mediaTypes ?? []
+      const mediaTypes = (details as { mediaTypes?: string[] } | undefined)?.mediaTypes ?? []
       callback(mediaTypes.length === 0 || mediaTypes.includes("audio"))
       return
     }
