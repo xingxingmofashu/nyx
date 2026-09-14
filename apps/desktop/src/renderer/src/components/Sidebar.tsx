@@ -1,4 +1,4 @@
-import { AudioLines, Bot, Boxes, Image as ImageIcon, Sparkles } from "lucide-react"
+import { AudioLines, Bot, Boxes, Image as ImageIcon, Mic, Sparkles } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import {
   Sidebar,
@@ -12,7 +12,7 @@ import {
   SidebarMenuButton,
 } from "./ui/sidebar"
 
-export type ViewId = "agent" | "image-to-image" | "text-to-speech" | "models"
+export type ViewId = "agent" | "image-to-image" | "text-to-speech" | "automatic-speech-recognition" | "models"
 
 interface ViewDef {
   id: ViewId
@@ -31,6 +31,7 @@ const NAV: Array<{ label?: string; views: ViewDef[] }> = [
     views: [
       { id: "image-to-image", path: "/image-to-image", label: "Image to image", icon: ImageIcon },
       { id: "text-to-speech", path: "/text-to-speech", label: "Text to speech", icon: AudioLines },
+      { id: "automatic-speech-recognition", path: "/automatic-speech-recognition", label: "Automatic speech recognition", icon: Mic },
     ],
   },
   {

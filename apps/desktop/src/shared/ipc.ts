@@ -7,6 +7,9 @@ export const IPC = {
     textToSpeech: {
       run: "text-to-speech:run",
     },
+    automaticSpeechRecognition: {
+      run: "automatic-speech-recognition:run",
+    },
   },
   /** Agent chat streaming (AI SDK UI message stream). */
   chat: {

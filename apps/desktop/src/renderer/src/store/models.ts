@@ -36,7 +36,18 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
 
   load: async () => {
     const models = await window.nyx.models.list()
-    set({ models })
+    set((state) => {
+      // Default each task to its first installed model so the pickers (and the
+      // agent composer mic) work without an explicit selection.
+      const selected = { ...state.selected }
+      for (const model of models) {
+        // Registry tasks are always our LLMTask ids (ModelInfo.task is the wider
+        // transformers.js PipelineType).
+        const task = model.task as LLMTask
+        if (!selected[task]) selected[task] = model.id
+      }
+      return { models, selected }
+    })
   },
 
   select: async (task, modelId) => {

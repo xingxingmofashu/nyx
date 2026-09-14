@@ -21,6 +21,8 @@ interface ChatComposerProps {
   placeholder?: string
   /** Optional row rendered above the input (e.g. a model picker). */
   header?: ReactNode
+  /** Optional control rendered before the send/stop button (e.g. a mic). */
+  trailing?: ReactNode
 }
 
 /** Chat input with send/stop controls; keeps focus after sending. */
@@ -33,6 +35,7 @@ export function ChatComposer({
   disabled,
   placeholder,
   header,
+  trailing,
 }: ChatComposerProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -71,6 +74,7 @@ export function ChatComposer({
             className="max-h-48"
           />
           <InputGroupAddon align="inline-end">
+            {trailing}
             {streaming ? (
               <InputGroupButton
                 size="icon-sm"

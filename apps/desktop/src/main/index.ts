@@ -1,8 +1,9 @@
-import { app, BrowserWindow, shell } from "electron"
+import { app, BrowserWindow, session, shell, systemPreferences } from "electron"
 import { join } from "node:path"
 import { registerIpc } from "./ipc"
 import { ChatStreamService } from "./services/chat-stream"
 import { ImageToImageService } from "./services/image-to-image"
+import { AutomaticSpeechRecognitionService } from "./services/automatic-speech-recognition"
 import { TextToSpeechService } from "./services/text-to-speech"
 import { ModelsService } from "./services/models"
 import { NyxServerProcess } from "./server"
@@ -78,6 +79,25 @@ function createWindow(): BrowserWindow {
 }
 
 app.whenReady().then(async () => {
+  // Voice input needs the microphone: prompt for the macOS system permission
+  // and let the renderer's `getUserMedia` through (audio only, plus clipboard
+  // for copy actions).
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback, details) => {
+    if (permission === "media") {
+      const mediaTypes = (details as { mediaTypes?: string[] }).mediaTypes ?? []
+      callback(mediaTypes.length === 0 || mediaTypes.includes("audio"))
+      return
+    }
+    callback(permission === "clipboard-sanitized-write" || permission === "clipboard-read")
+  })
+  session.defaultSession.setPermissionCheckHandler((_wc, permission) =>
+    permission === "media" || permission.startsWith("clipboard"),
+  )
+  if (process.platform === "darwin") {
+    const granted = await systemPreferences.askForMediaAccess("microphone")
+    if (!granted) console.warn("microphone access was not granted")
+  }
+
   // Start the inference server before any window can issue model calls.
   try {
     await server.start()
@@ -88,11 +108,13 @@ app.whenReady().then(async () => {
   const chatService = new ChatStreamService(server)
   const imageToImageService = new ImageToImageService(server)
   const textToSpeechService = new TextToSpeechService(server)
+  const automaticSpeechRecognitionService = new AutomaticSpeechRecognitionService(server)
   const modelsService = new ModelsService(server)
   registerIpc({
     tasks: {
       imageToImage: imageToImageService,
       textToSpeech: textToSpeechService,
+      automaticSpeechRecognition: automaticSpeechRecognitionService,
     },
     chat: chatService,
     models: modelsService,

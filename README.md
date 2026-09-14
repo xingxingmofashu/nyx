@@ -18,7 +18,7 @@ Bun monorepo:
 - `packages/config` — `~/.nyx` paths, the model registry (`~/.nyx/models.json`), and user settings (`~/.nyx/settings.json`)
 - `packages/llm` — model runtime + tasks (`runtime.ts` shared loader, `tasks/*`), built on onnxruntime-node / transformers.js
 - `packages/agent` — the master-brain agent core (Vercel AI SDK: providers + tool loop), no onnx dependency
-- `packages/server` — Hono HTTP service under `/v1` (models / tasks/image-to-image / tasks/text-to-speech / agent), spawned as a plain Node child so onnxruntime runs outside Electron
+- `packages/server` — Hono HTTP service under `/v1` (models / tasks/image-to-image / tasks/text-to-speech / tasks/automatic-speech-recognition / agent), spawned as a plain Node child so onnxruntime runs outside Electron
 - `apps/coding-agent` — terminal CLI (yargs): `nyx` (agent TUI), `nyx image-to-image`, `nyx text-to-speech`, `nyx model ...`
 - `apps/desktop` — Electron desktop app (forge + vite + React)
 
@@ -42,7 +42,7 @@ Models are cached in `~/.nyx/models/` and auto-downloaded from Hugging Face on f
 nyx                                                              # master-brain agent TUI (remote model + coding tools)
 nyx --cwd ./project                                              # ...with an explicit workspace directory
 
-nyx model pull <model> --task <image-to-image|text-to-speech>           # pre-download a model
+nyx model pull <model> --task <image-to-image|text-to-speech|automatic-speech-recognition>  # pre-download a model
 nyx model list                                                   # list locally cached models (alias: ls)
 nyx model remove <model> [--yes]                                 # delete a cached model
 
@@ -51,6 +51,10 @@ nyx text-to-speech "<text>" --model "<id>" [-o out.wav]          # text-to-speec
 ```
 
 In the agent TUI (powered by `@ai-sdk/tui`): type a message and press Enter to send, `y`/`n` answers the inline tool-approval prompt, and `Esc` (or Ctrl+C) exits. Replies stream in as markdown, with tool cards and reasoning sections.
+
+### Voice input (desktop)
+
+Pull an automatic-speech-recognition model (e.g. `Xenova/whisper-base`) in **Manage models**, then either use the mic in the agent composer (the transcript is sent to the agent automatically) or open the **Automatic speech recognition** page to record and copy a transcript. Audio is captured at 16 kHz mono and transcribed locally; language is auto-detected.
 
 ## Master brain (agent)
 

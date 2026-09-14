@@ -18,7 +18,7 @@ Bun monorepo：
 - `packages/config` — `~/.nyx` 路径、模型注册表（`~/.nyx/models.json`）与用户设置（`~/.nyx/settings.json`）
 - `packages/llm` — 模型运行时 + 任务（`runtime.ts` 共享加载器、`tasks/*`），基于 onnxruntime-node / transformers.js
 - `packages/agent` — 主脑 agent 核心（Vercel AI SDK：provider 注册表 + 工具循环），不依赖 onnx
-- `packages/server` — `/v1` 下的 Hono HTTP 服务（models / tasks/image-to-image / tasks/text-to-speech / agent），以纯 Node 子进程方式启动，使 onnxruntime 运行在 Electron 之外
+- `packages/server` — `/v1` 下的 Hono HTTP 服务（models / tasks/image-to-image / tasks/text-to-speech / tasks/automatic-speech-recognition / agent），以纯 Node 子进程方式启动，使 onnxruntime 运行在 Electron 之外
 - `apps/coding-agent` — 终端 CLI（yargs）：`nyx`（agent TUI）、`nyx image-to-image`、`nyx text-to-speech`、`nyx model ...`
 - `apps/desktop` — Electron 桌面应用（forge + vite + React）
 
@@ -42,7 +42,7 @@ bun run --cwd apps/coding-agent src/index.ts --help
 nyx                                                              # 主脑 agent TUI（远程模型 + 本地编码工具）
 nyx --cwd ./project                                              # ...指定工作区目录
 
-nyx model pull <model> --task <image-to-image|text-to-speech>   # 预下载模型
+nyx model pull <model> --task <image-to-image|text-to-speech|automatic-speech-recognition>   # 预下载模型
 nyx model list                                                   # 列出本地已缓存模型（别名：ls）
 nyx model remove <model> [--yes]                                 # 删除已缓存模型
 
@@ -51,6 +51,10 @@ nyx text-to-speech "<文本>" --model "<id>" [-o out.wav]          # 文生语�
 ```
 
 agent TUI（由 `@ai-sdk/tui` 提供界面）：输入消息回车发送，内联工具审批用 `y`/`n` 回答，`Esc`（或 Ctrl+C）退出。回复以 markdown 流式显示，工具卡片与推理内容内联展示。
+
+### 语音输入（桌面端）
+
+在 **Manage models** 里拉取一个自动语音识别模型（如 `Xenova/whisper-base`），然后在 agent 输入框点麦克风（转录文本会自动发给 agent），或打开 **Automatic speech recognition** 页面录音并复制转录文本。音频以 16 kHz 单声道在本地转录，语言自动检测。
 
 ## 主脑（agent）
 

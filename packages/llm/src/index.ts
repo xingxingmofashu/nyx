@@ -6,6 +6,8 @@ export type {
   ImageSource,
   TextToSpeechOptions,
   SpeechProvider,
+  AutomaticSpeechRecognitionOptions,
+  TranscriptionProvider,
 } from "./types.ts";
 export { LLM_TASKS } from "./types.ts";
 export type { LLMTask } from "./types.ts";
@@ -21,3 +23,5 @@ export { OnnxImageToImageProvider } from "./tasks/image-to-image.ts";
 export type { OnnxImageToImageOptions } from "./tasks/image-to-image.ts";
 export { OnnxTextToSpeechProvider } from "./tasks/text-to-speech.ts";
 export type { OnnxTextToSpeechOptions } from "./tasks/text-to-speech.ts";
+export { OnnxAutomaticSpeechRecognitionProvider } from "./tasks/automatic-speech-recognition.ts";
+export type { OnnxAutomaticSpeechRecognitionOptions } from "./tasks/automatic-speech-recognition.ts";

@@ -6,9 +6,11 @@
 // HTTP wire types live in @nyx/server/types.
 import type {
   AudioResult,
+  AudioSamples,
   ImageBytes,
   ImageResult,
   TextToSpeechInput,
+  TranscriptResult,
   UIMessage,
   UIMessageChunk,
 } from "@nyx/server/types"
@@ -16,9 +18,11 @@ import type { ModelInfo, Settings } from "@nyx/config"
 import type { LLMTask } from "@nyx/llm"
 export type {
   AudioResult,
+  AudioSamples,
   ImageBytes,
   ImageResult,
   TextToSpeechInput,
+  TranscriptResult,
   UIMessage,
   UIMessageChunk,
   LLMTask,
@@ -62,6 +66,9 @@ export interface NyxApi {
     }
     textToSpeech: {
       run: (modelId: string, input: TextToSpeechInput) => Promise<AudioResult>
+    }
+    automaticSpeechRecognition: {
+      run: (modelId: string, input: AudioSamples) => Promise<TranscriptResult>
     }
   }
   chat: {

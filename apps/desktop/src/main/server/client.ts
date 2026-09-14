@@ -2,10 +2,12 @@ import type { LLMTask } from "@nyx/llm"
 import type { ModelInfo } from "@nyx/config"
 import type {
   AudioResult,
+  AudioSamples,
   ImageBytes,
   ImageResult,
   ModelPullProgress,
   TextToSpeechInput,
+  TranscriptResult,
   UIMessageChunk,
 } from "../../shared/types"
 
@@ -159,6 +161,24 @@ export class NyxServerClient {
       mimeType: res.headers.get("content-type") ?? "audio/wav",
       samplingRate: Number.isFinite(samplingRate) ? samplingRate : 0,
     }
+  }
+
+  /** Transcribe mono PCM samples; the server responds with JSON text. */
+  async automaticSpeechRecognition(modelId: string, input: AudioSamples): Promise<TranscriptResult> {
+    return this.requestJson<TranscriptResult>("/v1/tasks/automatic-speech-recognition", {
+      method: "POST",
+      body: JSON.stringify({
+        model: modelId,
+        audio: {
+          data: Buffer.from(
+            input.samples.buffer,
+            input.samples.byteOffset,
+            input.samples.byteLength,
+          ).toString("base64"),
+          samplingRate: input.samplingRate,
+        },
+      }),
+    })
   }
 }
 

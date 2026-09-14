@@ -1,10 +1,12 @@
 import { Hono } from "hono"
 import { auth } from "./middleware/auth"
 import { agent } from "./routes/agent"
+import { automaticSpeechRecognition } from "./routes/automatic-speech-recognition"
 import { imageToImage } from "./routes/image-to-image"
 import { models } from "./routes/models"
 import { textToSpeech } from "./routes/text-to-speech"
 import { AgentService } from "./services/agent"
+import { AutomaticSpeechRecognitionService } from "./services/tasks/automatic-speech-recognition"
 import { ImageToImageService } from "./services/tasks/image-to-image"
 import { ModelsService } from "./services/models"
 import { TextToSpeechService } from "./services/tasks/text-to-speech"
@@ -18,6 +20,8 @@ export interface ServerServices {
   imageToImage: ImageToImageService
   /** Synthesizes speech from text. */
   textToSpeech: TextToSpeechService
+  /** Transcribes speech into text. */
+  automaticSpeechRecognition: AutomaticSpeechRecognitionService
   /** Runs the remote master-brain agent loop. */
   agent: AgentService
 }
@@ -31,6 +35,7 @@ export function createApp(options: { token?: string; services?: ServerServices }
     models: new ModelsService(cache),
     imageToImage: new ImageToImageService(cache),
     textToSpeech: new TextToSpeechService(cache),
+    automaticSpeechRecognition: new AutomaticSpeechRecognitionService(cache),
     agent: new AgentService(cache),
   }
 
@@ -43,6 +48,7 @@ export function createApp(options: { token?: string; services?: ServerServices }
   v1.route("/models", models(services.models))
   v1.route("/tasks/image-to-image", imageToImage(services.imageToImage))
   v1.route("/tasks/text-to-speech", textToSpeech(services.textToSpeech))
+  v1.route("/tasks/automatic-speech-recognition", automaticSpeechRecognition(services.automaticSpeechRecognition))
   v1.route("/agent", agent(services.agent))
 
   const app = new Hono()

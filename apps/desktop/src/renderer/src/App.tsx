@@ -3,6 +3,7 @@ import { HashRouter, Navigate, Route, Routes, useLocation } from "react-router-d
 import { AppSidebar } from "./components/Sidebar"
 import { SettingsMenu } from "./components/SettingsMenu"
 import { AgentPage } from "./pages/AgentPage"
+import { AutomaticSpeechRecognitionPage } from "./pages/AutomaticSpeechRecognitionPage"
 import { ImageToImagePage } from "./pages/ImageToImagePage"
 import { TextToSpeechPage } from "./pages/TextToSpeechPage"
 import { ModelsPage } from "./pages/ModelsPage"
@@ -16,6 +17,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/agent": "Agent",
   "/image-to-image": "Image to image",
   "/text-to-speech": "Text to speech",
+  "/automatic-speech-recognition": "Automatic speech recognition",
   "/models": "Models",
   "/settings": "Settings",
 }
@@ -72,6 +74,7 @@ function Shell() {
                 <Route path="/agent" element={<AgentPage />} />
                 <Route path="/image-to-image" element={<ImageToImagePage />} />
                 <Route path="/text-to-speech" element={<TextToSpeechPage />} />
+                <Route path="/automatic-speech-recognition" element={<AutomaticSpeechRecognitionPage />} />
                 <Route path="/models" element={<ModelsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Routes>

@@ -1,9 +1,10 @@
 import { BrowserWindow, dialog, ipcMain } from "electron"
 import { getModelsDir, getSettings, setSettings } from "@nyx/config"
 import { IPC } from "../shared/ipc"
-import type { ImageBytes, LLMTask, Settings, TextToSpeechInput, ChatSendRequest } from "../shared/types"
+import type { ImageBytes, LLMTask, Settings, TextToSpeechInput, ChatSendRequest, AudioSamples } from "../shared/types"
 import { ChatStreamService } from "./services/chat-stream"
 import { ImageToImageService } from "./services/image-to-image"
+import { AutomaticSpeechRecognitionService } from "./services/automatic-speech-recognition"
 import { TextToSpeechService } from "./services/text-to-speech"
 import { ModelsService } from "./services/models"
 import type { NyxServerProcess } from "./server"
@@ -12,6 +13,7 @@ interface Services {
   tasks: {
     imageToImage: ImageToImageService
     textToSpeech: TextToSpeechService
+    automaticSpeechRecognition: AutomaticSpeechRecognitionService
   }
   chat: ChatStreamService
   models: ModelsService
@@ -21,7 +23,7 @@ interface Services {
 /** Register all ipcMain handlers. Must run after app is ready. */
 export function registerIpc(services: Services): void {
   const {
-    tasks: { imageToImage, textToSpeech },
+    tasks: { imageToImage, textToSpeech, automaticSpeechRecognition },
     chat,
     models,
   } = services
@@ -38,6 +40,13 @@ export function registerIpc(services: Services): void {
     IPC.tasks.textToSpeech.run,
     (_e, modelId: string, input: TextToSpeechInput) =>
       textToSpeech.run(modelId, input),
+  )
+
+  // --- Automatic speech recognition ---
+  ipcMain.handle(
+    IPC.tasks.automaticSpeechRecognition.run,
+    (_e, modelId: string, input: AudioSamples) =>
+      automaticSpeechRecognition.run(modelId, input),
   )
 
   // --- Agent chat ---

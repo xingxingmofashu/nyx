@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react"
 import { getToolName, isReasoningUIPart, isToolUIPart } from "ai"
 import { agentChat } from "../lib/chat"
 import { useAgentStore } from "../store/agent"
+import { useModelsStore } from "../store/models"
 import { Button } from "../components/ui/button"
 import {
   Card,
@@ -31,6 +32,7 @@ import {
 import { Message, MessageContent } from "../components/ui/message"
 import { Bubble, BubbleContent } from "../components/ui/bubble"
 import { ChatComposer } from "../components/chat/ChatComposer"
+import { VoiceInputButton } from "../components/chat/VoiceInputButton"
 import { MarkdownText } from "../components/chat/MarkdownText"
 import { StreamingMarker } from "../components/chat/StreamingMarker"
 import { ToolCallCard, type ToolPartState } from "../components/agent/ToolCallCard"
@@ -51,6 +53,7 @@ export function AgentPage() {
   const workspaceDir = useAgentStore((s) => s.workspaceDir)
   const init = useAgentStore((s) => s.init)
   const setWorkspace = useAgentStore((s) => s.setWorkspace)
+  const voiceModel = useModelsStore((s) => s.selected["automatic-speech-recognition"])
   const [input, setInput] = useState("")
 
   useEffect(() => {
@@ -249,6 +252,13 @@ export function AgentPage() {
             streaming={busy}
             disabled={!configured || busy}
             placeholder={placeholder}
+            trailing={
+              <VoiceInputButton
+                model={voiceModel}
+                disabled={!configured || busy}
+                onTranscribed={(text) => void sendMessage({ text })}
+              />
+            }
           />
         </Card>
       </div>

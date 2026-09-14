@@ -18,11 +18,13 @@ import { cn } from "../lib/utils"
 const TASK_OPTIONS: Array<{ id: LLMTask; label: string }> = [
   { id: "image-to-image", label: "Image to image" },
   { id: "text-to-speech", label: "Text to speech" },
+  { id: "automatic-speech-recognition", label: "Automatic speech recognition" },
 ]
 
 const TASK_LABEL: Record<string, string> = {
   "image-to-image": "Image to image",
   "text-to-speech": "Text to speech",
+  "automatic-speech-recognition": "Automatic speech recognition",
 }
 
 /** Bytes → human readable ("4.2 GB"). */
@@ -100,7 +102,7 @@ export function ModelsPage() {
               <Select
                 value={task}
                 onValueChange={(v) => {
-                  if (v === "image-to-image" || v === "text-to-speech") setTask(v)
+                  if (v === "image-to-image" || v === "text-to-speech" || v === "automatic-speech-recognition") setTask(v)
                 }}
               >
                 <SelectTrigger id="task" size="sm" className="w-40">

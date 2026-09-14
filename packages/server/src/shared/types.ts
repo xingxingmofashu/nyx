@@ -7,6 +7,14 @@ export interface ImageBase64Input {
   mimeType: string
 }
 
+/** Mono audio samples as they cross the IPC boundary (structured-cloneable). */
+export interface AudioSamples {
+  /** Mono PCM samples normalized to [-1, 1]. */
+  samples: Float32Array
+  /** Sample rate of `samples`, in Hz. */
+  samplingRate: number
+}
+
 /** Raw image bytes as they cross the IPC boundary (structured-cloneable). */
 export interface ImageBytes {
   /** Raw encoded image bytes (png/jpeg/webp). */
@@ -38,6 +46,21 @@ export interface AudioResult {
   mimeType: string
   /** Sample rate of the waveform, in Hz. */
   samplingRate: number
+}
+
+/** HTTP automatic-speech-recognition input (JSON request body): mono Float32 PCM. */
+export interface AutomaticSpeechRecognitionInput {
+  /** base64-encoded little-endian Float32 samples (mono, 16 kHz). */
+  audio: { data: string; samplingRate: number }
+  /** Source language hint; omit to auto-detect. */
+  language?: string
+  /** `"transcribe"` (default) or `"translate"` (into English). */
+  task?: "transcribe" | "translate"
+}
+
+/** Transcription result (JSON response body). */
+export interface TranscriptResult {
+  text: string
 }
 
 /**

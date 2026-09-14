@@ -7,7 +7,7 @@ import { getModelsDir } from "@nyx/config";
 import { pull, type ProgressInfo } from "@nyx/llm";
 import { log, spinner } from "@clack/prompts";
 
-const TASK_CHOICES = ["image-to-image", "text-to-speech"] as const;
+const TASK_CHOICES = ["image-to-image", "text-to-speech", "automatic-speech-recognition"] as const;
 const DTYPE_CHOICES = ["fp32", "fp16", "q8", "int8", "uint8", "q4", "q4f16", "bnb4", "auto"] as const;
 
 interface PullArgs {
@@ -29,7 +29,7 @@ export const PullCommand = cmd<Record<string, unknown>, PullArgs>({
         type: "string",
         choices: TASK_CHOICES,
         demandOption: true,
-        description: "Pipeline task: image-to-image or text-to-speech",
+        description: `Pipeline task: ${TASK_CHOICES.join(" | ")}`,
       })
       .option("dtype", {
         type: "string",
@@ -38,7 +38,7 @@ export const PullCommand = cmd<Record<string, unknown>, PullArgs>({
       }),
   handler: async (args: PullArgs) => {
     if (!args.model) {
-      log.error("Usage: nyx model pull <model> --task <image-to-image|text-to-speech> [--dtype <dtype>]");
+      log.error(`Usage: nyx model pull <model> --task <${TASK_CHOICES.join("|")}> [--dtype <dtype>]`);
       process.exit(1);
     }
     const model = args.model;

@@ -4,11 +4,13 @@ import type {
   ChatSendRequest,
   ChatStreamEvent,
   AudioResult,
+  AudioSamples,
   ImageBytes,
   ImageResult,
   ModelInfo,
   ModelPullProgress,
   TextToSpeechInput,
+  TranscriptResult,
   LLMTask,
   NyxApi,
 } from "../shared/types"
@@ -22,6 +24,10 @@ const api: NyxApi = {
     textToSpeech: {
       run: (modelId: string, input: TextToSpeechInput): Promise<AudioResult> =>
         ipcRenderer.invoke(IPC.tasks.textToSpeech.run, modelId, input),
+    },
+    automaticSpeechRecognition: {
+      run: (modelId: string, input: AudioSamples): Promise<TranscriptResult> =>
+        ipcRenderer.invoke(IPC.tasks.automaticSpeechRecognition.run, modelId, input),
     },
   },
   chat: {

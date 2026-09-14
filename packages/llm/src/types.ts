@@ -1,7 +1,7 @@
 import type { RawAudio, RawImage } from "@huggingface/transformers";
 
 /** The local ONNX tasks nyx supports. */
-export const LLM_TASKS = ["image-to-image", "text-to-speech"] as const;
+export const LLM_TASKS = ["image-to-image", "text-to-speech", "automatic-speech-recognition"] as const;
 export type LLMTask = (typeof LLM_TASKS)[number];
 
 /** Capability marker; consumers depend on `ImageProvider` or `SpeechProvider`. */
@@ -35,4 +35,18 @@ export interface TextToSpeechOptions {
 export interface SpeechProvider extends LLMProvider {
   readonly task: "text-to-speech";
   generate(text: string, options?: TextToSpeechOptions): Promise<RawAudio>;
+}
+
+/** Options for one automatic-speech-recognition transcription (Whisper-style). */
+export interface AutomaticSpeechRecognitionOptions {
+  /** Source language hint; omit to auto-detect. */
+  language?: string;
+  /** `"transcribe"` (default) or `"translate"` (into English). */
+  task?: "transcribe" | "translate";
+}
+
+/** A provider that transcribes mono 16 kHz audio into text. */
+export interface TranscriptionProvider extends LLMProvider {
+  readonly task: "automatic-speech-recognition";
+  transcribe(samples: Float32Array, options?: AutomaticSpeechRecognitionOptions): Promise<string>;
 }

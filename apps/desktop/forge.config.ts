@@ -28,6 +28,11 @@ const config: ForgeConfig = {
     asar: true,
     name: "Nyx",
     appBundleId: "com.nyx.desktop",
+    // macOS requires a usage description for the microphone; without it the OS
+    // terminates the app on the first `getUserMedia` call.
+    extendInfo: {
+      NSMicrophoneUsageDescription: "Nyx transcribes your speech with local models.",
+    },
     // Reuse the cached Electron zip instead of fetching its checksum from
     // GitHub (which times out on restricted networks).
     download: {
