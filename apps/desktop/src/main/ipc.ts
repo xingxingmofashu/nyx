@@ -1,17 +1,17 @@
-import { BrowserWindow, ipcMain } from "electron"
+import { BrowserWindow, dialog, ipcMain } from "electron"
 import { getModelsDir, getSettings, setSettings } from "@nyx/config"
 import { IPC } from "../shared/ipc"
-import type { LLMMessage, ImageBytes, LLMTask, Settings } from "../shared/types"
-import { TextGenerationService } from "./services/text-generation"
+import type { ImageBytes, LLMTask, Settings, ChatSendRequest } from "../shared/types"
+import { ChatStreamService } from "./services/chat-stream"
 import { ImageToImageService } from "./services/image-to-image"
 import { ModelsService } from "./services/models"
 import type { NyxServerProcess } from "./server"
 
 interface Services {
   tasks: {
-    textGeneration: TextGenerationService
     imageToImage: ImageToImageService
   }
+  chat: ChatStreamService
   models: ModelsService
   server: NyxServerProcess
 }
@@ -19,17 +19,10 @@ interface Services {
 /** Register all ipcMain handlers. Must run after app is ready. */
 export function registerIpc(services: Services): void {
   const {
-    tasks: { textGeneration, imageToImage },
+    tasks: { imageToImage },
+    chat,
     models,
   } = services
-
-  // --- Text generation ---
-  ipcMain.handle(
-    IPC.tasks.textGeneration.send,
-    (_e, modelId: string, messages: LLMMessage[]) =>
-      textGeneration.send(modelId, messages),
-  )
-  ipcMain.handle(IPC.tasks.textGeneration.abort, () => textGeneration.abort())
 
   // --- Image-to-image ---
   ipcMain.handle(
@@ -37,6 +30,12 @@ export function registerIpc(services: Services): void {
     (_e, modelId: string, input: ImageBytes) =>
       imageToImage.run(modelId, input),
   )
+
+  // --- Chat (agent + local text generation) ---
+  ipcMain.handle(IPC.chat.send, (_e, request: ChatSendRequest) =>
+    chat.send(request),
+  )
+  ipcMain.handle(IPC.chat.abort, (_e, streamId: string) => chat.abort(streamId))
 
   // --- Models ---
   ipcMain.handle(IPC.models.list, () => models.list())
@@ -54,6 +53,16 @@ export function registerIpc(services: Services): void {
   ipcMain.handle(IPC.config.getModelsDir, () => getModelsDir())
   ipcMain.handle(IPC.config.getSettings, () => getSettings())
   ipcMain.handle(IPC.config.setSettings, (_e, patch: Settings) => setSettings(patch))
+
+  // --- Dialog ---
+  ipcMain.handle(IPC.dialog.selectDirectory, async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const properties: Array<"openDirectory" | "createDirectory"> = ["openDirectory", "createDirectory"]
+    const result = win
+      ? await dialog.showOpenDialog(win, { properties })
+      : await dialog.showOpenDialog({ properties })
+    return result.canceled ? null : (result.filePaths[0] ?? null)
+  })
 
   // --- Window controls (frameless) ---
   ipcMain.on(IPC.window.minimize, (e) =>

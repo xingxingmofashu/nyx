@@ -12,7 +12,7 @@ import {
   SidebarMenuButton,
 } from "./ui/sidebar"
 
-export type ViewId = "text-generation" | "image-to-image" | "models"
+export type ViewId = "agent" | "text-generation" | "image-to-image" | "models"
 
 interface ViewDef {
   id: ViewId
@@ -21,23 +21,25 @@ interface ViewDef {
   icon: typeof Bot
 }
 
-/** Navigation menu grouped by AI domain. */
-const DOMAINS: Array<{ name: string; views: ViewDef[] }> = [
+/** Navigation: the agent is primary; local tasks live under Tools. */
+const NAV: Array<{ label?: string; views: ViewDef[] }> = [
   {
-    name: "Natural Language Processing",
-    views: [{ id: "text-generation", path: "/text-generation", label: "Text generation", icon: MessageSquare }],
+    views: [{ id: "agent", path: "/agent", label: "Agent", icon: Bot }],
   },
   {
-    name: "Computer Vision",
-    views: [{ id: "image-to-image", path: "/image-to-image", label: "Image to image", icon: ImageIcon }],
+    label: "Tools",
+    views: [
+      { id: "text-generation", path: "/text-generation", label: "Text generation", icon: MessageSquare },
+      { id: "image-to-image", path: "/image-to-image", label: "Image to image", icon: ImageIcon },
+    ],
   },
   {
-    name: "Models",
+    label: "Models",
     views: [{ id: "models", path: "/models", label: "Manage models", icon: Boxes }],
   },
 ]
 
-/** Collapsible sidebar: domain-grouped navigation menu. */
+/** Collapsible sidebar: agent, tools, and model management. */
 export function AppSidebar() {
   const location = useLocation()
 
@@ -53,12 +55,14 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {DOMAINS.map((domain) => (
-          <SidebarGroup key={domain.name}>
-            <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">{domain.name}</SidebarGroupLabel>
+        {NAV.map((group) => (
+          <SidebarGroup key={group.label ?? "primary"}>
+            {group.label && (
+              <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">{group.label}</SidebarGroupLabel>
+            )}
             <SidebarGroupContent>
               <SidebarMenu>
-                {domain.views.map((v) => {
+                {group.views.map((v) => {
                   const Icon = v.icon
                   return (
                     <SidebarMenuItem key={v.id}>

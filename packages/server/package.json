@@ -19,6 +19,7 @@
     "@nyx/agent": "workspace:*",
     "@nyx/config": "workspace:*",
     "@nyx/llm": "workspace:*",
+    "ai": "catalog:",
     "hono": "catalog:",
     "zod": "catalog:"
   },

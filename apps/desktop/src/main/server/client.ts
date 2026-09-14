@@ -1,6 +1,12 @@
-import type { LLMMessage, LLMTask } from "@nyx/llm"
+import type { LLMTask } from "@nyx/llm"
 import type { ModelInfo } from "@nyx/config"
-import type { TextGenerationEvent, ImageBytes, ImageResult, ModelPullProgress } from "../../shared/types"
+import type {
+  ChatEndpoint,
+  ImageBytes,
+  ImageResult,
+  ModelPullProgress,
+  UIMessageChunk,
+} from "../../shared/types"
 
 /** Thrown when a pull was cancelled (server sent the `cancelled` SSE event). */
 export class PullCancelledError extends Error {
@@ -80,33 +86,29 @@ export class NyxServerClient {
     })
   }
 
-  /** Stream a turn, yielding delta events then a final end/error. */
-  async *textGeneration(
-    modelId: string,
-    messages: LLMMessage[],
+  /** Stream a chat turn over the AI SDK UI message protocol (agent or local text generation). */
+  async *chat(
+    endpoint: ChatEndpoint,
+    body: Record<string, unknown>,
     signal?: AbortSignal,
-  ): AsyncIterable<TextGenerationEvent> {
-    const res = await fetch(`${this.baseURL}/v1/tasks/text-generation`, {
+  ): AsyncIterable<UIMessageChunk> {
+    const path = endpoint === "agent" ? "/v1/agent" : "/v1/tasks/text-generation"
+    const res = await fetch(`${this.baseURL}${path}`, {
       method: "POST",
       headers: this.headers(),
-      body: JSON.stringify({ model: modelId, messages }),
+      body: JSON.stringify(body),
       signal,
     })
 
     if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string }
-      yield { type: "error", message: body.error ?? `text-generation failed: ${res.status}` }
-      return
+      const errorBody = (await res.json().catch(() => ({}))) as { error?: string }
+      throw new Error(errorBody.error ?? `${endpoint} failed: ${res.status}`)
     }
-    if (!res.body) {
-      yield { type: "error", message: "no response body" }
-      return
-    }
+    if (!res.body) throw new Error("no response body")
 
-    for await (const { event, data } of readSseEvents(res.body)) {
-      if (event === "delta") yield { type: "delta", text: JSON.parse(data).text as string }
-      else if (event === "end") yield { type: "end", text: JSON.parse(data).text as string }
-      else if (event === "error") yield { type: "error", message: JSON.parse(data).message as string }
+    for await (const data of readSseData(res.body)) {
+      if (data === "[DONE]") break
+      yield JSON.parse(data) as UIMessageChunk
     }
   }
 
@@ -164,6 +166,29 @@ async function* readSseEvents(body: ReadableStream<Uint8Array>): AsyncIterable<S
       }
       if (event && data) yield { event, data }
       event = ""
+    }
+  }
+}
+
+/** Parse the SSE `data:` payloads of the AI SDK UI message stream (unnamed events). */
+async function* readSseData(body: ReadableStream<Uint8Array>): AsyncIterable<string> {
+  const reader = body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ""
+
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    let sep: number
+    while ((sep = buffer.indexOf("\n\n")) !== -1) {
+      const block = buffer.slice(0, sep)
+      buffer = buffer.slice(sep + 2)
+      const lines = block
+        .split("\n")
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(5).trimStart())
+      if (lines.length > 0) yield lines.join("\n")
     }
   }
 }

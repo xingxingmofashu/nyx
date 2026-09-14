@@ -2,6 +2,7 @@ import { useEffect } from "react"
 import { HashRouter, Navigate, Route, Routes, useLocation } from "react-router-dom"
 import { AppSidebar } from "./components/Sidebar"
 import { SettingsMenu } from "./components/SettingsMenu"
+import { AgentPage } from "./pages/AgentPage"
 import { TextGenerationPage } from "./pages/TextGenerationPage"
 import { ImageToImagePage } from "./pages/ImageToImagePage"
 import { ModelsPage } from "./pages/ModelsPage"
@@ -12,6 +13,7 @@ import { useModelsStore } from "./store/models"
 import { applyTheme, getTheme } from "./lib/theme"
 
 const PAGE_TITLES: Record<string, string> = {
+  "/agent": "Agent",
   "/text-generation": "Text generation",
   "/image-to-image": "Image to image",
   "/models": "Models",
@@ -66,7 +68,8 @@ function Shell() {
             </header>
             <div className="flex min-h-0 flex-1 flex-col">
               <Routes>
-                <Route path="/" element={<Navigate to="/text-generation" replace />} />
+                <Route path="/" element={<Navigate to="/agent" replace />} />
+                <Route path="/agent" element={<AgentPage />} />
                 <Route path="/text-generation" element={<TextGenerationPage />} />
                 <Route path="/image-to-image" element={<ImageToImagePage />} />
                 <Route path="/models" element={<ModelsPage />} />

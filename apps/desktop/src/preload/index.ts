@@ -1,7 +1,8 @@
 import { contextBridge, ipcRenderer } from "electron"
 import { IPC } from "../shared/ipc"
 import type {
-  TextGenerationEvent,
+  ChatSendRequest,
+  ChatStreamEvent,
   ImageBytes,
   ImageResult,
   ModelInfo,
@@ -12,23 +13,18 @@ import type {
 
 const api: NyxApi = {
   tasks: {
-    textGeneration: {
-      send: (modelId, messages) =>
-        ipcRenderer.invoke(IPC.tasks.textGeneration.send, modelId, messages),
-      abort: () => ipcRenderer.invoke(IPC.tasks.textGeneration.abort),
-      onEvent: (cb) => {
-        const listener = (
-          _e: Electron.IpcRendererEvent,
-          event: TextGenerationEvent,
-        ) => cb(event)
-        ipcRenderer.on(IPC.tasks.textGeneration.event, listener)
-        return () =>
-          ipcRenderer.removeListener(IPC.tasks.textGeneration.event, listener)
-      },
-    },
     imageToImage: {
       run: (modelId: string, input: ImageBytes): Promise<ImageResult> =>
         ipcRenderer.invoke(IPC.tasks.imageToImage.run, modelId, input),
+    },
+  },
+  chat: {
+    send: (request: ChatSendRequest) => ipcRenderer.invoke(IPC.chat.send, request),
+    abort: (streamId: string) => ipcRenderer.invoke(IPC.chat.abort, streamId),
+    onEvent: (cb) => {
+      const listener = (_e: Electron.IpcRendererEvent, event: ChatStreamEvent) => cb(event)
+      ipcRenderer.on(IPC.chat.event, listener)
+      return () => ipcRenderer.removeListener(IPC.chat.event, listener)
     },
   },
   models: {
@@ -50,6 +46,10 @@ const api: NyxApi = {
       ipcRenderer.invoke(IPC.config.getModelsDir),
     getSettings: () => ipcRenderer.invoke(IPC.config.getSettings),
     setSettings: (patch) => ipcRenderer.invoke(IPC.config.setSettings, patch),
+  },
+  dialog: {
+    selectDirectory: (): Promise<string | null> =>
+      ipcRenderer.invoke(IPC.dialog.selectDirectory),
   },
   window: {
     minimize: () => ipcRenderer.send(IPC.window.minimize),

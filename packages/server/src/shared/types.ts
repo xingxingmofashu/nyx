@@ -29,14 +29,15 @@ export interface ImageResult {
 export type { LLMMessage } from "@nyx/llm"
 
 /**
- * Agent transcript: full message history, including prior assistant tool calls
- * and tool results / approval responses. Caller-owned; the server is stateless.
+ * Agent transcript: the AI SDK UI-message shape, including prior assistant
+ * tool calls, their results, and approval responses. Caller-owned; the server
+ * is stateless, so the client re-sends the whole transcript each turn.
  */
-export type { AgentEvent, ModelMessage } from "@nyx/agent"
+export type { UIMessage, UIMessageChunk } from "@nyx/agent"
 
-/** POST /v1/agent body: one agent run over a full transcript. */
+/** POST /v1/agent body: one agent run over a full UI-message transcript. */
 export interface AgentRequest {
-  messages: import("@nyx/agent").ModelMessage[]
+  messages: import("@nyx/agent").UIMessage[]
   /** Directory all file/bash tools are confined to; defaults to the server cwd. */
   workspaceDir?: string
   /** Model ref override (`<providerId>/<modelId>`); defaults to agent.model. */

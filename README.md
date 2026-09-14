@@ -18,7 +18,7 @@ Bun monorepo:
 - `packages/config` — `~/.nyx` paths, the model registry (`~/.nyx/models.json`), and user settings (`~/.nyx/settings.json`)
 - `packages/llm` — model runtime + tasks (`runtime.ts` shared loader, `tasks/*`), built on onnxruntime-node / transformers.js
 - `packages/agent` — the master-brain agent core (Vercel AI SDK: providers + tool loop), no onnx dependency
-- `packages/server` — Hono HTTP service under `/v1` (models / text-generation / image-to-image / agent), spawned as a plain Node child so onnxruntime runs outside Electron
+- `packages/server` — Hono HTTP service under `/v1` (models / tasks/text-generation / tasks/image-to-image / agent), spawned as a plain Node child so onnxruntime runs outside Electron
 - `apps/coding-agent` — terminal CLI (yargs): `nyx` (agent TUI), `nyx text-generation`, `nyx image-to-image`, `nyx model ...`
 - `apps/desktop` — Electron desktop app (forge + vite + React)
 
@@ -76,7 +76,7 @@ The agent loop runs in the local server (`POST /v1/agent`), so API calls go out 
 }
 ```
 
-`npm` selects the AI SDK provider package — `@ai-sdk/openai-compatible` (any OpenAI-compatible endpoint: OpenAI, DeepSeek, OpenRouter, vLLM, Ollama, OpenCode Zen/Go, …) or `@ai-sdk/anthropic`. `options` holds `baseURL`/`apiKey`/`headers`; `limit.output` caps generated tokens. Env overrides: `NYX_AGENT_MODEL` replaces the ref, and `NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS` (a JSON object) override the active provider's options. Per-run overrides: `--model` and `--base-url`. Some gateways need extra request headers (e.g. OpenCode Zen/Go requires `x-opencode-session`) — add them under the provider's `options.headers`. The desktop agent UI is not wired yet.
+`npm` selects the AI SDK provider package — `@ai-sdk/openai-compatible` (any OpenAI-compatible endpoint: OpenAI, DeepSeek, OpenRouter, vLLM, Ollama, OpenCode Zen/Go, …) or `@ai-sdk/anthropic`. `options` holds `baseURL`/`apiKey`/`headers`; `limit.output` caps generated tokens. Env overrides: `NYX_AGENT_MODEL` replaces the ref, and `NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS` (a JSON object) override the active provider's options. Per-run overrides: `--model` and `--base-url`. Some gateways need extra request headers (e.g. OpenCode Zen/Go requires `x-opencode-session`) — add them under the provider's `options.headers`. The desktop app ships the same agent as its default page: pick a workspace folder in the header, chat, and approve tool calls inline.
 
 ### Local models as tools
 

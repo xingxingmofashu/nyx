@@ -23,8 +23,10 @@
       "yargs": "18.1.0",
       "zod": "3.25.76",
       "ai": "7.0.99",
+      "@ai-sdk/react": "4.0.102",
       "@ai-sdk/openai-compatible": "3.0.48",
-      "@ai-sdk/anthropic": "4.0.53"
+      "@ai-sdk/anthropic": "4.0.53",
+      "streamdown": "2.6.0"
     }
   },
   "overrides": {

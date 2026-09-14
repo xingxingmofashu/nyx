@@ -1,4 +1,4 @@
-import type { LanguageModel, ModelMessage } from "ai";
+import type { LanguageModel, UIMessage, UIMessageChunk } from "ai";
 import type { ZodType } from "zod/v4";
 
 /**
@@ -54,7 +54,8 @@ export interface AgentRunOptions {
   /** A resolved model (built from settings) or a pre-built model. */
   model: ResolvedAgentModel | LanguageModel;
   tools: AgentToolSet;
-  messages: ModelMessage[];
+  /** UI-message transcript (the AI SDK's canonical chat shape). */
+  messages: UIMessage[];
   workspaceDir: string;
   systemPrompt?: string;
   /** Max model round-trips before stopping (default 20). */
@@ -62,27 +63,5 @@ export interface AgentRunOptions {
   signal?: AbortSignal;
 }
 
-/**
- * Streamed agent events. Approval is a two-call flow: a call surfaces
- * `approval-request` and ends; the caller re-sends the transcript with a
- * `tool-approval-response` for the next call.
- */
-export type AgentEvent =
-  | { type: "text-delta"; text: string }
-  | { type: "tool-call"; toolCallId: string; toolName: string; input: unknown }
-  | { type: "tool-result"; toolCallId: string; toolName: string; output: unknown }
-  | { type: "tool-error"; toolCallId: string; toolName: string; message: string }
-  | { type: "tool-denied"; toolCallId: string; toolName: string }
-  | {
-      type: "approval-request";
-      approvalId: string;
-      toolCallId: string;
-      toolName: string;
-      input: unknown;
-      reason?: string;
-    }
-  /** Terminal event: assistant/tool messages to append to the transcript. */
-  | { type: "finish"; text: string; messages: ModelMessage[] }
-  | { type: "error"; message: string };
+export type { UIMessage, UIMessageChunk };
 
-export type { ModelMessage };

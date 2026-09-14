@@ -18,7 +18,7 @@ Bun monorepo：
 - `packages/config` — `~/.nyx` 路径、模型注册表（`~/.nyx/models.json`）与用户设置（`~/.nyx/settings.json`）
 - `packages/llm` — 模型运行时 + 任务（`runtime.ts` 共享加载器、`tasks/*`），基于 onnxruntime-node / transformers.js
 - `packages/agent` — 主脑 agent 核心（Vercel AI SDK：provider 注册表 + 工具循环），不依赖 onnx
-- `packages/server` — `/v1` 下的 Hono HTTP 服务（models / text-generation / image-to-image / agent），以纯 Node 子进程方式启动，使 onnxruntime 运行在 Electron 之外
+- `packages/server` — `/v1` 下的 Hono HTTP 服务（models / tasks/text-generation / tasks/image-to-image / agent），以纯 Node 子进程方式启动，使 onnxruntime 运行在 Electron 之外
 - `apps/coding-agent` — 终端 CLI（yargs）：`nyx`（agent TUI）、`nyx text-generation`、`nyx image-to-image`、`nyx model ...`
 - `apps/desktop` — Electron 桌面应用（forge + vite + React）
 
@@ -77,7 +77,7 @@ agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型
 }
 ```
 
-`npm` 选择 AI SDK 的 provider 包 —— `@ai-sdk/openai-compatible`（任意 OpenAI 兼容端点：OpenAI、DeepSeek、OpenRouter、vLLM、Ollama、OpenCode Zen/Go 等）或 `@ai-sdk/anthropic`。`options` 承载 `baseURL`/`apiKey`/`headers`；`limit.output` 限制生成 token 数。环境变量覆盖：`NYX_AGENT_MODEL` 替换引用，`NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS`（JSON 对象）覆盖当前 provider 的 options。单次运行覆盖：`--model`、`--base-url`。部分网关需要额外的请求头（例如 OpenCode Zen/Go 需要 `x-opencode-session`），配置在对应 provider 的 `options.headers` 下。桌面端的 agent 界面尚未接入。
+`npm` 选择 AI SDK 的 provider 包 —— `@ai-sdk/openai-compatible`（任意 OpenAI 兼容端点：OpenAI、DeepSeek、OpenRouter、vLLM、Ollama、OpenCode Zen/Go 等）或 `@ai-sdk/anthropic`。`options` 承载 `baseURL`/`apiKey`/`headers`；`limit.output` 限制生成 token 数。环境变量覆盖：`NYX_AGENT_MODEL` 替换引用，`NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS`（JSON 对象）覆盖当前 provider 的 options。单次运行覆盖：`--model`、`--base-url`。部分网关需要额外的请求头（例如 OpenCode Zen/Go 需要 `x-opencode-session`），配置在对应 provider 的 `options.headers` 下。桌面端内置同一个 agent，并作为默认页面：在顶部选择工作区目录、对话、在内联卡片里审批工具调用。
 
 ### 本地模型作为工具
 

@@ -12,7 +12,14 @@ import {
   type TUI,
   type TuiInputListenerResult,
 } from "@earendil-works/pi-tui";
-import type { AgentEvent, ModelMessage } from "@nyx/agent";
+import {
+  readUIMessageStream,
+  getToolName,
+  isToolUIPart,
+  type UIMessage,
+  type UIMessageChunk,
+} from "ai";
+import { randomUUID } from "node:crypto";
 import { WorkspaceAutocompleteProvider } from "./autocomplete";
 import { AssistantMessageComponent } from "./components/assistant-message";
 import { ToolCallComponent } from "./components/tool-call";
@@ -221,18 +228,18 @@ export interface AgentTuiOptions {
 }
 
 interface AgentStreamRequest {
-  messages: ModelMessage[];
+  messages: UIMessage[];
   workspaceDir: string;
   model?: string;
   baseURL?: string;
 }
 
-/** POST the transcript to `/v1/agent` and yield the SSE `AgentEvent`s. */
-async function* streamAgentEvents(
+/** POST the transcript and adapt the server's AI SDK UI message stream into a ReadableStream. */
+async function openAgentStream(
   serverUrl: string,
   request: AgentStreamRequest,
   signal?: AbortSignal,
-): AsyncIterable<AgentEvent> {
+): Promise<ReadableStream<UIMessageChunk>> {
   const response = await fetch(`${serverUrl}/v1/agent`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -242,9 +249,20 @@ async function* streamAgentEvents(
   if (!response.ok || !response.body) {
     throw new Error(`agent request failed: ${response.status} ${response.statusText}`);
   }
-  for await (const data of readSseData(response.body)) {
-    yield JSON.parse(data) as AgentEvent;
-  }
+  const body = response.body;
+  return new ReadableStream<UIMessageChunk>({
+    async start(controller) {
+      try {
+        for await (const data of readSseData(body)) {
+          if (data === "[DONE]") break;
+          controller.enqueue(JSON.parse(data) as UIMessageChunk);
+        }
+        controller.close();
+      } catch (error) {
+        controller.error(error);
+      }
+    },
+  });
 }
 
 /** Yield the `data:` payload of each SSE frame in the stream. */
@@ -277,6 +295,13 @@ function frameData(frame: string): string | null {
   return lines.length > 0 ? lines.join("\n") : null;
 }
 
+/** Drain a `readUIMessageStream`, keeping the latest snapshot of each message in order. */
+async function collectMessages(stream: AsyncIterable<UIMessage>): Promise<UIMessage[]> {
+  const byId = new Map<string, UIMessage>();
+  for await (const message of stream) byId.set(message.id, message);
+  return [...byId.values()];
+}
+
 interface PendingApproval {
   approvalId: string;
   toolName: string;
@@ -284,20 +309,30 @@ interface PendingApproval {
   reason?: string;
 }
 
-/** Approval part accepted by the AI SDK inside a `tool` message. */
-interface ApprovalResponse {
-  type: "tool-approval-response";
-  approvalId: string;
-  approved: boolean;
-  reason?: string;
+/** Mark the answered tool approvals on an assistant message (UI-message shape). */
+function applyApprovals(message: UIMessage, decisions: Map<string, boolean>): UIMessage {
+  return {
+    ...message,
+    parts: message.parts.map((part) => {
+      if (!isToolUIPart(part) || part.state !== "approval-requested") return part;
+      const approved = decisions.get(part.approval.id);
+      if (approved === undefined) return part;
+      return {
+        ...part,
+        state: "approval-responded",
+        approval: { id: part.approval.id, approved, reason: approved ? undefined : "user denied" },
+      } as unknown as typeof part;
+    }),
+  };
 }
 
 /**
- * Master-brain TUI. The agent loop runs server-side; this renders streamed
- * text, tool cards, and inline y/n approvals over the ChatTui shell.
+ * Master-brain TUI. The agent loop runs server-side and streams the AI SDK UI
+ * message protocol; this renders streamed text, tool cards, and inline y/n
+ * approvals over the ChatTui shell.
  */
 export async function runAgentTui(options: AgentTuiOptions): Promise<void> {
-  const transcript: ModelMessage[] = [];
+  const transcript: UIMessage[] = [];
   const overrides = { model: options.model, baseURL: options.baseURL };
   let approvalResolver: ((approved: boolean) => void) | null = null;
   let shell!: ChatTui;
@@ -328,74 +363,91 @@ export async function runAgentTui(options: AgentTuiOptions): Promise<void> {
     // Persist tool cards across approval continuations: the replay call emits a
     // tool-result for the original toolCallId without re-emitting the tool-call.
     const toolCards = new Map<string, ToolCallComponent>();
+    let continuation: UIMessage | undefined;
     let rounds = 0;
 
     for (;;) {
-      const approvals: PendingApproval[] = [];
-      let responseMessages: ModelMessage[] = [];
+      let failed = false;
       let currentAssistant: AssistantMessageComponent | null = null;
       let assistantText = "";
-      let failed = false;
 
       shell.showWorking();
-      for await (const event of streamAgentEvents(options.serverUrl, {
+      const responseStream = await openAgentStream(options.serverUrl, {
         messages: transcript,
         workspaceDir: options.workspaceDir,
         ...overrides,
-      })) {
-        switch (event.type) {
+      });
+      // Feed one branch to the AI SDK message reader (for the transcript) and
+      // stream the other straight into the renderer.
+      const [renderStream, readStream] = responseStream.tee();
+      const snapshots = collectMessages(readUIMessageStream({ message: continuation, stream: readStream }));
+
+      for await (const chunk of renderStream) {
+        switch (chunk.type) {
           case "text-delta":
             shell.clearWorking();
             if (!currentAssistant) {
               currentAssistant = new AssistantMessageComponent("");
               shell.addComponent(currentAssistant);
             }
-            assistantText += event.text;
+            assistantText += chunk.delta;
             currentAssistant.updateText(assistantText);
             shell.requestRender();
             break;
-          case "tool-call": {
+          case "tool-input-available": {
             currentAssistant = null;
             assistantText = "";
-            const card = new ToolCallComponent(event.toolName, event.input);
-            toolCards.set(event.toolCallId, card);
+            const card = new ToolCallComponent(chunk.toolName, chunk.input);
+            toolCards.set(chunk.toolCallId, card);
             shell.addComponent(card);
             break;
           }
-          case "tool-result":
-            toolCards.get(event.toolCallId)?.setResult(event.output);
+          case "tool-output-available":
+            toolCards.get(chunk.toolCallId)?.setResult(chunk.output);
             shell.requestRender();
             break;
-          case "tool-error":
-            toolCards.get(event.toolCallId)?.setError(event.message);
+          case "tool-output-error":
+            toolCards.get(chunk.toolCallId)?.setError(chunk.errorText);
             shell.requestRender();
             break;
-          case "tool-denied":
-            toolCards.get(event.toolCallId)?.setDenied();
+          case "tool-output-denied":
+            toolCards.get(chunk.toolCallId)?.setDenied();
             shell.requestRender();
-            break;
-          case "approval-request":
-            approvals.push({
-              approvalId: event.approvalId,
-              toolName: event.toolName,
-              input: event.input,
-              reason: event.reason,
-            });
             break;
           case "error":
             shell.clearWorking();
-            shell.addComponent(new Text(theme.fg("error", `Error: ${event.message}`)));
+            shell.addComponent(new Text(theme.fg("error", `Error: ${chunk.errorText}`)));
             failed = true;
-            break;
-          case "finish":
-            responseMessages = event.messages;
             break;
         }
       }
       shell.clearWorking();
-      transcript.push(...responseMessages);
 
-      if (failed || approvals.length === 0) return;
+      const produced = await snapshots;
+      for (const message of produced) {
+        const index = transcript.findIndex((m) => m.id === message.id);
+        if (index >= 0) transcript[index] = message;
+        else transcript.push(message);
+      }
+
+      if (failed) return;
+
+      // Approvals surfaced in the final snapshot of the assistant message.
+      const assistant = [...produced].reverse().find((m) => m.role === "assistant");
+      const pending: PendingApproval[] = [];
+      if (assistant) {
+        for (const part of assistant.parts) {
+          if (isToolUIPart(part) && part.state === "approval-requested") {
+            pending.push({
+              approvalId: part.approval.id,
+              toolName: getToolName(part),
+              input: part.input,
+              reason: part.approval.requestReason,
+            });
+          }
+        }
+      }
+      if (!assistant || pending.length === 0) return;
 
       if (++rounds > MAX_APPROVAL_ROUNDS) {
         shell.addComponent(new Text(theme.fg("error", "Too many approval rounds; stopping this turn.")));
@@ -403,17 +455,14 @@ export async function runAgentTui(options: AgentTuiOptions): Promise<void> {
         return;
       }
 
-      const content: ApprovalResponse[] = [];
-      for (const request of approvals) {
-        const approved = await askApproval(request);
-        content.push({
-          type: "tool-approval-response",
-          approvalId: request.approvalId,
-          approved,
-          reason: approved ? undefined : "user denied",
-        });
+      const decisions = new Map<string, boolean>();
+      for (const request of pending) {
+        decisions.set(request.approvalId, await askApproval(request));
       }
-      transcript.push({ role: "tool", content });
+      const updated = applyApprovals(assistant, decisions);
+      const index = transcript.findIndex((m) => m.id === updated.id);
+      if (index >= 0) transcript[index] = updated;
+      continuation = updated;
     }
   }
 
@@ -429,7 +478,7 @@ export async function runAgentTui(options: AgentTuiOptions): Promise<void> {
       transcript.length = 0;
     },
     onSubmit: async (text) => {
-      transcript.push({ role: "user", content: text });
+      transcript.push({ id: randomUUID(), role: "user", parts: [{ type: "text", text }] });
       await runTurn();
     },
     onInput: (data) => {

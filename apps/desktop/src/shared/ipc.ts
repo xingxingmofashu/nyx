@@ -1,15 +1,16 @@
 /** IPC channel names shared between main, preload, and renderer. */
 export const IPC = {
   tasks: {
-    textGeneration: {
-      send: "text-generation:send",
-      abort: "text-generation:abort",
-      /** main → renderer: streaming generation events. */
-      event: "text-generation:event",
-    },
     imageToImage: {
       run: "image-to-image:run",
     },
+  },
+  /** Generic chat streaming (AI SDK UI message stream) for the agent + local text generation. */
+  chat: {
+    send: "chat:send",
+    abort: "chat:abort",
+    /** main → renderer: streamed chunks / completion / error, tagged with a stream id. */
+    event: "chat:event",
   },
   models: {
     list: "models:list",
@@ -23,6 +24,9 @@ export const IPC = {
     getModelsDir: "config:getModelsDir",
     getSettings: "config:getSettings",
     setSettings: "config:setSettings",
+  },
+  dialog: {
+    selectDirectory: "dialog:selectDirectory",
   },
   window: {
     minimize: "window:minimize",

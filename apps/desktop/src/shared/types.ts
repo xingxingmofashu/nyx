@@ -4,26 +4,35 @@
  */
 
 // HTTP wire types live in @nyx/server/types.
-import type { ImageBytes, ImageResult } from "@nyx/server/types"
+import type { ImageBytes, ImageResult, UIMessage, UIMessageChunk } from "@nyx/server/types"
 import type { ModelInfo, Settings } from "@nyx/config"
 import type { LLMMessage, LLMTask } from "@nyx/llm"
-export type { ImageBytes, ImageResult, LLMMessage, LLMTask, ModelInfo, Settings }
-
-/** A message as displayed in the text-generation UI. */
-export interface DisplayMessage {
-  id: string
-  role: "user" | "assistant"
-  text: string
-  /** True while the assistant message is still streaming. */
-  streaming?: boolean
-  error?: boolean
+export type {
+  ImageBytes,
+  ImageResult,
+  UIMessage,
+  UIMessageChunk,
+  LLMMessage,
+  LLMTask,
+  ModelInfo,
+  Settings,
 }
 
-/** Streaming events pushed main → renderer (mirrors the server SSE wire). */
-export type TextGenerationEvent =
-  | { type: "delta"; text: string }
-  | { type: "end"; text: string }
-  | { type: "error"; message: string }
+/** Which server endpoint a chat stream targets. */
+export type ChatEndpoint = "agent" | "text-generation"
+
+/** Start a chat stream. `body` is the endpoint-specific JSON request body. */
+export interface ChatSendRequest {
+  streamId: string
+  endpoint: ChatEndpoint
+  body: Record<string, unknown>
+}
+
+/** Events pushed main → renderer for a chat stream (AI SDK UI message chunks). */
+export type ChatStreamEvent =
+  | { type: "chunk"; streamId: string; chunk: UIMessageChunk }
+  | { type: "end"; streamId: string }
+  | { type: "error"; streamId: string; message: string }
 
 export interface ModelPullProgress {
   modelId: string
@@ -44,15 +53,15 @@ export interface ModelPullProgress {
 /** The preload-exposed API surface. */
 export interface NyxApi {
   tasks: {
-    textGeneration: {
-      send: (modelId: string, messages: LLMMessage[]) => Promise<void>
-      abort: () => Promise<void>
-      /** Subscribe to streaming events; returns an unsubscribe fn. */
-      onEvent: (cb: (e: TextGenerationEvent) => void) => () => void
-    }
     imageToImage: {
       run: (modelId: string, input: ImageBytes) => Promise<ImageResult>
     }
+  }
+  chat: {
+    send: (request: ChatSendRequest) => Promise<void>
+    abort: (streamId: string) => Promise<void>
+    /** Subscribe to chat stream events; returns an unsubscribe fn. */
+    onEvent: (cb: (e: ChatStreamEvent) => void) => () => void
   }
   models: {
     list: () => Promise<ModelInfo[]>
@@ -67,6 +76,10 @@ export interface NyxApi {
     getModelsDir: () => Promise<string>
     getSettings: () => Promise<Settings>
     setSettings: (patch: Settings) => Promise<Settings>
+  }
+  dialog: {
+    /** Native folder picker; resolves the chosen path, or null if cancelled. */
+    selectDirectory: () => Promise<string | null>
   }
   window: {
     minimize: () => void

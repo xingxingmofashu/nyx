@@ -16,6 +16,8 @@ export interface AgentSettings {
   provider?: Record<string, AgentProviderEntry>
   /** Per-tool toggles for the agent. */
   tools?: AgentToolsSettings
+  /** Directory the agent's coding tools are confined to (default: process cwd). */
+  workspaceDir?: string
   systemPrompt?: string
   maxSteps?: number
 }

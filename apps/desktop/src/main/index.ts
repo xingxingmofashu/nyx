@@ -1,7 +1,7 @@
 import { app, BrowserWindow, shell } from "electron"
 import { join } from "node:path"
 import { registerIpc } from "./ipc"
-import { TextGenerationService } from "./services/text-generation"
+import { ChatStreamService } from "./services/chat-stream"
 import { ImageToImageService } from "./services/image-to-image"
 import { ModelsService } from "./services/models"
 import { NyxServerProcess } from "./server"
@@ -84,26 +84,26 @@ app.whenReady().then(async () => {
     console.error("failed to start nyx server:", error)
   }
 
-  const textGenerationService = new TextGenerationService(server)
+  const chatService = new ChatStreamService(server)
   const imageToImageService = new ImageToImageService(server)
   const modelsService = new ModelsService(server)
   registerIpc({
     tasks: {
-      textGeneration: textGenerationService,
       imageToImage: imageToImageService,
     },
+    chat: chatService,
     models: modelsService,
     server: server,
   })
 
   const win = createWindow()
-  textGenerationService.attachWindow(win)
+  chatService.attachWindow(win)
   modelsService.attachWindow(win)
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       const w = createWindow()
-      textGenerationService.attachWindow(w)
+      chatService.attachWindow(w)
       modelsService.attachWindow(w)
     }
   })

@@ -1,5 +1,5 @@
 import { resolve } from "node:path"
-import { resolveModelConfig, streamAgent, type AgentEvent, type ResolvedAgentModel } from "@nyx/agent"
+import { resolveModelConfig, streamAgent, type ResolvedAgentModel } from "@nyx/agent"
 import { getAgentSettings } from "@nyx/config"
 import { createAgentTools } from "../lib/agent-tools"
 import { createModelTools } from "../lib/model-tools"
@@ -15,8 +15,8 @@ import type { AgentRequest } from "../shared/types"
 export class AgentService {
   constructor(private readonly cache: ProviderCache = new ProviderCache()) {}
 
-  /** Stream one agent run over `request.messages`. */
-  async *stream(request: AgentRequest, signal?: AbortSignal): AsyncIterable<AgentEvent> {
+  /** Run one agent turn over `request.messages`, returning the UI message stream. */
+  async run(request: AgentRequest, signal?: AbortSignal): Promise<Response> {
     const settings = getAgentSettings()
 
     let model: ResolvedAgentModel
@@ -24,16 +24,15 @@ export class AgentService {
       const resolved = resolveModelConfig({ ...settings, model: request.model ?? settings.model })
       model = request.baseURL ? { ...resolved, baseURL: request.baseURL } : resolved
     } catch (error) {
-      yield { type: "error", message: error instanceof Error ? error.message : String(error) }
-      return
+      return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 400 })
     }
 
-    const workspaceDir = request.workspaceDir ? resolve(request.workspaceDir) : process.cwd()
+    const workspaceDir = resolve(request.workspaceDir ?? settings.workspaceDir ?? process.cwd())
     const tools = [
       ...createAgentTools(workspaceDir),
       ...(settings.tools?.localModels ? createModelTools({ cache: this.cache, workspaceDir }) : []),
     ]
-    yield* streamAgent({
+    return streamAgent({
       model,
       tools,
       messages: request.messages,

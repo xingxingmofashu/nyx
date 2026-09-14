@@ -7,8 +7,8 @@ export type {
   AgentTool,
   AgentToolSet,
   AgentRunOptions,
-  AgentEvent,
-  ModelMessage,
+  UIMessage,
+  UIMessageChunk,
 } from "./types.ts";
 
 export { resolveModel, resolveModelConfig } from "./providers.ts";

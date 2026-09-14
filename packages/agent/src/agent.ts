@@ -1,6 +1,13 @@
-import { isStepCount, streamText, tool as aiTool, type LanguageModel, type ModelMessage, type ToolSet } from "ai";
+import {
+  convertToModelMessages,
+  isStepCount,
+  streamText,
+  tool as aiTool,
+  type LanguageModel,
+  type ToolSet,
+} from "ai";
 import { resolveModel } from "./providers.ts";
-import type { AgentEvent, AgentRunOptions, AgentToolSet, ResolvedAgentModel } from "./types.ts";
+import type { AgentRunOptions, AgentToolSet, ResolvedAgentModel } from "./types.ts";
 
 const DEFAULT_SYSTEM_PROMPT = [
   "You are nyx, a coding agent operating inside a single workspace directory.",
@@ -37,11 +44,12 @@ function toAiTools(tools: AgentToolSet, workspaceDir: string, signal?: AbortSign
 }
 
 /**
- * Run one agent round-trip, streaming AgentEvents. A returned `finish` carries
- * only the messages produced this call — append them to the transcript before
- * continuing (e.g. after answering an `approval-request`).
+ * Run one agent round-trip and return the AI SDK UI message stream response.
+ * The client owns the `UIMessage[]` transcript: tool approvals come back as
+ * `tool-approval-response` parts on the next request, and the server stays
+ * stateless.
  */
-export async function* streamAgent(options: AgentRunOptions): AsyncIterable<AgentEvent> {
+export async function streamAgent(options: AgentRunOptions): Promise<Response> {
   const { model, tools, messages, workspaceDir, systemPrompt, maxSteps = 20, signal } = options;
   const { tools: aiTools, toolApproval } = toAiTools(tools, workspaceDir, signal);
   const languageModel: LanguageModel = isModelConfig(model) ? resolveModel(model) : model;
@@ -50,7 +58,7 @@ export async function* streamAgent(options: AgentRunOptions): AsyncIterable<Agen
   const result = streamText({
     model: languageModel,
     system: systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
-    messages,
+    messages: await convertToModelMessages(messages),
     tools: aiTools,
     toolApproval,
     stopWhen: isStepCount(maxSteps),
@@ -58,58 +66,9 @@ export async function* streamAgent(options: AgentRunOptions): AsyncIterable<Agen
     abortSignal: signal,
   });
 
-  let text = "";
-  try {
-    for await (const part of result.stream) {
-      switch (part.type) {
-        case "text-delta":
-          text += part.text;
-          yield { type: "text-delta", text: part.text };
-          break;
-        case "tool-call":
-          yield { type: "tool-call", toolCallId: part.toolCallId, toolName: part.toolName, input: part.input };
-          break;
-        case "tool-result":
-          yield { type: "tool-result", toolCallId: part.toolCallId, toolName: part.toolName, output: part.output };
-          break;
-        case "tool-error":
-          yield {
-            type: "tool-error",
-            toolCallId: part.toolCallId,
-            toolName: part.toolName,
-            message: errorMessage(part.error),
-          };
-          break;
-        case "tool-output-denied":
-          yield { type: "tool-denied", toolCallId: part.toolCallId, toolName: part.toolName };
-          break;
-        case "tool-approval-request":
-          yield {
-            type: "approval-request",
-            approvalId: part.approvalId,
-            toolCallId: part.toolCall.toolCallId,
-            toolName: part.toolCall.toolName,
-            input: part.toolCall.input,
-            reason: part.reason,
-          };
-          break;
-        case "error":
-          yield { type: "error", message: errorMessage(part.error) };
-          break;
-        default:
-          break;
-      }
-    }
-  } catch (error) {
-    yield { type: "error", message: errorMessage(error) };
-    return;
-  }
-
-  let responseMessages: ModelMessage[] = [];
-  try {
-    responseMessages = await result.responseMessages;
-  } catch {
-    responseMessages = [];
-  }
-  yield { type: "finish", text, messages: responseMessages };
+  return result.toUIMessageStreamResponse({
+    originalMessages: messages,
+    generateMessageId: () => `msg_${crypto.randomUUID()}`,
+    onError: errorMessage,
+  });
 }
