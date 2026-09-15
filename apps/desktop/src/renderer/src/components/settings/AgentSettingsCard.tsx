@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { FolderOpen, Loader2, Plus, RefreshCw } from "lucide-react"
+import { Loader2, Plus, RefreshCw } from "lucide-react"
 import type { AgentProviderEntry, AgentSettings, ProviderModels } from "../../../../shared/types"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
@@ -26,7 +26,7 @@ export interface AgentSettingsCardProps {
 /** Sentinel Select value that flips the model field to free text. */
 const CUSTOM_MODEL = "__custom__"
 
-/** Editor for `agent`: model ref, providers, workspace, prompt, and tool toggles. */
+/** Editor for `agent`: model ref, providers, prompt, and tool toggles. */
 export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
   const [models, setModels] = useState<Record<string, ProviderModels>>({})
   const [loadingModels, setLoadingModels] = useState(false)
@@ -122,11 +122,6 @@ export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
     let id = "provider"
     for (let n = 2; providers[id]; n++) id = `provider${n}`
     setProvider(id, { npm: "@ai-sdk/openai-compatible" })
-  }
-
-  const pickWorkspace = async () => {
-    const dir = await window.nyx.dialog.selectDirectory()
-    if (dir) onChange({ ...agent, workspaceDir: dir })
   }
 
   return (
@@ -257,23 +252,6 @@ export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
         </div>
 
         <Separator />
-
-        <Field>
-          <FieldLabel htmlFor="agent-workspace">Workspace</FieldLabel>
-          <div className="flex gap-2">
-            <Input
-              id="agent-workspace"
-              value={agent.workspaceDir ?? ""}
-              onChange={(e) => onChange({ ...agent, workspaceDir: e.target.value || undefined })}
-              placeholder="Default: the app's working directory"
-            />
-            <Button variant="outline" onClick={() => void pickWorkspace()} className="shrink-0">
-              <FolderOpen data-icon="inline-start" />
-              Browse
-            </Button>
-          </div>
-          <FieldDescription>The directory the agent's read/write/bash tools are confined to.</FieldDescription>
-        </Field>
 
         <Field>
           <FieldLabel htmlFor="agent-system-prompt">System prompt (optional)</FieldLabel>
