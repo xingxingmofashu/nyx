@@ -1,14 +1,14 @@
 # nyx
 
-A local ONNX inference tool — fully local, no cloud, your data never leaves your machine.
+An agent that can call local models: its master brain is a remote model you bring your own key for, and its tools include ONNX inference — images, speech, and embeddings — running on your machine.
 
 ## What it is
 
-nyx runs transformers.js-compatible ONNX models locally:
+nyx is a coding agent. The master brain is a remote model you bring your own key for; the tools run locally and include both coding tools (read/write/edit/bash) and ONNX models. Inference for images, speech, and embeddings happens on your machine, files and shell commands stay local, and only the agent's model calls go out:
 
 - **Image-to-image** — super-resolution and other image transforms (e.g. 4x_APISR_GRL_GAN)
 - **Text-to-speech** — speech synthesis (e.g. MMS-TTS), WAV output
-- **Master brain (agent)** — an optional remote model (bring your own API key) that orchestrates local coding tools; the agent loop runs in the local server, files/bash stay on your machine
+- **Master brain (agent)** — a remote model (bring your own API key) that orchestrates local coding tools; the agent loop runs in the local server, files/bash stay on your machine
 - **Knowledge base (RAG)** — drop Markdown into `~/.nyx/knowledge/` and the agent retrieves from it with local embeddings
 - **CLI and desktop** — a terminal CLI plus an Electron desktop app sharing the same local model cache
 

@@ -1,14 +1,14 @@
 # nyx
 
-本地运行 ONNX 模型的推理工具 —— 纯本地，无云端，数据不出本机。
+一个可以调用本地模型的 agent：主脑是你自带 API key 的远程模型，工具里包含在本机运行的 ONNX 推理（图像、语音、嵌入）。
 
 ## 定位
 
-nyx 通过 transformers.js 本地运行兼容的 ONNX 模型：
+nyx 是一个编码 agent。主脑是你自带 API key 的远程模型；工具在本地运行，既有编码工具（read/write/edit/bash），也有 ONNX 模型。图像、语音、文本嵌入的推理在本机完成，文件与 shell 命令留在本地，只有 agent 的模型请求会发往外部：
 
 - **图生图**：超分等图像变换（如 4x_APISR_GRL_GAN）
 - **文生语音**：语音合成（如 MMS-TTS），输出 WAV
-- **主脑（agent）**：可选的远程模型（自带 API key），负责编排本地编码工具；agent 循环运行在本地 server 中，文件与命令都不出本机
+- **主脑（agent）**：远程模型（自带 API key），负责编排本地编码工具；agent 循环运行在本地 server 中，文件与命令都不出本机
 - **知识库（RAG）**：把 Markdown 放进 `~/.nyx/knowledge/`，agent 用本地嵌入模型从你的资料中检索回答
 - **CLI 与桌面端**：终端 CLI 与 Electron 桌面应用共享同一份本地模型缓存
 
