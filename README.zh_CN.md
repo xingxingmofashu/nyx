@@ -89,14 +89,14 @@ agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型
 
 ### 本地模型作为工具
 
-开启 `agent.tools.localModels`（或 `NYX_AGENT_LOCAL_MODELS=1`）后，本机已安装的 ONNX 模型也会暴露给主脑：`local_image_to_image` 对工作区内的图片做变换并把结果写回（需要 `y/n` 审批）；`local_text_to_speech` 合成 WAV 写入该工作区的会话目录（需要 `y/n` 审批）。
+默认情况下，本机已安装的 ONNX 模型就会暴露给主脑：`local_image_to_image` 对工作区内的图片做变换并把结果写回（需要 `y/n` 审批）；`local_text_to_speech` 合成 WAV 写入该工作区的会话目录（需要 `y/n` 审批）。只有装了对应任务模型时才会添加相应工具。设 `agent.tools.localModels: false`（或 `NYX_AGENT_LOCAL_MODELS=0`）可关闭。
 
 ```json
 {
   "agent": {
     "model": "deepseek/deepseek-chat",
     "provider": { "deepseek": { "npm": "@ai-sdk/openai-compatible", "options": { "baseURL": "https://api.deepseek.com/v1", "apiKey": "sk-..." } } },
-    "tools": { "localModels": true }
+    "tools": { "localModels": false }
   }
 }
 ```

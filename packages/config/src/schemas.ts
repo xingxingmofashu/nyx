@@ -42,7 +42,7 @@ export const AgentProviderEntrySchema = z
 
 export const AgentToolsSettingsSchema = z
   .object({
-    /** Expose locally installed ONNX models as tools the brain may call (default false). */
+    /** Expose locally installed ONNX models as tools the brain may call (default true; only added when models exist). */
     localModels: z.boolean().optional(),
     /** Expose `search_knowledge` over indexed knowledge bases (default true when any exist). */
     knowledge: z.boolean().optional(),

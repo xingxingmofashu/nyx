@@ -34,14 +34,14 @@ export class AgentService {
     const workspaceDir = resolve(request.workspaceDir ?? settings.workspaceDir ?? process.cwd())
     const tools = [
       ...createAgentTools(workspaceDir),
-      ...(settings.tools?.localModels
-        ? createModelTools({
+      ...(settings.tools?.localModels === false
+        ? []
+        : createModelTools({
             cache: this.cache,
             workspaceDir,
             sessionId: request.sessionId,
             inlineAudio: request.inlineAudio,
-          })
-        : []),
+          })),
       ...(settings.tools?.knowledge === false ? [] : createKnowledgeTools(this.knowledge)),
     ]
     return streamAgent({

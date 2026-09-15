@@ -89,14 +89,14 @@ The agent loop runs in the local server (`POST /v1/agent`), so API calls go out 
 
 ### Local models as tools
 
-With `agent.tools.localModels` enabled (or `NYX_AGENT_LOCAL_MODELS=1`), the locally installed ONNX models are also exposed to the brain: `local_image_to_image` transforms an image from the workspace and writes the result back (`y/n` approval), and `local_text_to_speech` synthesizes a WAV into the workspace's session folder (`y/n` approval).
+The locally installed ONNX models are exposed to the brain by default: `local_image_to_image` transforms an image from the workspace and writes the result back (`y/n` approval), and `local_text_to_speech` synthesizes a WAV into the workspace's session folder (`y/n` approval). Tools are only added for tasks that have an installed model. Set `agent.tools.localModels: false` (or `NYX_AGENT_LOCAL_MODELS=0`) to disable.
 
 ```json
 {
   "agent": {
     "model": "deepseek/deepseek-chat",
     "provider": { "deepseek": { "npm": "@ai-sdk/openai-compatible", "options": { "baseURL": "https://api.deepseek.com/v1", "apiKey": "sk-..." } } },
-    "tools": { "localModels": true }
+    "tools": { "localModels": false }
   }
 }
 ```
