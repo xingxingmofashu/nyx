@@ -12,21 +12,21 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && bun run scripts/build.ts",
     "dev": "bun run src/server.ts"
   },
   "dependencies": {
     "@hono/node-server": "catalog:",
     "@hono/zod-validator": "catalog:",
+    "@lancedb/lancedb": "catalog:",
     "@nyx/agent": "workspace:*",
     "@nyx/config": "workspace:*",
+    "@nyx/knowledge": "workspace:*",
     "@nyx/llm": "workspace:*",
     "@nyx/shared": "workspace:*",
     "ai": "catalog:",
+    "apache-arrow": "catalog:",
     "hono": "catalog:",
     "zod": "catalog:"
-  },
-  "devDependencies": {
-    "vite": "7.0.0"
   }
 }

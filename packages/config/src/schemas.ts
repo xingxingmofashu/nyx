@@ -44,6 +44,16 @@ export const AgentToolsSettingsSchema = z
   .object({
     /** Expose locally installed ONNX models as tools the brain may call (default false). */
     localModels: z.boolean().optional(),
+    /** Expose `search_knowledge` over indexed knowledge bases (default true when any exist). */
+    knowledge: z.boolean().optional(),
+  })
+  .loose();
+
+/** Local knowledge-base (RAG) configuration. */
+export const KnowledgeSettingsSchema = z
+  .object({
+    /** ONNX embedding model id used to index/search knowledge bases. */
+    embeddingModel: z.string().optional(),
   })
   .loose();
 
@@ -70,6 +80,8 @@ export const SettingsSchema = z
     hubBaseUrl: z.string().optional(),
     /** Remote "master brain" used by the agent; env vars override each field. */
     agent: AgentSettingsSchema.optional(),
+    /** Local knowledge-base (RAG) settings. */
+    knowledge: KnowledgeSettingsSchema.optional(),
   })
   .loose();
 
@@ -98,6 +110,7 @@ export const ModelConfigSchema = z
 export type Settings = z.infer<typeof SettingsSchema>;
 export type AgentSettings = z.infer<typeof AgentSettingsSchema>;
 export type AgentToolsSettings = z.infer<typeof AgentToolsSettingsSchema>;
+export type KnowledgeSettings = z.infer<typeof KnowledgeSettingsSchema>;
 export type AgentProviderEntry = z.infer<typeof AgentProviderEntrySchema>;
 export type AgentProviderOptions = z.infer<typeof AgentProviderOptionsSchema>;
 export type AgentProviderLimit = z.infer<typeof AgentProviderLimitSchema>;

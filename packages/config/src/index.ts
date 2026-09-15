@@ -10,6 +10,11 @@ export function getModelsDir(): string {
   return process.env.NYX_MODELS_DIR ?? join(getConfigDir(), "models");
 }
 
+/** Knowledge-base storage dir; overridable via NYX_KNOWLEDGE_DIR. */
+export function getKnowledgeDir(): string {
+  return process.env.NYX_KNOWLEDGE_DIR ?? join(getConfigDir(), "knowledge");
+}
+
 function getModelConfigPath(): string {
   return join(getConfigDir(), "models.json");
 }

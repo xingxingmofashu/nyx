@@ -4,11 +4,13 @@ import { auth } from "./middleware/auth"
 import { agent } from "./routes/agent"
 import { automaticSpeechRecognition } from "./routes/automatic-speech-recognition"
 import { imageToImage } from "./routes/image-to-image"
+import { knowledge } from "./routes/knowledge"
 import { models } from "./routes/models"
 import { textToSpeech } from "./routes/text-to-speech"
 import { AgentService } from "./services/agent"
 import { AutomaticSpeechRecognitionService } from "./services/tasks/automatic-speech-recognition"
 import { ImageToImageService } from "./services/tasks/image-to-image"
+import { KnowledgeService } from "./services/knowledge"
 import { ModelsService } from "./services/models"
 import { TextToSpeechService } from "./services/tasks/text-to-speech"
 import { ProviderCache } from "./lib/provider-cache"
@@ -23,6 +25,8 @@ export interface ServerServices {
   textToSpeech: TextToSpeechService
   /** Transcribes speech into text. */
   automaticSpeechRecognition: AutomaticSpeechRecognitionService
+  /** Manages and searches local knowledge bases (RAG). */
+  knowledge: KnowledgeService
   /** Runs the remote master-brain agent loop. */
   agent: AgentService
 }
@@ -40,12 +44,14 @@ export function createApp(options: { token?: string; services?: ServerServices }
   // Share one provider cache between the task services and the model service so
   // removing a model also evicts its loaded weights.
   const cache = new ProviderCache()
+  const knowledgeService = new KnowledgeService()
   const services: ServerServices = options.services ?? {
     models: new ModelsService(cache),
     imageToImage: new ImageToImageService(cache),
     textToSpeech: new TextToSpeechService(cache),
     automaticSpeechRecognition: new AutomaticSpeechRecognitionService(cache),
-    agent: new AgentService(cache),
+    knowledge: knowledgeService,
+    agent: new AgentService(cache, knowledgeService),
   }
 
   const handle = options.token ? auth(options.token) : noopAuth
@@ -54,6 +60,7 @@ export function createApp(options: { token?: string; services?: ServerServices }
     .use("*", handle)
     .get("/health", (c) => c.json({ ok: true }))
     .route("/models", models(services.models))
+    .route("/knowledge", knowledge(services.knowledge))
     .route("/tasks/image-to-image", imageToImage(services.imageToImage))
     .route("/tasks/text-to-speech", textToSpeech(services.textToSpeech))
     .route(

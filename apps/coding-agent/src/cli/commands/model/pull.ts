@@ -4,10 +4,10 @@
 
 import { cmd } from "../../utils/cmd";
 import { getModelsDir } from "@nyx/config";
-import { pull, type ProgressInfo } from "@nyx/llm";
+import { LLM_TASKS, pull, type LLMTask, type ProgressInfo } from "@nyx/llm";
 import { log, spinner } from "@clack/prompts";
 
-const TASK_CHOICES = ["image-to-image", "text-to-speech", "automatic-speech-recognition"] as const;
+const TASK_CHOICES = LLM_TASKS;
 const DTYPE_CHOICES = ["fp32", "fp16", "q8", "int8", "uint8", "q4", "q4f16", "bnb4", "auto"] as const;
 
 interface PullArgs {
@@ -42,7 +42,7 @@ export const PullCommand = cmd<Record<string, unknown>, PullArgs>({
       process.exit(1);
     }
     const model = args.model;
-    const task = args.task as (typeof TASK_CHOICES)[number];
+    const task = args.task as LLMTask;
     const dtype = args.dtype;
 
     log.info(`Pulling ${task}:${model}${dtype && dtype !== "auto" ? ` (${dtype})` : ""}`);

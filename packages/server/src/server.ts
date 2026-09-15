@@ -1,8 +1,9 @@
 /**
- * Standalone entry (`node dist/server.cjs`). Reads NYX_SERVER_TOKEN (required),
- * NYX_SERVER_PORT (default 0 = ephemeral), NYX_SERVER_HOST (default 127.0.0.1).
- * Prints `nyx-server-ready <url>` once listening so the spawning Electron main
- * can discover the port.
+ * Standalone entry, compiled to the `nyx-server` executable
+ * (`bun build --compile`; the desktop spawns it from `Resources/runtime/`).
+ * Reads NYX_SERVER_TOKEN (required), NYX_SERVER_PORT (default 0 = ephemeral),
+ * NYX_SERVER_HOST (default 127.0.0.1). Prints `nyx-server-ready <url>` once
+ * listening so the spawning Electron main can discover the port.
  */
 import { start } from "./index"
 

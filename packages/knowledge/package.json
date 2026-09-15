@@ -1,5 +1,5 @@
 {
-  "name": "@nyx/llm",
+  "name": "@nyx/knowledge",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,9 +10,11 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/provider": "catalog:",
+    "@lancedb/lancedb": "catalog:",
     "@nyx/config": "workspace:*",
-    "onnxruntime-node": "catalog:",
-    "@huggingface/transformers": "catalog:"
+    "@nyx/llm": "workspace:*",
+    "@nyx/shared": "workspace:*",
+    "ai": "catalog:",
+    "apache-arrow": "catalog:"
   }
 }

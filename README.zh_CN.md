@@ -9,6 +9,7 @@ nyx 通过 transformers.js 本地运行兼容的 ONNX 模型：
 - **图生图**：超分等图像变换（如 4x_APISR_GRL_GAN）
 - **文生语音**：语音合成（如 MMS-TTS），输出 WAV
 - **主脑（agent）**：可选的远程模型（自带 API key），负责编排本地编码工具；agent 循环运行在本地 server 中，文件与命令都不出本机
+- **知识库（RAG）**：对自己的 Markdown/文本文档做本地嵌入与混合检索，让 agent 基于你的资料回答
 - **CLI 与桌面端**：终端 CLI 与 Electron 桌面应用共享同一份本地模型缓存
 
 ## 架构
@@ -18,8 +19,9 @@ Bun monorepo：
 - `packages/config` — `~/.nyx` 路径、模型注册表（`~/.nyx/models.json`）与用户设置（`~/.nyx/settings.json`）
 - `packages/llm` — 模型运行时 + 任务（`runtime.ts` 共享加载器、`tasks/*`），基于 onnxruntime-node / transformers.js
 - `packages/agent` — 主脑 agent 核心（Vercel AI SDK：provider 注册表 + 工具循环），不依赖 onnx
-- `packages/server` — `/v1` 下的 Hono HTTP 服务（models / tasks/image-to-image / tasks/text-to-speech / tasks/automatic-speech-recognition / agent），以纯 Node 子进程方式启动，使 onnxruntime 运行在 Electron 之外
-- `apps/coding-agent` — 终端 CLI（yargs）：`nyx`（agent TUI）、`nyx image-to-image`、`nyx text-to-speech`、`nyx model ...`
+- `packages/knowledge` — 本地知识库（RAG）：Markdown/文本切分、LanceDB 混合检索、本地 ONNX 嵌入
+- `packages/server` — `/v1` 下的 Hono HTTP 服务（models / tasks / agent / knowledge），编译为自包含的 Bun 可执行文件（`nyx-server`），桌面端启动它、CLI 以进程内方式运行
+- `apps/coding-agent` — 终端 CLI（yargs）：`nyx`（agent TUI）、`nyx image-to-image`、`nyx text-to-speech`、`nyx model ...`、`nyx knowledge ...`
 - `apps/desktop` — Electron 桌面应用（forge + vite + React）
 
 ## 快速开始
@@ -43,12 +45,16 @@ nyx                                                              # 主脑 agent 
 nyx --cwd ./project                                              # ...指定工作区目录
 nyx --resume                                                     # 选择本工作区的一个已保存会话并继续
 
-nyx model pull <model> --task <image-to-image|text-to-speech|automatic-speech-recognition>   # 预下载模型
+nyx model pull <model> --task <image-to-image|text-to-speech|automatic-speech-recognition|feature-extraction>   # 预下载模型
 nyx model list                                                   # 列出本地已缓存模型（别名：ls）
 nyx model remove <model> [--yes]                                 # 删除已缓存模型
 
 nyx image-to-image <input> --model "<id>" [-o out.png]           # 图生图变换
 nyx text-to-speech "<文本>" --model "<id>" [-o out.wav]          # 文生语音合成
+
+nyx knowledge add <dir>                                          # 注册知识库（见下）
+nyx knowledge index [id]                                         # 嵌入并建立索引
+nyx knowledge search "<查询>" [--kb <id>]                        # 混合检索
 ```
 
 agent TUI（由 `@ai-sdk/tui` 提供界面）：输入消息回车发送，内联工具审批用 `y`/`n` 回答，`Esc`（或 Ctrl+C）退出。回复以 markdown 流式显示，工具卡片与推理内容内联展示。
@@ -101,12 +107,27 @@ agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型
 
 本地推理在进程内执行、不做流式 —— 工具跑完前 agent 回复会停顿 —— 工具结果（输出文件路径）会像其他工具输出一样发送给远程主脑。
 
-## 桌面应用
+## 知识库（RAG）
 
-桌面端把推理放在独立启动的 server 子进程中（onnxruntime 在 Electron 的 Node 运行时中会崩溃）。先构建 server 产物，再启动应用：
+把 nyx 指向一个存放 Markdown/文本文件的目录，它就用本地 ONNX 嵌入模型（默认 `Xenova/multilingual-e5-base`）在本地建索引，然后基于你自己的文档回答。片段存在 [LanceDB](https://lancedb.com/) 中并建立原生全文索引；查询使用向量 + 关键词的混合检索，并以 RRF 融合排序。全程在本机运行。
 
 ```bash
-bun run --cwd packages/server build   # 生成 packages/server/dist/server.cjs
+nyx model pull Xenova/multilingual-e5-base --task feature-extraction   # 一次性：下载嵌入模型
+nyx knowledge add ~/notes                                              # 注册目录
+nyx knowledge index                                                    # 嵌入并建索引（可重复执行以增量更新）
+nyx knowledge search "如何减少大模型的幻觉"                              # 混合检索
+nyx knowledge list                                                     # 查看知识库与索引状态
+nyx knowledge remove <id>                                              # 删除知识库及其索引
+```
+
+存在知识库时，agent 还会获得只读的 `search_knowledge` 工具，从而基于你的文档回答（在 `settings.json` 中设 `agent.tools.knowledge: false` 可关闭）。索引位于 `~/.nyx/knowledge/<id>/`（可用 `NYX_KNOWLEDGE_DIR` 覆盖）。
+
+## 桌面应用
+
+桌面端把推理放在独立启动的 `nyx-server` 子进程（自包含的 Bun 可执行文件 —— onnxruntime 无法打进 Electron / 在其中运行）。先构建 server 产物，再启动应用：
+
+```bash
+bun run --cwd packages/server build   # 生成 packages/server/dist/nyx-server
 bun run dev:desktop                   # 启动 Electron 应用
 ```
 

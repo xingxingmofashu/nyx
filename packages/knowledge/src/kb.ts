@@ -1,0 +1,307 @@
+import { createHash } from "node:crypto";
+import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { join, relative, resolve, sep } from "node:path";
+import { embed, embedMany } from "ai";
+import { getSettings, getKnowledgeDir } from "@nyx/config";
+import { createOnnxEmbeddingModel } from "@nyx/llm";
+import { newId } from "@nyx/shared";
+import { chunkDocument } from "./chunk.ts";
+import { KbStore, type SearchHit } from "./lance.ts";
+
+/** Default local embedding model (multilingual, 768d). */
+export const DEFAULT_EMBEDDING_MODEL = "Xenova/multilingual-e5-base";
+
+const DOCUMENT_EXTENSIONS = new Set([".md", ".markdown", ".txt"]);
+const IGNORED_DIRS = new Set(["node_modules", ".git"]);
+
+export interface KnowledgeBaseConfig {
+  id: string;
+  name: string;
+  /** Directory scanned for `.md`/`.markdown`/`.txt` files (absolute). */
+  sourceDir: string;
+  embeddingModel: string;
+  /** Embedding dimension, recorded after the first index run. */
+  dim?: number;
+  /** Model that produced the current index; a mismatch triggers a full re-index. */
+  indexedModel?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IndexProgress {
+  phase: "scan" | "embed" | "done";
+  file?: string;
+  filesDone: number;
+  filesTotal: number;
+  chunks: number;
+}
+
+export interface IndexStats {
+  files: number;
+  chunks: number;
+  skipped: number;
+}
+
+export interface CreateKnowledgeBaseOptions {
+  name: string;
+  sourceDir: string;
+  embeddingModel?: string;
+}
+
+/** Embedding model to use, honoring `settings.knowledge.embeddingModel`. */
+export function resolveEmbeddingModel(): string {
+  return getSettings().knowledge?.embeddingModel ?? DEFAULT_EMBEDDING_MODEL;
+}
+
+/** Ids are `newId()` output; reject anything that could escape the knowledge dir. */
+const ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+
+function kbDir(id: string): string {
+  if (!ID_PATTERN.test(id)) throw new Error(`Invalid knowledge base id: ${id}`);
+  return join(getKnowledgeDir(), id);
+}
+
+function configPath(id: string): string {
+  return join(kbDir(id), "config.json");
+}
+
+function manifestPath(id: string): string {
+  return join(kbDir(id), "manifest.json");
+}
+
+function lanceDir(id: string): string {
+  return join(kbDir(id), "lancedb");
+}
+
+/** List knowledge bases, newest first; skips dirs without a readable config. */
+export function listKnowledgeBases(): KnowledgeBaseConfig[] {
+  let entries: string[];
+  try {
+    entries = readdirSync(getKnowledgeDir());
+  } catch {
+    return [];
+  }
+  const configs: KnowledgeBaseConfig[] = [];
+  for (const entry of entries) {
+    const config = readConfig(entry);
+    if (config) configs.push(config);
+  }
+  return configs.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+export function getKnowledgeBase(id: string): KnowledgeBaseConfig | undefined {
+  return readConfig(id);
+}
+
+function readConfig(id: string): KnowledgeBaseConfig | undefined {
+  try {
+    const raw = JSON.parse(readFileSync(configPath(id), "utf8")) as KnowledgeBaseConfig;
+    return raw?.id && raw?.sourceDir ? raw : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function createKnowledgeBase(options: CreateKnowledgeBaseOptions): KnowledgeBaseConfig {
+  const sourceDir = resolve(options.sourceDir);
+  const stat = statSync(sourceDir, { throwIfNoEntry: false });
+  if (!stat?.isDirectory()) {
+    throw new Error(`Source directory does not exist: ${sourceDir}`);
+  }
+  const id = newId();
+  const now = new Date().toISOString();
+  const config: KnowledgeBaseConfig = {
+    id,
+    name: options.name.trim() || sourceDir.split(sep).pop() || id,
+    sourceDir,
+    embeddingModel: options.embeddingModel ?? resolveEmbeddingModel(),
+    createdAt: now,
+    updatedAt: now,
+  };
+  mkdirSync(kbDir(id), { recursive: true });
+  writeConfig(config);
+  writeManifest(id, {});
+  return config;
+}
+
+/** Remove a knowledge base and its index from disk. */
+export function removeKnowledgeBase(id: string): boolean {
+  if (!getKnowledgeBase(id)) return false;
+  rmSync(kbDir(id), { recursive: true, force: true });
+  return true;
+}
+
+function writeConfig(config: KnowledgeBaseConfig): void {
+  config.updatedAt = new Date().toISOString();
+  writeFileSync(configPath(config.id), JSON.stringify(config, null, 2));
+}
+
+/** File path → content hash, used to skip unchanged files on re-index. */
+type Manifest = Record<string, string>;
+
+function readManifest(id: string): Manifest {
+  try {
+    return JSON.parse(readFileSync(manifestPath(id), "utf8")) as Manifest;
+  } catch {
+    return {};
+  }
+}
+
+function writeManifest(id: string, manifest: Manifest): void {
+  writeFileSync(manifestPath(id), JSON.stringify(manifest, null, 2));
+}
+
+/** One knowledge base: index its source directory and search it. */
+export class KnowledgeBase {
+  private constructor(readonly config: KnowledgeBaseConfig) {}
+
+  static open(id: string): KnowledgeBase {
+    const config = getKnowledgeBase(id);
+    if (!config) throw new Error(`Unknown knowledge base: ${id}`);
+    return new KnowledgeBase(config);
+  }
+
+  /** Walk the source dir, (re-)embedding changed files; removed files are pruned. */
+  async index(
+    options: { onProgress?: (progress: IndexProgress) => void; signal?: AbortSignal } = {},
+  ): Promise<IndexStats> {
+    const store = await KbStore.open(lanceDir(this.config.id));
+    try {
+      const files = walkDocuments(this.config.sourceDir);
+      const previous = readManifest(this.config.id);
+      // Reusing hashes is only safe when the index came from the same model.
+      const modelMatches = this.config.indexedModel === this.config.embeddingModel;
+      const manifest: Manifest = modelMatches ? previous : {};
+      if (!modelMatches) {
+        for (const file of Object.keys(previous)) await store.deleteFile(file);
+      }
+      const report = (progress: IndexProgress) => options.onProgress?.(progress);
+      const seen = new Set<string>();
+      let filesDone = 0;
+      let skipped = 0;
+      let dim: number | undefined;
+
+      for (const absolute of files) {
+        options.signal?.throwIfAborted();
+        const file = toPosix(relative(this.config.sourceDir, absolute));
+        seen.add(file);
+        const content = await readFile(absolute, "utf8");
+        const hash = hashContent(content);
+        report({ phase: "embed", file, filesDone, filesTotal: files.length, chunks: 0 });
+
+        if (manifest[file] === hash) {
+          skipped++;
+          filesDone++;
+          continue;
+        }
+
+        const parts = chunkDocument(content);
+        if (parts.length === 0) {
+          await store.deleteFile(file);
+          delete manifest[file];
+          filesDone++;
+          continue;
+        }
+
+        const { embeddings } = await embedMany({
+          model: createOnnxEmbeddingModel({
+            model: this.config.embeddingModel,
+            type: "passage",
+          }),
+          values: parts.map((part) => part.text),
+          ...(options.signal ? { abortSignal: options.signal } : {}),
+        });
+        if (embeddings.length !== parts.length) {
+          throw new Error(`Embedding count mismatch for ${file}`);
+        }
+        const fileDim = embeddings[0]!.length;
+        if (this.config.dim !== undefined && this.config.dim !== fileDim) {
+          throw new Error(
+            `Embedding dimension changed (${this.config.dim} → ${fileDim}); remove and re-index this knowledge base after switching models.`,
+          );
+        }
+        dim = fileDim;
+
+        await store.replaceFile(
+          file,
+          parts.map((part, index) => ({
+            id: `${file}#${part.ordinal}`,
+            file,
+            heading: part.heading,
+            ordinal: part.ordinal,
+            text: part.text,
+            vector: Float32Array.from(embeddings[index]!),
+          })),
+        );
+        manifest[file] = hash;
+        filesDone++;
+      }
+
+      // Drop files that disappeared from the source directory.
+      for (const file of Object.keys(manifest)) {
+        if (!seen.has(file)) {
+          await store.deleteFile(file);
+          delete manifest[file];
+        }
+      }
+
+      const chunks = await store.countChunks();
+      if (dim !== undefined) this.config.dim = dim;
+      this.config.indexedModel = this.config.embeddingModel;
+      writeManifest(this.config.id, manifest);
+      writeConfig(this.config);
+      report({ phase: "done", filesDone, filesTotal: files.length, chunks });
+      return { files: files.length, chunks, skipped };
+    } finally {
+      await store.close();
+    }
+  }
+
+  /** Hybrid (vector + keyword) search over the index. */
+  async search(query: string, options: { topK?: number } = {}): Promise<SearchHit[]> {
+    const store = await KbStore.open(lanceDir(this.config.id));
+    try {
+      const { embedding } = await embed({
+        model: createOnnxEmbeddingModel({ model: this.config.embeddingModel, type: "query" }),
+        value: query,
+      });
+      return await store.search(Float32Array.from(embedding), query, options.topK ?? 6);
+    } finally {
+      await store.close();
+    }
+  }
+
+  /** Number of indexed files (from the manifest). */
+  fileCount(): number {
+    return Object.keys(readManifest(this.config.id)).length;
+  }
+}
+
+/** Recursively collect indexable documents under `dir`. */
+function walkDocuments(dir: string): string[] {
+  const files: string[] = [];
+  const walk = (current: string) => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      if (entry.name.startsWith(".") || IGNORED_DIRS.has(entry.name)) continue;
+      const full = join(current, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.isFile() && DOCUMENT_EXTENSIONS.has(extname(entry.name))) files.push(full);
+    }
+  };
+  walk(dir);
+  return files;
+}
+
+function extname(name: string): string {
+  const index = name.lastIndexOf(".");
+  return index < 0 ? "" : name.slice(index).toLowerCase();
+}
+
+function hashContent(content: string): string {
+  return createHash("sha256").update(content).digest("hex");
+}
+
+function toPosix(path: string): string {
+  return sep === "/" ? path : path.split(sep).join("/");
+}

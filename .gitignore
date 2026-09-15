@@ -3,6 +3,7 @@ dist/
 out/
 .vite/
 *.log
+*.bun-build
 .env
 .env.*
 !.env.example

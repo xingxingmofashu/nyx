@@ -6,6 +6,7 @@ export type {
   Settings,
   AgentSettings,
   AgentToolsSettings,
+  KnowledgeSettings,
   AgentProviderEntry,
   AgentProviderOptions,
   AgentProviderLimit,

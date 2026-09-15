@@ -1,7 +1,12 @@
 import type { RawAudio, RawImage } from "@huggingface/transformers";
 
 /** The local ONNX tasks nyx supports. */
-export const LLM_TASKS = ["image-to-image", "text-to-speech", "automatic-speech-recognition"] as const;
+export const LLM_TASKS = [
+  "image-to-image",
+  "text-to-speech",
+  "automatic-speech-recognition",
+  "feature-extraction",
+] as const;
 export type LLMTask = (typeof LLM_TASKS)[number];
 
 /** Capability marker; consumers depend on `ImageProvider` or `SpeechProvider`. */
@@ -49,4 +54,23 @@ export interface AutomaticSpeechRecognitionOptions {
 export interface TranscriptionProvider extends LLMProvider {
   readonly task: "automatic-speech-recognition";
   transcribe(samples: Float32Array, options?: AutomaticSpeechRecognitionOptions): Promise<string>;
+}
+
+/** Options for one embedding call. */
+export interface EmbeddingOptions {
+  /**
+   * Whether the text is a search query or stored content. E5-family models
+   * require asymmetric `query:`/`passage:` prefixes; other models ignore it.
+   * Defaults to `"passage"`.
+   */
+  type?: "query" | "passage";
+  /** Checked before each batch; ONNX inference itself is not interruptible. */
+  signal?: AbortSignal;
+}
+
+/** A provider that turns text into normalized embedding vectors. */
+export interface EmbeddingProvider extends LLMProvider {
+  readonly task: "feature-extraction";
+  /** Embed `texts` in order; each vector is L2-normalized (cosine == dot). */
+  embed(texts: string[], options?: EmbeddingOptions): Promise<Float32Array[]>;
 }

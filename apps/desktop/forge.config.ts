@@ -1,6 +1,6 @@
 import type { ForgeConfig } from "@electron-forge/shared-types"
 import { spawn } from "node:child_process"
-import { cp, mkdir, readFile, readdir, realpath, rm, stat } from "node:fs/promises"
+import { chmod, cp, mkdir, readFile, readdir, realpath, rm, stat } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path"
 /**
  * Electron Forge configuration.
@@ -10,11 +10,12 @@ import { dirname, join, resolve } from "node:path"
  * pure-JS dependencies (@nyx/*, react, ...); only `electron` + node builtins
  * are required at runtime, so the packaged asar needs no node_modules.
  *
- * Inference server: `@nyx/server` runs in a separate plain-`node` child
- * (onnxruntime-node crashes inside Electron). That child cannot read the asar,
- * so `packageAfterCopy` stages the server bundle (`server.cjs`) and its full
- * native/runtime closure into `Resources/runtime/` as real files — the layout
- * `NyxServerProcess` resolves in production.
+ * Inference server: `@nyx/server` is compiled by `bun build --compile` into a
+ * self-contained `nyx-server` executable (server code + Bun runtime). It cannot
+ * embed the native modules — onnxruntime-node/sharp/LanceDB `.node` addons
+ * `dlopen` sibling shared libraries — so `packageAfterCopy` stages the binary
+ * plus their flat runtime closure into `Resources/runtime/` as real files, the
+ * layout `NyxServerProcess` resolves and spawns in production.
  *
  * Bun layout: packages live in the root `node_modules/.bun/<store>` store and
  * `apps/desktop/node_modules` holds only symlinks (asar rejects out-of-package
@@ -99,13 +100,12 @@ const config: ForgeConfig = {
      * Stage the inference-server runtime next to the packaged app:
      *
      *   <app>.app/Contents/Resources/runtime/
-     *     server.cjs                (@nyx/server vite bundle)
+     *     nyx-server                (`bun build --compile` executable)
      *     node_modules/…            dereferenced transformers + native closure
      *
-     * A child spawned by NyxServerProcess (the app's own binary under
-     * `ELECTRON_RUN_AS_NODE=1`) loads server.cjs from here; because the files
-     * are real (not inside the asar), it resolves the runtime dependencies by
-     * walking up from server.cjs to runtime/node_modules.
+     * NyxServerProcess spawns `nyx-server` directly with `cwd` set here; since
+     * the modules are real files (not inside the asar), the executable resolves
+     * its `--external` native deps by walking cwd's `node_modules`.
      */
     packageAfterCopy: async (_config, buildPath) => {
       try {
@@ -127,16 +127,15 @@ const config: ForgeConfig = {
 
 export default config
 
-/** Resolve and copy the @nyx/server production bundle as runtime/server.cjs. */
+/** Stage the `nyx-server` binary into the runtime dir (building it on demand). */
 async function copyServerBundle(runtimeDir: string): Promise<void> {
   const serverPkg = resolve(__dirname, "../../packages/server")
-  const dist = join(serverPkg, "dist")
-  const src = join(dist, "server.cjs")
+  const src = join(serverPkg, "dist", "nyx-server")
   try {
     const st = await stat(src)
     if (!st.isFile()) throw new Error("not a file")
   } catch {
-    // Build the server bundle on demand (same command as the repo docs).
+    // Build the server binary on demand (same command as the repo docs).
     await new Promise<void>((resolveBuild, reject) => {
       const child = spawn("bun", ["--cwd", serverPkg, "run", "build"], {
         stdio: "inherit",
@@ -147,40 +146,53 @@ async function copyServerBundle(runtimeDir: string): Promise<void> {
       child.on("error", reject)
     })
   }
-  await cp(src, join(runtimeDir, "server.cjs"))
+  const dest = join(runtimeDir, "nyx-server")
+  await cp(src, dest)
+  await chmod(dest, 0o755)
 }
 
 /**
- * Copy `@huggingface/transformers` + `onnxruntime-node` + `sharp` and their
- * transitive closure into runtime/node_modules, dereferencing bun-store
- * symlinks so the packaged node child gets a self-contained flat tree.
+ * Copy the external runtime closure (transformers + onnxruntime-node + sharp +
+ * LanceDB) into runtime/node_modules, dereferencing bun-store symlinks so the
+ * packaged child gets a self-contained flat tree.
  */
 async function copyRuntimeClosure(runtimeDir: string): Promise<void> {
   const destNm = join(runtimeDir, "node_modules")
   const seen = new Set<string>()
 
   // Seed from a context whose node_modules graph already resolves these.
-  // packages/server links @huggingface/transformers; walking up from that
-  // package's real store location reaches the enclosing node_modules that
-  // links onnxruntime-node, its common lib, and sharp — the same graph a
-  // packaged child walks.
+  // packages/server links @huggingface/transformers and @lancedb/lancedb;
+  // walking up from that package's real store location reaches the enclosing
+  // node_modules that links onnxruntime-node, its common lib, and sharp.
   const seedDir = resolve(__dirname, "../../packages/server")
   const transformersDir = await resolvePackageDir("@huggingface/transformers", seedDir)
   if (!transformersDir) throw new Error("cannot resolve @huggingface/transformers from packages/server")
 
-  for (const spec of ["@huggingface/transformers", "onnxruntime-node", "onnxruntime-common", "sharp"]) {
-    const from = await resolvePackageDir(spec, transformersDir)
+  for (const spec of [
+    "@huggingface/transformers",
+    "onnxruntime-node",
+    "onnxruntime-common",
+    "sharp",
+    "@lancedb/lancedb",
+    "apache-arrow",
+  ]) {
+    const from = await resolvePackageDir(spec, seedDir) ?? await resolvePackageDir(spec, transformersDir)
     if (!from) throw new Error(`cannot resolve runtime dependency ${spec} for desktop packaging`)
     await copyClosure(spec, from, destNm, seen)
   }
 }
 
 /**
- * Skip dependencies that the packaged node child never loads:
+ * Skip dependencies that the packaged binary never loads:
  *  - onnxruntime-web: browsers-only. transformers' node entry bundles it as a
  *    webpack-ignored module, so it is never required at runtime under node.
+ *  - openai: an optional dependency of LanceDB's embedding registry; nyx
+ *    computes embeddings itself and never imports it.
  */
-const SKIP_DEPS = new Set(["onnxruntime-web"])
+const SKIP_DEPS = new Set(["onnxruntime-web", "openai"])
+
+/** Dependencies of `@lancedb/lancedb` that nyx supplies/does not use. */
+const LANCE_SKIP_DEPS = new Set(["@huggingface/transformers"])
 
 /** Platform/arch pairs onnxruntime-node ships native binaries for. */
 const ORT_PLATFORMS = new Set(["darwin", "linux", "win32"])
@@ -238,6 +250,7 @@ async function copyClosure(
 
   for (const dep of Object.keys(deps)) {
     if (SKIP_DEPS.has(dep)) continue
+    if (pkgName === "@lancedb/lancedb" && LANCE_SKIP_DEPS.has(dep)) continue
     // sharp ships per-platform native binaries; copy only the current one
     // (plus colour + libvips runtimes, which themselves carry optional deps).
     if (pkgName === "sharp" || pkgName.startsWith("@img/")) {
@@ -276,6 +289,19 @@ async function pruneRuntime(runtimeDir: string): Promise<void> {
       if (join(platformDir, child) !== archDir) {
         await rm(join(platformDir, child), { recursive: true, force: true })
       }
+    }
+  }
+
+  // @lancedb/lancedb: keep the host platform's native package only.
+  const lancedbScope = join(nm, "@lancedb")
+  for (const entry of await readdir(lancedbScope).catch(() => [])) {
+    if (entry === "lancedb") continue
+    const matchesHost =
+      entry.includes(`-${process.platform}-`) &&
+      entry.includes(process.arch) &&
+      !entry.includes("musl")
+    if (!matchesHost) {
+      await rm(join(lancedbScope, entry), { recursive: true, force: true })
     }
   }
 

@@ -1,0 +1,40 @@
+/**
+ * Build `@nyx/server` into a self-contained Bun executable (`dist/nyx-server`).
+ *
+ * The binary embeds the server code + the Bun runtime. Heavy/native modules stay
+ * external and are resolved at runtime from the host's `node_modules` (the
+ * Forge-staged runtime closure in production): they cannot be embedded because
+ * their `.node` addons `dlopen` sibling shared libraries (onnxruntime, sharp).
+ * `--compile-autoload-package-json` is required for Bun to resolve `--external`
+ * packages from the working directory's node_modules.
+ */
+import { spawnSync } from "node:child_process";
+import { resolve } from "node:path";
+
+const SERVER_DIR = resolve(import.meta.dir, "..");
+
+/** Packages kept external (native or onnx-adjacent); must exist at runtime. */
+const EXTERNAL = [
+  "@huggingface/transformers",
+  "onnxruntime-node",
+  "onnxruntime-common",
+  "sharp",
+  "@lancedb/lancedb",
+];
+
+const os = process.platform === "win32" ? "windows" : process.platform;
+const target = `bun-${os}-${process.arch}`;
+
+const args = [
+  "build",
+  "./src/server.ts",
+  "--compile",
+  `--target=${target}`,
+  "--compile-autoload-package-json",
+  "--outfile",
+  "dist/nyx-server",
+  ...EXTERNAL.flatMap((name) => ["--external", name]),
+];
+
+const result = spawnSync("bun", args, { stdio: "inherit", cwd: SERVER_DIR });
+process.exit(result.status ?? 1);

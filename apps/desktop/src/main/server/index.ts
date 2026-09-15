@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process"
 import { randomBytes } from "node:crypto"
 import { existsSync } from "node:fs"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 import { NyxServerClient } from "./client"
 import { getSettings, DEFAULT_HUB_URL } from "@nyx/config"
 
@@ -9,13 +9,14 @@ import { getSettings, DEFAULT_HUB_URL } from "@nyx/config"
 const READY_TIMEOUT_MS = 15_000
 
 /**
- * Manages the @nyx/server child process that runs inference.
+ * Manages the `@nyx/server` child process that runs inference.
  *
- * onnxruntime-node crashes inside Electron's Node runtime (SIGTRAP), so
- * inference runs in a child spawned with `ELECTRON_RUN_AS_NODE=1` (this app's
- * own binary acting as plain Node — no system node needed). The server binds
- * to 127.0.0.1 with a random bearer token and prints `nyx-server-ready <url>`
- * on stdout once listening.
+ * The server is a self-contained Bun executable (`nyx-server`): it embeds the
+ * Bun runtime and server code, while native modules (onnxruntime-node, sharp,
+ * LanceDB) are resolved from the `node_modules` beside it — the flat closure
+ * Forge stages into `Resources/runtime/` (in dev: `packages/server`, whose
+ * workspace `node_modules` links them). The server binds to 127.0.0.1 with a
+ * random bearer token and prints `nyx-server-ready <url>` once listening.
  */
 export class NyxServerProcess {
   private child: ChildProcess | null = null
@@ -45,14 +46,17 @@ export class NyxServerProcess {
     if (this.ready) return this.ready
     this.token = randomBytes(24).toString("hex")
 
-    const script = this.resolveBundle()
+    const { script, cwd } = this.resolveBundle()
     const hub = getSettings().hubBaseUrl?.replace(/\/$/, "")
-    const child = spawn(process.execPath, [script], {
+    const child = spawn(script, [], {
+      cwd,
       env: {
         ...process.env,
-        ELECTRON_RUN_AS_NODE: "1",
         NYX_SERVER_TOKEN: this.token,
         NYX_SERVER_PORT: "0",
+        // The server resolves its external native deps from `cwd`; keep the
+        // cwd's node_modules first in the lookup order.
+        NODE_PATH: join(cwd, "node_modules"),
         // Let the inference child (where downloads run) use the configured mirror.
         ...(hub && hub !== DEFAULT_HUB_URL ? { HF_ENDPOINT: hub } : {}),
       },
@@ -117,15 +121,19 @@ export class NyxServerProcess {
     })
   }
 
-  private resolveBundle(): string {
-    const candidates = [
-      join(__dirname, "../../../../packages/server/dist/server.cjs"),
-      join(process.resourcesPath ?? "", "runtime", "server.cjs"),
-    ]
-    const script = candidates.find((p) => existsSync(p))
-    if (!script) {
-      throw new Error("nyx server bundle not found; build @nyx/server first (bun --cwd packages/server run build)")
+  private resolveBundle(): { script: string; cwd: string } {
+    // Packaged: Forge stages the binary + its flat native closure here.
+    const bundled = join(process.resourcesPath ?? "", "runtime", "nyx-server")
+    if (process.resourcesPath && existsSync(bundled)) {
+      return { script: bundled, cwd: dirname(bundled) }
     }
-    return script
+    // Dev: resolve the external native deps from the server package's
+    // workspace node_modules (walking up from the cwd finds them).
+    const serverDir = join(__dirname, "../../../../packages/server")
+    const dev = join(serverDir, "dist", "nyx-server")
+    if (existsSync(dev)) {
+      return { script: dev, cwd: serverDir }
+    }
+    throw new Error("nyx server binary not found; build @nyx/server first (bun --cwd packages/server run build)")
   }
 }
