@@ -33,6 +33,8 @@ export const AgentProviderEntrySchema = z
     npm: z.string(),
     /** Display name. */
     name: z.string().optional(),
+    /** URL listing available models; defaults to `${options.baseURL}/models`. */
+    modelsUrl: z.string().optional(),
     /** Options forwarded to the provider factory. */
     options: AgentProviderOptionsSchema.optional(),
     /** Token limits; `output` caps max output tokens, `context` is metadata only. */
@@ -78,6 +80,8 @@ export const SettingsSchema = z
   .object({
     /** Hugging Face endpoint used for model downloads (mirror override). */
     hubBaseUrl: z.string().optional(),
+    /** Whether models may be fetched from the hub (default true; false = offline, local cache only). */
+    allowRemoteModels: z.boolean().optional(),
     /** Remote "master brain" used by the agent; env vars override each field. */
     agent: AgentSettingsSchema.optional(),
     /** Local knowledge-base (RAG) settings. */

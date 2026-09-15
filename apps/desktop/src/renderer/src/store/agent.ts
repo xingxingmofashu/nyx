@@ -9,6 +9,8 @@ interface AgentSettingsState {
   workspaceDir: string
   initialized: boolean
   init: () => Promise<void>
+  /** Re-read settings (after the Settings page saves); no one-shot guard. */
+  refresh: () => Promise<void>
   setWorkspace: (dir: string) => Promise<void>
 }
 
@@ -22,18 +24,11 @@ export const useAgentStore = create<AgentSettingsState>((set, get) => ({
   init: async () => {
     if (get().initialized) return
     set({ initialized: true })
+    set(await readAgentState())
+  },
 
-    const settings = await window.nyx.config.getSettings()
-    const agent = settings.agent
-    const ref = agent?.model
-    let brainLabel = ""
-    if (ref) {
-      const slash = ref.indexOf("/")
-      const providerId = slash > 0 ? ref.slice(0, slash) : ""
-      const name = providerId ? agent?.provider?.[providerId]?.name : undefined
-      brainLabel = name ? `${name} · ${ref}` : ref
-    }
-    set({ brainLabel, configured: Boolean(ref), workspaceDir: agent?.workspaceDir ?? "" })
+  refresh: async () => {
+    set(await readAgentState())
   },
 
   setWorkspace: async (dir) => {
@@ -41,3 +36,20 @@ export const useAgentStore = create<AgentSettingsState>((set, get) => ({
     await window.nyx.config.setSettings({ agent: { workspaceDir: dir } })
   },
 }))
+
+/** Derive the display state from the persisted settings. */
+async function readAgentState(): Promise<
+  Pick<AgentSettingsState, "brainLabel" | "configured" | "workspaceDir">
+> {
+  const settings = await window.nyx.config.getSettings()
+  const agent = settings.agent
+  const ref = agent?.model
+  let brainLabel = ""
+  if (ref) {
+    const slash = ref.indexOf("/")
+    const providerId = slash > 0 ? ref.slice(0, slash) : ""
+    const name = providerId ? agent?.provider?.[providerId]?.name : undefined
+    brainLabel = name ? `${name} · ${ref}` : ref
+  }
+  return { brainLabel, configured: Boolean(ref), workspaceDir: agent?.workspaceDir ?? "" }
+}

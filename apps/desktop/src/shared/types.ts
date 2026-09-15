@@ -14,9 +14,11 @@ import type {
   UIMessage,
   UIMessageChunk,
 } from "@nyx/server/types"
-import type { ChatSessionMeta, ModelInfo, Settings } from "@nyx/config"
+import type { AgentProviderEntry, AgentSettings, ChatSessionMeta, ModelInfo, Settings } from "@nyx/config"
 import type { LLMTask } from "@nyx/llm"
 export type {
+  AgentProviderEntry,
+  AgentSettings,
   AudioResult,
   AudioSamples,
   ChatSessionMeta,
@@ -61,6 +63,20 @@ export interface SaveFileRequest {
   defaultPath?: string
   filters?: Array<{ name: string; extensions: string[] }>
   content: string
+}
+
+/** Read-only environment info for the Settings page. */
+export interface AppEnvironment {
+  modelsDir: string
+  knowledgeDir: string
+  /** Names of env vars set in the main process that override settings.json. */
+  envOverrides: string[]
+}
+
+/** Model ids available from one provider, or why the list couldn't be fetched. */
+export interface ProviderModels {
+  ids: string[]
+  error?: string
 }
 
 export interface ModelPullProgress {
@@ -111,6 +127,13 @@ export interface NyxApi {
     getModelsDir: () => Promise<string>
     getSettings: () => Promise<Settings>
     setSettings: (patch: Settings) => Promise<Settings>
+    /** Replace settings.json wholesale; can remove keys. */
+    writeSettings: (settings: Settings) => Promise<Settings>
+    getEnvironment: () => Promise<AppEnvironment>
+    /** List a provider's models via the main process (no CORS). */
+    listModels: (provider: AgentProviderEntry) => Promise<ProviderModels>
+    /** Restart the inference server (needed after changing the HF endpoint). */
+    restartServer: () => Promise<void>
   }
   sessions: {
     /** Sessions of one workspace (the sidebar is scoped to the active one). */

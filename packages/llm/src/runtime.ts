@@ -46,7 +46,9 @@ function applyEnv(partial: Partial<TransformersEnvironment>): void {
 /** Point transformers.js at the model cache and allow remote downloads. */
 export function configureEnv(options: ModelRuntimeOptions = {}): void {
   const cacheDir = options.cacheDir ?? getModelsDir();
-  const allowDownload = options.allowDownload ?? true;
+  const settings = getSettings();
+  // Explicit option > settings.allowRemoteModels > default (remote allowed).
+  const allowDownload = options.allowDownload ?? settings.allowRemoteModels !== false;
 
   // Resolve the download host once, then let explicit env overrides beat it.
   applyEnv({
@@ -61,7 +63,7 @@ export function configureEnv(options: ModelRuntimeOptions = {}): void {
   } else if (process.env.HF_ENDPOINT) {
     applyEnv({ remoteHost: process.env.HF_ENDPOINT });
   } else {
-    const fromSettings = getSettings().hubBaseUrl;
+    const fromSettings = settings.hubBaseUrl;
     if (fromSettings && fromSettings !== DEFAULT_HUB_URL) {
       applyEnv({ remoteHost: fromSettings });
     }

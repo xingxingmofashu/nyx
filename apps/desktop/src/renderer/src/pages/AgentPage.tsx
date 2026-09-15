@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
-import { Bot, FolderOpen, RotateCcw } from "lucide-react"
+import { Bot, FolderOpen, RotateCcw, Settings2 } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 import { useChat } from "@ai-sdk/react"
 import { getToolName, isReasoningUIPart, isToolUIPart } from "ai"
 import { agentChat } from "../lib/chat"
@@ -55,6 +56,7 @@ export function AgentPage() {
   const createSession = useSessionsStore((s) => s.create)
   const [input, setInput] = useState("")
   const restored = useRef(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     // Restore the last opened session of the current workspace once (StrictMode-safe).
@@ -96,7 +98,7 @@ export function AgentPage() {
   }
 
   const placeholder = !configured
-    ? "Configure the master brain in ~/.nyx/settings.json"
+    ? "Configure the master brain in Settings"
     : busy
       ? "Working…"
       : "Message the agent… (Enter to send)"
@@ -134,11 +136,17 @@ export function AgentPage() {
                     <Bot />
                   </EmptyMedia>
                   <EmptyTitle>{configured ? "Ready when you are" : "No master brain configured"}</EmptyTitle>
-                  <EmptyDescription>
-                    {configured
-                      ? "Ask the agent to read or edit files, run commands, or use local models in the workspace."
-                      : "Set agent.model and agent.provider in ~/.nyx/settings.json, then restart Nyx."}
-                  </EmptyDescription>
+                <EmptyDescription>
+                  {configured
+                    ? "Ask the agent to read or edit files, run commands, or use local models in the workspace."
+                    : "Set the model and provider on the Settings page, then send a message."}
+                </EmptyDescription>
+                {!configured && (
+                  <Button variant="outline" size="sm" onClick={() => navigate("/settings")}>
+                    <Settings2 data-icon="inline-start" />
+                    Open settings
+                  </Button>
+                )}
                 </EmptyHeader>
               </Empty>
             ) : (

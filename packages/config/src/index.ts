@@ -71,6 +71,23 @@ export function setSettings(patch: Settings): Settings {
 }
 
 /**
+ * Replace ~/.nyx/settings.json wholesale.
+ *
+ * `setSettings` deep-merges, so it can never remove a key; the Settings UI needs
+ * to delete providers and clear fields, so it round-trips the full object
+ * (`getSettings()` + edits) through here. Validation is lenient, matching
+ * `getSettings`: a hand-edited config that no longer matches the schema is
+ * written back as-is rather than rejected.
+ */
+export function writeSettings(settings: Settings): Settings {
+  const parsed = SettingsSchema.safeParse(settings);
+  const next = parsed.success ? parsed.data : settings;
+  mkdirSync(getConfigDir(), { recursive: true });
+  writeFileSync(getSettingsPath(), JSON.stringify(next, null, 2));
+  return next;
+}
+
+/**
  * Agent settings from ~/.nyx/settings.json, with env overrides: NYX_AGENT_MODEL
  * replaces the model ref, and NYX_AGENT_{API_KEY,BASE_URL,HEADERS} override the
  * active provider's `options` (the active provider is the model ref's prefix).

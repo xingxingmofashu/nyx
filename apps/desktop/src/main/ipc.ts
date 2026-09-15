@@ -2,6 +2,7 @@ import { BrowserWindow, dialog, ipcMain } from "electron"
 import { writeFile } from "node:fs/promises"
 import {
   getActiveSessionId,
+  getKnowledgeDir,
   getModelsDir,
   getSession,
   getSettings,
@@ -12,11 +13,15 @@ import {
   setActiveSessionId,
   setSessionPinned,
   setSettings,
+  writeSettings,
 } from "@nyx/config"
 import { IPC } from "../shared/ipc"
 import { readGeneratedFileDataUrl } from "./lib/generated-file"
+import { listProviderModels } from "./lib/provider-models"
 import type {
+  AgentProviderEntry,
   AudioSamples,
+  AppEnvironment,
   ChatSendRequest,
   ChatSessionSaveRequest,
   ImageBytes,
@@ -43,12 +48,23 @@ interface Services {
   server: NyxServerProcess
 }
 
+/** Env vars the server reads that take precedence over settings.json. */
+const ENV_OVERRIDE_KEYS = [
+  "NYX_AGENT_MODEL",
+  "NYX_AGENT_API_KEY",
+  "NYX_AGENT_BASE_URL",
+  "NYX_AGENT_HEADERS",
+  "NYX_AGENT_LOCAL_MODELS",
+  "HF_ENDPOINT",
+] as const
+
 /** Register all ipcMain handlers. Must run after app is ready. */
 export function registerIpc(services: Services): void {
   const {
     tasks: { imageToImage, textToSpeech, automaticSpeechRecognition },
     chat,
     models,
+    server,
   } = services
 
   // --- Image-to-image ---
@@ -94,6 +110,20 @@ export function registerIpc(services: Services): void {
   ipcMain.handle(IPC.config.getModelsDir, () => getModelsDir())
   ipcMain.handle(IPC.config.getSettings, () => getSettings())
   ipcMain.handle(IPC.config.setSettings, (_e, patch: Settings) => setSettings(patch))
+  ipcMain.handle(IPC.config.writeSettings, (_e, settings: Settings) => writeSettings(settings))
+  ipcMain.handle(IPC.config.getEnvironment, (): AppEnvironment => ({
+    modelsDir: getModelsDir(),
+    knowledgeDir: getKnowledgeDir(),
+    // The server reads these from its own env, which beats settings.json.
+    envOverrides: ENV_OVERRIDE_KEYS.filter((key) => Boolean(process.env[key])),
+  }))
+  ipcMain.handle(IPC.config.listModels, (_e, provider: AgentProviderEntry) =>
+    listProviderModels(provider),
+  )
+  ipcMain.handle(IPC.config.restartServer, async () => {
+    await server.stop()
+    await server.start()
+  })
 
   // --- Sessions ---
   ipcMain.handle(IPC.sessions.list, (_e, workspaceDir: string) => listSessions(workspaceDir))

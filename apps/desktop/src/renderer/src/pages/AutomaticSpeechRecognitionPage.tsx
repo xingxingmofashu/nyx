@@ -56,7 +56,7 @@ export function AutomaticSpeechRecognitionPage() {
   }
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
       <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border bg-card/40 py-10">
         <Button
           variant={recording ? "destructive" : "default"}

@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react"
-import { FolderOpen, Save } from "lucide-react"
-import type { Settings } from "../../../shared/types"
+import { Save } from "lucide-react"
+import type { AppEnvironment, Settings } from "../../../shared/types"
 import { Button } from "../components/ui/button"
-import { Input } from "../components/ui/input"
-import { Label } from "../components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
+import { Label } from "../components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
-import { Separator } from "../components/ui/separator"
+import { toast } from "../components/ui/toast"
+import { AgentSettingsCard } from "../components/settings/AgentSettingsCard"
+import { HuggingFaceSettingsCard } from "../components/settings/HuggingFaceSettingsCard"
 import { getTheme, setTheme, type Theme } from "../lib/theme"
-
-const HF_EXAMPLES = ["https://huggingface.co", "https://hf-mirror.com"]
+import { useAgentStore } from "../store/agent"
 
 const THEME_OPTIONS: Array<{ id: Theme; label: string }> = [
   { id: "light", label: "Light" },
@@ -17,19 +17,24 @@ const THEME_OPTIONS: Array<{ id: Theme; label: string }> = [
   { id: "system", label: "System" },
 ]
 
-/** App settings: theme, download endpoint, and cache location. */
+/** App settings: theme, the agent (master brain), and Hugging Face downloads. */
 export function SettingsPage() {
   const [theme, setThemeState] = useState<Theme>(getTheme)
-  const [hubBaseUrl, setHubBaseUrl] = useState("")
-  const [modelsDir, setModelsDir] = useState("")
-  const [saved, setSaved] = useState(false)
+  const [settings, setSettings] = useState<Settings | null>(null)
+  const [snapshot, setSnapshot] = useState("")
+  const [env, setEnv] = useState<AppEnvironment | null>(null)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     void (async () => {
-      const [s, dir] = await Promise.all([window.nyx.config.getSettings(), window.nyx.config.getModelsDir()])
-      setHubBaseUrl(s.hubBaseUrl ?? "https://huggingface.co")
-      setModelsDir(dir)
+      const [loaded, environment] = await Promise.all([
+        window.nyx.config.getSettings(),
+        window.nyx.config.getEnvironment(),
+      ])
+      setSettings(loaded)
+      setSnapshot(JSON.stringify(loaded))
+      setEnv(environment)
     })()
   }, [])
 
@@ -38,95 +43,119 @@ export function SettingsPage() {
     setThemeState(t)
   }
 
-  const save = async () => {
-    setSaved(false)
+  // Mutate a clone so React sees a new object; `writeSettings` replaces the file
+  // wholesale, so deletions (providers, keys) work.
+  const update = (mutate: (draft: Settings) => void) =>
+    setSettings((prev) => {
+      if (!prev) return prev
+      const next = structuredClone(prev)
+      mutate(next)
+      return next
+    })
+
+  const dirty = settings !== null && JSON.stringify(settings) !== snapshot
+
+  const save = async (): Promise<boolean> => {
+    if (!settings) return false
+    setSaving(true)
     setError(null)
-    const value = hubBaseUrl.trim()
-    const patch: Settings = { hubBaseUrl: value || undefined }
     try {
-      await window.nyx.config.setSettings(patch)
-      setSaved(true)
+      const saved = await window.nyx.config.writeSettings(settings)
+      setSettings(saved)
+      setSnapshot(JSON.stringify(saved))
+      await useAgentStore.getState().refresh()
+      toast.add({ title: "Settings saved" })
+      return true
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
+      return false
+    } finally {
+      setSaving(false)
     }
   }
 
+  // Restarting re-reads settings.json, so flush pending edits first.
+  const restartServer = async () => {
+    if (!(await save())) throw new Error("Fix the settings error above, then restart.")
+    await window.nyx.config.restartServer()
+  }
+
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-      {/* Appearance */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Appearance</CardTitle>
-          <CardDescription>Choose how Nyx looks.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="theme">Theme</Label>
-            <Select value={theme} onValueChange={(v) => changeTheme(v as Theme)}>
-              <SelectTrigger id="theme" size="sm" className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {THEME_OPTIONS.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto p-4">
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-lg font-semibold">Settings</h1>
+        <Button onClick={() => void save()} disabled={!dirty || saving}>
+          <Save data-icon="inline-start" />
+          {saving ? "Saving…" : "Save changes"}
+        </Button>
+      </div>
 
-      {/* Downloads */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Downloads</CardTitle>
-          <CardDescription>Where model downloads come from and where models live.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="hub-url">Hugging Face base URL</Label>
-            <div className="flex gap-2">
-              <Input
-                id="hub-url"
-                value={hubBaseUrl}
-                onChange={(e) => setHubBaseUrl(e.target.value)}
-                placeholder="https://huggingface.co"
-                className="max-w-105"
-              />
-              <Button onClick={() => void save()} className="shrink-0">
-                <Save data-icon="inline-start" />
-                Save
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Models download from this endpoint. In mainland China use a mirror such as{" "}
-              <code className="rounded bg-muted px-1">https://hf-mirror.com</code>. Changes apply after restarting Nyx.
-            </p>
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
-              {HF_EXAMPLES.map((ex) => (
-                <Button key={ex} variant="outline" size="sm" className="text-xs" onClick={() => setHubBaseUrl(ex)}>
-                  {ex}
-                </Button>
-              ))}
-            </div>
-          </div>
+      {env && env.envOverrides.length > 0 && (
+        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+          Environment variables override settings.json:{" "}
+          <code className="rounded bg-muted px-1">{env.envOverrides.join(", ")}</code>. Values here won't
+          take effect for those fields.
+        </p>
+      )}
 
-          <Separator />
+      {!settings ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : (
+        <>
+          {/* Appearance */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Appearance</CardTitle>
+              <CardDescription>Choose how Nyx looks.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="theme">Theme</Label>
+                <Select value={theme} onValueChange={(v) => changeTheme(v as Theme)}>
+                  <SelectTrigger id="theme" size="sm" className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {THEME_OPTIONS.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="flex items-center gap-2">
-            <FolderOpen className="size-4 text-muted-foreground" />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium">Local model cache</p>
-              <p className="truncate text-xs text-muted-foreground">{modelsDir}</p>
-            </div>
-          </div>
+          <AgentSettingsCard
+            agent={settings.agent ?? {}}
+            onChange={(agent) =>
+              update((draft) => {
+                draft.agent = agent
+              })
+            }
+          />
 
-          {saved && <p className="text-sm text-emerald-600 dark:text-emerald-400">Settings saved. Restart Nyx to apply.</p>}
+          <HuggingFaceSettingsCard
+            hubBaseUrl={settings.hubBaseUrl}
+            allowRemoteModels={settings.allowRemoteModels !== false}
+            modelsDir={env?.modelsDir ?? ""}
+            onHubBaseUrlChange={(value) =>
+              update((draft) => {
+                draft.hubBaseUrl = value
+              })
+            }
+            onAllowRemoteModelsChange={(value) =>
+              update((draft) => {
+                draft.allowRemoteModels = value
+              })
+            }
+            onRestartServer={() => restartServer()}
+          />
+
           {error && <p className="text-sm text-destructive">{error}</p>}
-        </CardContent>
-      </Card>
+        </>
+      )}
     </div>
   )
 }

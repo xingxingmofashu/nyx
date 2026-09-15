@@ -61,6 +61,14 @@ const api: NyxApi = {
       ipcRenderer.invoke(IPC.config.getModelsDir),
     getSettings: () => ipcRenderer.invoke(IPC.config.getSettings),
     setSettings: (patch) => ipcRenderer.invoke(IPC.config.setSettings, patch),
+    writeSettings: (settings) =>
+      ipcRenderer.invoke(IPC.config.writeSettings, settings),
+    getEnvironment: () =>
+      ipcRenderer.invoke(IPC.config.getEnvironment),
+    listModels: (provider) =>
+      ipcRenderer.invoke(IPC.config.listModels, provider),
+    restartServer: (): Promise<void> =>
+      ipcRenderer.invoke(IPC.config.restartServer),
   },
   sessions: {
     list: (workspaceDir: string): Promise<ChatSessionMeta[]> =>
