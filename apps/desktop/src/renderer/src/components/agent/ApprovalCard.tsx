@@ -18,9 +18,9 @@ export function ApprovalCard({ name, input, decision, onApprove, onDeny }: Appro
       <div className="flex items-center gap-2">
         <ShieldAlert className="size-4 shrink-0 text-muted-foreground" />
         <span className="font-medium">Approval required</span>
-        <span className="truncate font-mono text-xs text-muted-foreground">{name}</span>
+        <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">{name}</span>
       </div>
-      <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-muted/60 p-2 text-xs">
+      <pre className="mt-2 max-h-40 overflow-auto rounded bg-muted/60 p-2 text-xs whitespace-pre">
         {formatJson(input)}
       </pre>
       {decision ? (

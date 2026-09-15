@@ -50,7 +50,7 @@ export function ToolCardShell({ name, state, children }: { name: string; state: 
     <div className="w-full rounded-md border bg-muted/30 text-sm">
       <div className="flex items-center gap-2 border-b px-2.5 py-1.5">
         <Wrench className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className="truncate font-mono text-xs">{name}</span>
+        <span className="min-w-0 truncate font-mono text-xs">{name}</span>
         <span className="ms-auto flex items-center gap-1.5">
           {PENDING.includes(state) && <Spinner className="size-3.5 text-muted-foreground" />}
           <Badge variant={STATUS_VARIANT[state]}>{STATUS_LABEL[state]}</Badge>
@@ -67,12 +67,12 @@ export function ToolCallCard({ name, input, state, output, errorText }: ToolCall
   return (
     <ToolCardShell name={name} state={state}>
       {input !== undefined && (
-        <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded bg-background/60 p-2 text-xs">
+        <pre className="max-h-40 overflow-auto rounded bg-background/60 p-2 text-xs whitespace-pre">
           {formatJson(input)}
         </pre>
       )}
       {result && (
-        <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded bg-background/60 p-2 text-xs">
+        <pre className="max-h-64 overflow-auto rounded bg-background/60 p-2 text-xs whitespace-pre">
           {result}
         </pre>
       )}
