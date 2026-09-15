@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { useRef } from "react"
+import { useEffect, useRef } from "react"
 import { SendHorizonal, Square } from "lucide-react"
 import {
   InputGroup,
@@ -38,12 +38,21 @@ export function ChatComposer({
   trailing,
 }: ChatComposerProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  // Sending disables the textarea while the agent streams, which blurs it; focus
+  // it again once the composer is editable, but only for a send started here.
+  const refocusAfterSend = useRef(false)
 
   const submit = () => {
     if (disabled || streaming || !value.trim()) return
+    refocusAfterSend.current = true
     onSend()
-    inputRef.current?.focus()
   }
+
+  useEffect(() => {
+    if (disabled || !refocusAfterSend.current) return
+    refocusAfterSend.current = false
+    inputRef.current?.focus()
+  }, [disabled])
 
   return (
     <CardFooter className="flex-col gap-2 border-t p-2">
