@@ -247,19 +247,16 @@ export function AgentPage() {
                           messageId={message.id}
                           scrollAnchor={message.role === "user"}
                         >
-                          {userAttachments.length > 0 && (
-                            <Message align="end">
-                              <MessageContent>
+                          <Message align={message.role === "user" ? "end" : "start"}>
+                            <MessageContent>
+                              {userAttachments.length > 0 && (
                                 <AttachmentStrip attachments={userAttachments} />
-                              </MessageContent>
-                            </Message>
-                          )}
-                          {message.parts.map((part, index) => {
-                            if (part.type === "text") {
-                              return (
-                                <Message key={index} align={message.role === "user" ? "end" : "start"}>
-                                  <MessageContent>
+                              )}
+                              {message.parts.map((part, index) => {
+                                if (part.type === "text") {
+                                  return (
                                     <Bubble
+                                      key={index}
                                       variant={message.role === "user" ? "default" : "muted"}
                                       align={message.role === "user" ? "end" : "start"}
                                     >
@@ -274,15 +271,11 @@ export function AgentPage() {
                                         )}
                                       </BubbleContent>
                                     </Bubble>
-                                  </MessageContent>
-                                </Message>
-                              )
-                            }
-                            if (isReasoningUIPart(part)) {
-                              return (
-                                <Message key={index} align="start">
-                                  <MessageContent>
-                                    <Bubble variant="ghost" align="start">
+                                  )
+                                }
+                                if (isReasoningUIPart(part)) {
+                                  return (
+                                    <Bubble key={index} variant="ghost" align="start">
                                       <BubbleContent>
                                         <MarkdownText
                                           text={part.text}
@@ -290,69 +283,69 @@ export function AgentPage() {
                                         />
                                       </BubbleContent>
                                     </Bubble>
-                                  </MessageContent>
-                                </Message>
-                              )
-                            }
-                            if (!isToolUIPart(part)) return null
+                                  )
+                                }
+                                if (!isToolUIPart(part)) return null
 
-                            const name = getToolName(part)
-                            if (part.state === "approval-requested") {
-                              return (
-                                <ApprovalCard
-                                  key={part.toolCallId}
-                                  name={name}
-                                  input={part.input}
-                                  onApprove={() =>
-                                    addToolApprovalResponse({ id: part.approval.id, approved: true })
-                                  }
-                                  onDeny={() =>
-                                    addToolApprovalResponse({
-                                      id: part.approval.id,
-                                      approved: false,
-                                      reason: "user denied",
-                                    })
-                                  }
-                                />
-                              )
-                            }
+                                const name = getToolName(part)
+                                if (part.state === "approval-requested") {
+                                  return (
+                                    <ApprovalCard
+                                      key={part.toolCallId}
+                                      name={name}
+                                      input={part.input}
+                                      onApprove={() =>
+                                        addToolApprovalResponse({ id: part.approval.id, approved: true })
+                                      }
+                                      onDeny={() =>
+                                        addToolApprovalResponse({
+                                          id: part.approval.id,
+                                          approved: false,
+                                          reason: "user denied",
+                                        })
+                                      }
+                                    />
+                                  )
+                                }
 
-                            if (name === "local_text_to_speech") {
-                              return (
-                                <SpeechCard
-                                  key={part.toolCallId}
-                                  toolCallId={part.toolCallId}
-                                  name={name}
-                                  state={part.state as ToolPartState}
-                                  output={part.state === "output-available" ? part.output : undefined}
-                                  errorText={part.state === "output-error" ? part.errorText : undefined}
-                                />
-                              )
-                            }
+                                if (name === "local_text_to_speech") {
+                                  return (
+                                    <SpeechCard
+                                      key={part.toolCallId}
+                                      toolCallId={part.toolCallId}
+                                      name={name}
+                                      state={part.state as ToolPartState}
+                                      output={part.state === "output-available" ? part.output : undefined}
+                                      errorText={part.state === "output-error" ? part.errorText : undefined}
+                                    />
+                                  )
+                                }
 
-                            if (name === "local_image_to_image") {
-                              return (
-                                <ImageCard
-                                  key={part.toolCallId}
-                                  name={name}
-                                  state={part.state as ToolPartState}
-                                  output={part.state === "output-available" ? part.output : undefined}
-                                  errorText={part.state === "output-error" ? part.errorText : undefined}
-                                />
-                              )
-                            }
+                                if (name === "local_image_to_image") {
+                                  return (
+                                    <ImageCard
+                                      key={part.toolCallId}
+                                      name={name}
+                                      state={part.state as ToolPartState}
+                                      output={part.state === "output-available" ? part.output : undefined}
+                                      errorText={part.state === "output-error" ? part.errorText : undefined}
+                                    />
+                                  )
+                                }
 
-                            return (
-                              <ToolCallCard
-                                key={part.toolCallId}
-                                name={name}
-                                input={part.input}
-                                state={part.state as ToolPartState}
-                                output={part.state === "output-available" ? part.output : undefined}
-                                errorText={part.state === "output-error" ? part.errorText : undefined}
-                              />
-                            )
-                          })}
+                                return (
+                                  <ToolCallCard
+                                    key={part.toolCallId}
+                                    name={name}
+                                    input={part.input}
+                                    state={part.state as ToolPartState}
+                                    output={part.state === "output-available" ? part.output : undefined}
+                                    errorText={part.state === "output-error" ? part.errorText : undefined}
+                                  />
+                                )
+                              })}
+                            </MessageContent>
+                          </Message>
                         </MessageScrollerItem>
                       )
                     })}
