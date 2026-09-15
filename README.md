@@ -20,7 +20,7 @@ Bun monorepo:
 - `packages/llm` — model runtime + tasks (`runtime.ts` shared loader, `tasks/*`), built on onnxruntime-node / transformers.js
 - `packages/agent` — the master-brain agent core (Vercel AI SDK: providers + tool loop), no onnx dependency
 - `packages/knowledge` — local knowledge base (RAG): Markdown chunking, LanceDB hybrid search, local ONNX embeddings
-- `packages/server` — Hono HTTP service under `/v1` (models / tasks / agent), compiled to a self-contained Bun binary (`nyx-server`) that the desktop spawns and the CLI runs in-process
+- `packages/server` — Hono HTTP service under `/v1` (models / tasks / agent), compiled to a self-contained Bun binary (`nyx-server`) that the desktop and the CLI spawn as a child process
 - `apps/coding-agent` — terminal CLI (yargs): `nyx` (agent TUI), `nyx image-to-image`, `nyx text-to-speech`, `nyx model ...`
 - `apps/desktop` — Electron desktop app (forge + vite + React)
 

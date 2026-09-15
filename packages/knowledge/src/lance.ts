@@ -65,12 +65,14 @@ export class KbStore {
   async search(queryVector: Float32Array, queryText: string, topK = 6): Promise<SearchHit[]> {
     if (!this.table) return [];
     const reranker = await lancedb.rerankers.RRFReranker.create();
+    // No `.select(...)`: restricting output columns makes LanceDB emit a
+    // deprecation warning about `_score`/`_distance` auto-projection from native
+    // code straight to stderr, which corrupts the CLI TUI. Project in JS instead.
     const rows = await this.table
       .query()
       .nearestTo(queryVector)
       .fullTextSearch(queryText)
       .rerank(reranker)
-      .select(["file", "heading", "text"])
       .limit(topK)
       .toArray();
     return rows.map((row) => ({

@@ -39,11 +39,11 @@ const noopAuth: MiddlewareHandler = async (_c, next) => {
  * Assemble a fully-wired app: mount services under `/v1`. The return type is
  * intentionally inferred so `@nyx/server/rpc` can expose it to the Hono RPC client.
  */
-export function createApp(options: { token?: string; services?: ServerServices } = {}) {
+export function createApp(options: { token?: string; services?: ServerServices; onLog?: (message: string) => void } = {}) {
   // Share one provider cache between the task services and the model service so
   // removing a model also evicts its loaded weights.
   const cache = new ProviderCache()
-  const knowledgeService = new KnowledgeService()
+  const knowledgeService = new KnowledgeService(options.onLog)
   const services: ServerServices = options.services ?? {
     models: new ModelsService(cache),
     imageToImage: new ImageToImageService(cache),

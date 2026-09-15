@@ -17,11 +17,11 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { runAgentTUI } from "@ai-sdk/tui";
 import { newId } from "@nyx/shared";
 import { sessionTitle } from "@nyx/shared/chat";
-import { start } from "@nyx/server";
 import { getAgentSettings, getSession, listSessions, saveSession } from "@nyx/config";
 import { resolveModelConfig } from "@nyx/agent";
 import { cmd } from "../utils/cmd";
 import { SessionTransport } from "../session-transport";
+import { startServerProcess } from "../server-process";
 
 interface AgentArgs {
   cwd?: string;
@@ -83,12 +83,13 @@ export const AgentCommand = cmd<Record<string, unknown>, AgentArgs>({
       }
     }
 
-    const server = await start({ port: 0 });
+    const server = await startServerProcess();
     try {
       const sessionId = resumed?.id ?? newId();
       const transport = new SessionTransport(
         new DefaultChatTransport({
           api: `${server.url}/v1/agent`,
+          headers: { Authorization: `Bearer ${server.token}` },
           body: { workspaceDir, sessionId },
         }),
         {

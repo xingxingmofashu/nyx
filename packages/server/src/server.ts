@@ -16,7 +16,7 @@ if (!token) {
 const port = process.env.NYX_SERVER_PORT ? Number(process.env.NYX_SERVER_PORT) : 0
 const host = process.env.NYX_SERVER_HOST ?? "127.0.0.1"
 
-start({ token, port, host })
+start({ token, port, host, onLog: (message) => process.stderr.write(`[knowledge] ${message}\n`) })
   .then((server) => {
     console.log(`nyx-server-ready ${server.url}`)
   })

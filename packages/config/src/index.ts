@@ -176,5 +176,6 @@ function readdirSafe(dir: string): string[] {
   }
 }
 
+export { getConfigDir } from "./paths.ts";
 export * from "./sessions.ts";
 export * from "./types.ts";

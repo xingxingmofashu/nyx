@@ -20,7 +20,7 @@ Bun monorepo：
 - `packages/llm` — 模型运行时 + 任务（`runtime.ts` 共享加载器、`tasks/*`），基于 onnxruntime-node / transformers.js
 - `packages/agent` — 主脑 agent 核心（Vercel AI SDK：provider 注册表 + 工具循环），不依赖 onnx
 - `packages/knowledge` — 本地知识库（RAG）：Markdown 切分、LanceDB 混合检索、本地 ONNX 嵌入
-- `packages/server` — `/v1` 下的 Hono HTTP 服务（models / tasks / agent），编译为自包含的 Bun 可执行文件（`nyx-server`），桌面端启动它、CLI 以进程内方式运行
+- `packages/server` — `/v1` 下的 Hono HTTP 服务（models / tasks / agent），编译为自包含的 Bun 可执行文件（`nyx-server`），桌面端与 CLI 都以子进程方式启动它
 - `apps/coding-agent` — 终端 CLI（yargs）：`nyx`（agent TUI）、`nyx image-to-image`、`nyx text-to-speech`、`nyx model ...`
 - `apps/desktop` — Electron 桌面应用（forge + vite + React）
 

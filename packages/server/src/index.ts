@@ -8,8 +8,8 @@ export interface NyxServerHandle {
 }
 
 /** Start the inference server; resolves once listening. */
-export function start(options: { token?: string; port?: number; host?: string; services?: ServerServices } = {}): Promise<NyxServerHandle> {
-  const app = createApp({ token: options.token, services: options.services })
+export function start(options: { token?: string; port?: number; host?: string; services?: ServerServices; onLog?: (message: string) => void } = {}): Promise<NyxServerHandle> {
+  const app = createApp({ token: options.token, services: options.services, ...(options.onLog ? { onLog: options.onLog } : {}) })
   const port = options.port ?? 0 // 0 = OS-assigned ephemeral port
   const host = options.host ?? "127.0.0.1"
 
