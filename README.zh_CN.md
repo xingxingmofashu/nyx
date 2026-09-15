@@ -124,7 +124,7 @@ bun run --cwd packages/server build   # 生成 packages/server/dist/nyx-server
 bun run dev:desktop                   # 启动 Electron 应用
 ```
 
-打包使用 `bun run --cwd apps/desktop make`。
+打包使用 `bun run desktop:make`。
 
 Agent 页面会保存对话历史（侧栏 **Chats** 分组，按工作区分组）：新建/切换/重命名/置顶/复制/导出/删除、标题搜索，并在启动时恢复上次的会话。生成的语音 WAV 写入该工作区的会话目录，会话里只引用路径，因此会话文件很小；播放时按需重新读取该文件。
 

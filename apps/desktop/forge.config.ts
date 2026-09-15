@@ -127,24 +127,35 @@ const config: ForgeConfig = {
 
 export default config
 
-/** Stage the `nyx-server` binary into the runtime dir (building it on demand). */
+/**
+ * Stage the `nyx-server` binary into the runtime dir, always rebuilding it
+ * first.
+ *
+ * The hook cannot tell whether an existing `dist/nyx-server` predates a server
+ * source change, so reusing it risks shipping a stale server; rebuilding is
+ * cheap (`tsc --noEmit` + `bun build --compile`). The `--cwd` flag must follow
+ * `run`: `bun --cwd <dir> run build` is not a valid form — bun prints its help
+ * and exits 0, which would leave the binary missing while looking like a
+ * success.
+ */
 async function copyServerBundle(runtimeDir: string): Promise<void> {
   const serverPkg = resolve(__dirname, "../../packages/server")
   const src = join(serverPkg, "dist", "nyx-server")
-  try {
-    const st = await stat(src)
-    if (!st.isFile()) throw new Error("not a file")
-  } catch {
-    // Build the server binary on demand (same command as the repo docs).
-    await new Promise<void>((resolveBuild, reject) => {
-      const child = spawn("bun", ["--cwd", serverPkg, "run", "build"], {
-        stdio: "inherit",
-      })
-      child.on("exit", (code) =>
-        code === 0 ? resolveBuild() : reject(new Error(`server build exited ${code}`)),
-      )
-      child.on("error", reject)
+  await new Promise<void>((resolveBuild, reject) => {
+    const child = spawn("bun", ["run", "--cwd", serverPkg, "build"], {
+      stdio: "inherit",
     })
+    child.on("exit", (code) =>
+      code === 0 ? resolveBuild() : reject(new Error(`server build exited ${code}`)),
+    )
+    child.on("error", reject)
+  })
+  const built = await stat(src).then(
+    (st) => st.isFile(),
+    () => false,
+  )
+  if (!built) {
+    throw new Error(`server binary missing after build: ${src}`)
   }
   const dest = join(runtimeDir, "nyx-server")
   await cp(src, dest)

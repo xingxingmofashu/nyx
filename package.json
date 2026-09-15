@@ -49,6 +49,7 @@
   "scripts": {
     "dev": "bun --cwd apps/coding-agent src/index.ts",
     "dev:desktop": "bun run --filter='@nyx/desktop' dev",
+    "desktop:make": "bun run --filter='@nyx/desktop' make",
     "typecheck": "bun run --filter='@nyx/*' typecheck",
     "lint": "bun run --filter='@nyx/*' lint",
     "test": "bun run --filter='@nyx/*' test"

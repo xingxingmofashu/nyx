@@ -10,7 +10,7 @@ Bun workspace monorepo (`bun@1.3.14`). `README.md` explains the product and arch
 - `bun run lint` / `bun run test` are root scripts, but **no package defines `lint`/`test`** — do not claim they pass.
 - CLI: `bun run dev -- --help` (runs `apps/coding-agent/src/index.ts` via yargs).
 - Server binary (required before desktop dev): `bun run --cwd packages/server build` → `packages/server/dist/nyx-server` (a `bun build --compile` executable).
-- Desktop dev: `bun run dev:desktop`. Package: `bun run --cwd apps/desktop make`.
+- Desktop dev: `bun run dev:desktop`. Package: `bun run desktop:make`.
 
 ## Workspace layout
 

@@ -124,7 +124,7 @@ bun run --cwd packages/server build   # emit packages/server/dist/nyx-server
 bun run dev:desktop                   # start the Electron app
 ```
 
-Package it with `bun run --cwd apps/desktop make`.
+Package it with `bun run desktop:make`.
 
 The Agent page keeps a chat history (sidebar **Chats**, grouped by workspace): new/switch/rename/pin/duplicate/export/delete, title search, and the last session is restored on launch. Generated WAV replies are written into the workspace's session folder and only referenced from the transcript, so sessions stay small; playback re-reads the file on demand.
 
