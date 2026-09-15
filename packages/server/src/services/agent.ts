@@ -6,6 +6,7 @@ import { withAttachmentNotes } from "../lib/attachments"
 import { createKnowledgeTools } from "../lib/knowledge-tools"
 import { createModelTools } from "../lib/model-tools"
 import { ProviderCache } from "../lib/provider-cache"
+import { createWebTools } from "../lib/web-tools"
 import { KnowledgeService } from "./knowledge"
 import type { AgentRequest } from "../shared/types"
 
@@ -44,6 +45,7 @@ export class AgentService {
             inlineAudio: request.inlineAudio,
           })),
       ...(settings.tools?.knowledge === false ? [] : createKnowledgeTools(this.knowledge)),
+      ...(settings.tools?.webSearch === false ? [] : createWebTools({ sessionId: request.sessionId })),
     ]
     return streamAgent({
       model,

@@ -89,8 +89,9 @@ export function writeSettings(settings: Settings): Settings {
 
 /**
  * Agent settings from ~/.nyx/settings.json, with env overrides: NYX_AGENT_MODEL
- * replaces the model ref, and NYX_AGENT_{API_KEY,BASE_URL,HEADERS} override the
- * active provider's `options` (the active provider is the model ref's prefix).
+ * replaces the model ref, NYX_AGENT_{API_KEY,BASE_URL,HEADERS} override the
+ * active provider's `options` (the active provider is the model ref's prefix),
+ * and NYX_AGENT_{LOCAL_MODELS,WEB_SEARCH} toggle the matching tool.
  */
 export function getAgentSettings(): AgentSettings {
   const agent = getSettings().agent ?? {};
@@ -115,6 +116,9 @@ export function getAgentSettings(): AgentSettings {
   const envLocalModels = process.env.NYX_AGENT_LOCAL_MODELS?.toLowerCase();
   if (envLocalModels === "1" || envLocalModels === "true") tools.localModels = true;
   else if (envLocalModels === "0" || envLocalModels === "false") tools.localModels = false;
+  const envWebSearch = process.env.NYX_AGENT_WEB_SEARCH?.toLowerCase();
+  if (envWebSearch === "1" || envWebSearch === "true") tools.webSearch = true;
+  else if (envWebSearch === "0" || envWebSearch === "false") tools.webSearch = false;
 
   return { ...agent, model, provider, tools };
 }

@@ -300,6 +300,13 @@ export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
           checked={tools.knowledge !== false}
           onCheckedChange={(checked) => onChange({ ...agent, tools: { ...tools, knowledge: checked } })}
         />
+        <ToolSwitch
+          id="agent-tool-web-search"
+          label="Web search"
+          description="Give the agent read-only web_search and web_fetch tools (Exa, or Parallel via NYX_WEB_SEARCH_PROVIDER)."
+          checked={tools.webSearch !== false}
+          onCheckedChange={(checked) => onChange({ ...agent, tools: { ...tools, webSearch: checked } })}
+        />
       </CardContent>
     </Card>
   )

@@ -103,6 +103,20 @@ agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型
 
 本地推理在进程内执行、不做流式 —— 工具跑完前 agent 回复会停顿 —— 工具结果（输出文件路径）会像其他工具输出一样发送给远程主脑。
 
+### 联网搜索
+
+agent 默认还会拿到两个只读网页工具：`web_search`（联网搜索并返回靠前结果的干净正文）和 `web_fetch`（把 HTTP/HTTPS 链接读成 markdown、纯文本或 HTML）。两者都不需要审批，也不会改动工作区。搜索走 Exa 的托管 MCP 后端，无需账号或 API key 即可使用；`web_fetch` 会拒绝解析到内网地址（回环、局域网、链路本地/云元数据）的链接。
+
+```json
+{
+  "agent": {
+    "tools": { "webSearch": false }
+  }
+}
+```
+
+设 `agent.tools.webSearch: false`（或 `NYX_AGENT_WEB_SEARCH=0`）可关闭两个工具。可选环境变量：`NYX_WEB_SEARCH_PROVIDER=exa|parallel` 选择后端（默认 `exa`），`NYX_WEB_SEARCH_API_KEY` 是 Exa 的 key（以 `exaApiKey` 传入），`NYX_PARALLEL_API_KEY` 是 Parallel 的 bearer token。都不设置时，两个后端都使用免 key 的免费额度。
+
 ## 知识库（RAG）
 
 把 Markdown 文件放进 `~/.nyx/knowledge/` 下的任意位置，nyx 就用本地 ONNX 嵌入模型（默认 `Xenova/multilingual-e5-base`）在本地建索引，然后基于你自己的文档回答。片段存在 [LanceDB](https://lancedb.com/) 中并建立原生全文索引；查询使用向量 + 关键词的混合检索，并以 RRF 融合排序。全程在本机运行。

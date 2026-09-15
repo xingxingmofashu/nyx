@@ -103,6 +103,20 @@ The locally installed ONNX models are exposed to the brain by default: `local_im
 
 Local inference runs in-process and is not streamed — the agent's reply pauses until the tool finishes — and the tool result (the output file path) is sent to the remote brain like any other tool output.
 
+### Web search
+
+The agent also gets two read-only web tools by default: `web_search` (search the web and return clean text from the top results) and `web_fetch` (read an HTTP/HTTPS URL as markdown, text, or HTML). Neither needs approval and neither touches the workspace. Search runs against the hosted Exa MCP backend, so it works with no account or API key; `web_fetch` refuses URLs that resolve to a private address (loopback, LAN, link-local/cloud metadata).
+
+```json
+{
+  "agent": {
+    "tools": { "webSearch": false }
+  }
+}
+```
+
+Set `agent.tools.webSearch: false` (or `NYX_AGENT_WEB_SEARCH=0`) to disable both tools. Optional env overrides: `NYX_WEB_SEARCH_PROVIDER=exa|parallel` selects the backend (default `exa`), `NYX_WEB_SEARCH_API_KEY` is the Exa key (sent as `exaApiKey`), and `NYX_PARALLEL_API_KEY` is a Parallel bearer token. With no keys set, both backends use their keyless free tier.
+
 ## Knowledge base (RAG)
 
 Drop Markdown files anywhere under `~/.nyx/knowledge/` and nyx indexes them locally with the ONNX embedding model (`Xenova/multilingual-e5-base` by default), then answers from your own documents. Chunks are stored in [LanceDB](https://lancedb.com/) with a native full-text index; queries use hybrid (vector + keyword) search fused with reciprocal rank fusion. Everything runs on your machine.

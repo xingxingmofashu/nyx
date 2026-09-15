@@ -32,5 +32,5 @@ Versions are exact-pinned through the root `package.json` `catalog` (with `bunfi
 ## On-disk state (`~/.nyx`)
 
 - `models/` (weights, default; override `NYX_MODELS_DIR`), `models.json` (registry), `settings.json` (user/agent settings), `sessions/<workspaceKey>/{<id>.json, <id>.jsonl, active, audio/, images/, attachments/}` (metadata sidecar, transcript, last-opened id, generated clips and image transforms, user-uploaded chat attachments), `knowledge/**/*.md` (user-supplied documents) with the index under `knowledge/.index/{config.json, manifest.json, lancedb/}`, `logs/server.log` (CLI-spawned server output).
-- Env overrides: `NYX_AGENT_MODEL`, `NYX_AGENT_API_KEY`, `NYX_AGENT_BASE_URL`, `NYX_AGENT_HEADERS` (JSON), `NYX_AGENT_LOCAL_MODELS`, `HF_ENDPOINT` (HF mirror), `NYX_KNOWLEDGE_DIR`, `NYX_SERVER_TOKEN/PORT/HOST`.
+- Env overrides: `NYX_AGENT_MODEL`, `NYX_AGENT_API_KEY`, `NYX_AGENT_BASE_URL`, `NYX_AGENT_HEADERS` (JSON), `NYX_AGENT_LOCAL_MODELS`, `NYX_AGENT_WEB_SEARCH`, `NYX_WEB_SEARCH_PROVIDER/API_KEY`, `NYX_PARALLEL_API_KEY`, `HF_ENDPOINT` (HF mirror), `NYX_KNOWLEDGE_DIR`, `NYX_SERVER_TOKEN/PORT/HOST`.
 - The agent brain is a remote model: `agent.model` is `<providerId>/<modelId>` resolved against `agent.provider`; only `@ai-sdk/openai-compatible` and `@ai-sdk/anthropic` are supported (`packages/agent/src/providers.ts`).

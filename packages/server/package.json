@@ -27,6 +27,11 @@
     "ai": "catalog:",
     "apache-arrow": "catalog:",
     "hono": "catalog:",
+    "htmlparser2": "catalog:",
+    "turndown": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/turndown": "catalog:"
   }
 }

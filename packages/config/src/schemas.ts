@@ -48,6 +48,8 @@ export const AgentToolsSettingsSchema = z
     localModels: z.boolean().optional(),
     /** Expose `search_knowledge` over indexed knowledge bases (default true when any exist). */
     knowledge: z.boolean().optional(),
+    /** Expose the `web_search` / `web_fetch` tools (default true). */
+    webSearch: z.boolean().optional(),
   })
   .loose();
 
