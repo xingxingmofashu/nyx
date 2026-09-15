@@ -20,6 +20,7 @@
     "@nyx/config": "workspace:*",
     "@nyx/llm": "workspace:*",
     "@nyx/server": "workspace:*",
+    "@nyx/shared": "workspace:*",
     "@types/yargs": "17.0.35",
     "ai": "catalog:",
     "yargs": "catalog:"

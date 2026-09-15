@@ -1,5 +1,6 @@
 import { realpathSync } from "node:fs";
-import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
+import { isWithinPath } from "@nyx/shared/node";
 
 /**
  * Resolve `p` under `root`, rejecting paths that escape the workspace. Both the
@@ -15,9 +16,7 @@ export function workspacePath(root: string, p: string): string {
 
 /** Throw when `target` is not `root` or a descendant of it. */
 function assertWithin(root: string, target: string): void {
-  const rel = relative(root, target);
-  const inside = rel === "" || (rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
-  if (!inside) throw new Error(`path escapes workspace: ${target}`);
+  if (!isWithinPath(root, target)) throw new Error(`path escapes workspace: ${target}`);
 }
 
 /** `realpath` the nearest existing ancestor, rejoining the missing tail. */

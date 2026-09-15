@@ -15,11 +15,13 @@ import { resolve } from "node:path";
 import { isCancel, log, select } from "@clack/prompts";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { runAgentTUI } from "@ai-sdk/tui";
+import { newId } from "@nyx/shared";
+import { sessionTitle } from "@nyx/shared/chat";
 import { start } from "@nyx/server";
 import { getAgentSettings, getSession, listSessions, saveSession } from "@nyx/config";
 import { resolveModelConfig } from "@nyx/agent";
 import { cmd } from "../utils/cmd";
-import { SessionTransport, newSessionId } from "../session-transport";
+import { SessionTransport } from "../session-transport";
 
 interface AgentArgs {
   cwd?: string;
@@ -83,7 +85,7 @@ export const AgentCommand = cmd<Record<string, unknown>, AgentArgs>({
 
     const server = await start({ port: 0 });
     try {
-      const sessionId = resumed?.id ?? newSessionId();
+      const sessionId = resumed?.id ?? newId();
       const transport = new SessionTransport(
         new DefaultChatTransport({
           api: `${server.url}/v1/agent`,
@@ -95,7 +97,7 @@ export const AgentCommand = cmd<Record<string, unknown>, AgentArgs>({
           workspaceDir,
           onTurn: (id, dir, messages) => {
             try {
-              saveSession({ id, title: resumed?.title ?? titleFor(messages), workspaceDir: dir, messages });
+              saveSession({ id, title: resumed?.title ?? sessionTitle(messages, "CLI session"), workspaceDir: dir, messages });
             } catch (error) {
               log.warn(`Failed to save session: ${error instanceof Error ? error.message : String(error)}`);
             }
@@ -114,16 +116,3 @@ export const AgentCommand = cmd<Record<string, unknown>, AgentArgs>({
     }
   },
 });
-
-/** Title from the first user text message (first line, truncated). */
-function titleFor(messages: UIMessage[]): string {
-  for (const message of messages) {
-    if (message.role !== "user") continue;
-    for (const part of message.parts) {
-      if (part.type !== "text") continue;
-      const line = part.text.trim().split("\n")[0]?.trim() ?? "";
-      if (line) return line.length > 48 ? `${line.slice(0, 48)}…` : line;
-    }
-  }
-  return "CLI session";
-}

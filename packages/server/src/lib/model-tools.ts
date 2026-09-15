@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, join, relative, resolve, sep } from "node:path";
 import { RawImage } from "@huggingface/transformers";
 import { workspaceAudioDir } from "@nyx/config";
+import { mimeFor } from "@nyx/shared";
 import {
   encodeWavPcm16,
   list,
@@ -51,7 +52,7 @@ export function createModelTools(options: {
       execute: async ({ model, inputPath, outputPath }, ctx) => {
         const source = workspacePath(root, inputPath);
         const bytes = await readFile(source);
-        const image = await RawImage.fromBlob(new Blob([bytes], { type: mimeFor(source) }));
+        const image = await RawImage.fromBlob(new Blob([bytes], { type: mimeFor(source, "image/png") }));
         throwIfAborted(ctx.signal);
 
         const provider = cache.get(model, () => new OnnxImageToImageProvider({ model }));
@@ -151,18 +152,5 @@ function playAloud(path: string): void {
       .unref();
   } catch {
     // Playback is best-effort; the file is still written.
-  }
-}
-
-/** Best-effort image MIME from the file extension; defaults to PNG. */
-function mimeFor(path: string): string {
-  switch (extname(path).toLowerCase()) {
-    case ".jpg":
-    case ".jpeg":
-      return "image/jpeg";
-    case ".webp":
-      return "image/webp";
-    default:
-      return "image/png";
   }
 }

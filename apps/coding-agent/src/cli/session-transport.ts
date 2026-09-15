@@ -5,11 +5,6 @@ import {
   type UIMessageChunk,
 } from "ai";
 
-/** Unique-ish session id, matching the desktop's format. */
-export function newSessionId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
 interface SessionTransportOptions {
   /** Transcript prepended to every request so the model resumes with context. */
   history: UIMessage[];

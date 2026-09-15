@@ -12,8 +12,7 @@ import {
   Search,
   Trash2,
 } from "lucide-react"
-import { baseName } from "../../lib/format"
-import { relativeTime } from "../../lib/sessions"
+import { baseName, relativeTime } from "@nyx/shared"
 import { useSessionsStore } from "../../store/sessions"
 import {
   SidebarGroup,

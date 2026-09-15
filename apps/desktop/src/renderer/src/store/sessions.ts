@@ -1,7 +1,8 @@
 import { create } from "zustand"
+import { newId } from "@nyx/shared"
+import { messagesToMarkdown, sessionTitle } from "@nyx/shared/chat"
 import type { ChatSessionMeta, ChatSessionSaveRequest } from "../../../shared/types"
 import { agentChat } from "../lib/chat"
-import { newSessionId, sessionTitle, messagesToMarkdown } from "../lib/sessions"
 import { useAgentStore } from "./agent"
 
 interface SessionsState {
@@ -47,7 +48,7 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
   create: () => {
     if (get().busy) return
     agentChat.messages = []
-    set({ activeId: newSessionId() })
+    set({ activeId: newId() })
   },
 
   open: async (id) => {
@@ -75,7 +76,7 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
   ensureId: () => {
     const current = get().activeId
     if (current) return current
-    const id = newSessionId()
+    const id = newId()
     set({ activeId: id })
     return id
   },
@@ -100,7 +101,7 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
     const session = await window.nyx.sessions.get(meta.workspaceDir, id)
     if (!session) return
     await window.nyx.sessions.save({
-      id: newSessionId(),
+      id: newId(),
       title: `${session.title} (copy)`,
       workspaceDir: meta.workspaceDir,
       messages: session.messages,
@@ -136,7 +137,7 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
   persist: async () => {
     const messages = agentChat.messages
     if (!messages.some((message) => message.role === "user")) return
-    const id = get().activeId ?? newSessionId()
+    const id = get().activeId ?? newId()
     const existing = get().sessions.find((session) => session.id === id)
     const workspaceDir = useAgentStore.getState().workspaceDir
     const request: ChatSessionSaveRequest = {

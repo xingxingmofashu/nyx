@@ -1,33 +1,8 @@
 import { readFile, realpath } from "node:fs/promises"
-import { isAbsolute, relative, resolve, sep } from "node:path"
+import { isAbsolute, resolve } from "node:path"
 import { getAgentSettings, getSessionsDir } from "@nyx/config"
-
-/** True when `target` is `root` or a descendant of it. */
-function isWithin(root: string, target: string): boolean {
-  const rel = relative(root, target)
-  return rel === "" || (rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
-}
-
-/** Best-effort media MIME from a file extension. */
-function mimeFor(path: string): string {
-  switch (path.split(".").pop()?.toLowerCase()) {
-    case "wav":
-      return "audio/wav"
-    case "mp3":
-      return "audio/mpeg"
-    case "png":
-      return "image/png"
-    case "jpg":
-    case "jpeg":
-      return "image/jpeg"
-    case "webp":
-      return "image/webp"
-    case "gif":
-      return "image/gif"
-    default:
-      return "application/octet-stream"
-  }
-}
+import { mimeFor } from "@nyx/shared"
+import { isWithinPath } from "@nyx/shared/node"
 
 /**
  * Read a file the agent generated as a `data:` URL, e.g. an image tool's output
@@ -41,10 +16,10 @@ export async function readGeneratedFileDataUrl(path: string): Promise<string | n
   const target = isAbsolute(path) ? resolve(path) : resolve(workspaceRoot, path)
   try {
     for (const root of [workspaceRoot, getSessionsDir()]) {
-      if (!isWithin(root, target)) continue
+      if (!isWithinPath(root, target)) continue
       const realRoot = await realpath(root).catch(() => root)
       const realTarget = await realpath(target)
-      if (!isWithin(realRoot, realTarget)) continue
+      if (!isWithinPath(realRoot, realTarget)) continue
       const bytes = await readFile(realTarget)
       return `data:${mimeFor(path)};base64,${bytes.toString("base64")}`
     }

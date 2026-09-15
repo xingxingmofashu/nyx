@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { join } from "node:path";
 import { defu } from "defu";
 import { getConfigDir } from "./paths.ts";
+import { AgentHeadersSchema, ModelConfigSchema, SettingsSchema } from "./schemas.ts";
 import type { ModelInfo, ModelConfig, Settings, AgentSettings } from "./types.ts";
 
 /** Model weight cache dir; overridable via NYX_MODELS_DIR. */
@@ -20,28 +21,40 @@ function getSettingsPath(): string {
 /** Default endpoint; clears to this when a user blanks the mirror. */
 export const DEFAULT_HUB_URL = "https://huggingface.co";
 
-function isNotFoundError(error: unknown): boolean {
-  return typeof error === "object" && error !== null && (error as NodeJS.ErrnoException).code === "ENOENT";
+/** Parse a JSON file leniently; undefined when missing or malformed. */
+function readJson(path: string): unknown {
+  try {
+    return JSON.parse(readFileSync(path, "utf-8"));
+  } catch {
+    return undefined;
+  }
 }
 
-/** Read the installed-model config; empty when no file exists yet. */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Read the installed-model config. Falls back to an empty registry when the
+ * file is missing/invalid; known keys are validated, unknown keys are kept
+ * (`.loose()`) so a later `write()` doesn't drop them.
+ */
 export function read(): ModelConfig {
-  try {
-    return JSON.parse(readFileSync(getModelConfigPath(), "utf-8")) as ModelConfig;
-  } catch (error) {
-    if (isNotFoundError(error)) return { provider: {} };
-    throw error;
-  }
+  const raw = readJson(getModelConfigPath());
+  const parsed = ModelConfigSchema.safeParse(raw);
+  return parsed.success ? parsed.data : { provider: {} };
 }
 
-/** Read user settings; defaults when no file exists yet. */
+/**
+ * Read user settings. On a schema mismatch the raw object is returned rather
+ * than `{}`, so an unrelated invalid field can't be silently discarded by the
+ * next `setSettings()` read-modify-write.
+ */
 export function getSettings(): Settings {
-  try {
-    return JSON.parse(readFileSync(getSettingsPath(), "utf-8")) as Settings;
-  } catch (error) {
-    if (isNotFoundError(error)) return {};
-    throw error;
-  }
+  const raw = readJson(getSettingsPath());
+  const parsed = SettingsSchema.safeParse(raw);
+  if (parsed.success) return parsed.data;
+  return isPlainObject(raw) ? (raw as Settings) : {};
 }
 
 /** Deep-merge a settings patch into ~/.nyx/settings.json (via defu). */
@@ -91,12 +104,12 @@ export function providerIdOf(model: string | undefined): string | undefined {
   return slash > 0 ? model.slice(0, slash) : undefined;
 }
 
-/** Parse NYX_AGENT_HEADERS (a JSON object); undefined when unset or malformed. */
+/** Parse NYX_AGENT_HEADERS (a JSON string map); undefined when unset or malformed. */
 function parseHeadersEnv(value: string | undefined): Record<string, string> | undefined {
   if (!value) return undefined;
   try {
-    const parsed: unknown = JSON.parse(value);
-    return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, string>) : undefined;
+    const parsed = AgentHeadersSchema.safeParse(JSON.parse(value));
+    return parsed.success ? parsed.data : undefined;
   } catch {
     return undefined;
   }

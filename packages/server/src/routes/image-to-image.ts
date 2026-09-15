@@ -1,17 +1,13 @@
 import { Hono } from "hono"
+import { zValidator } from "@hono/zod-validator"
+import { ImageToImageRequestSchema } from "../shared/types"
+import { validationHook } from "../lib/validation"
 import type { ImageToImageService } from "../services/tasks/image-to-image"
-import type { ImageBase64Input } from "../shared/types"
 
 /** POST /v1/tasks/image-to-image — transform an image; responds with image bytes. */
-export function imageToImage(service: ImageToImageService): Hono {
-  const app = new Hono()
-
-  app.post("/", async (c) => {
-    const body = await c.req.json().catch(() => ({}))
-    const model = (body as { model?: string }).model
-    const image = (body as { image?: ImageBase64Input }).image
-    if (!model || !image?.data) return c.json({ error: "model and image are required" }, 400)
-
+export function imageToImage(service: ImageToImageService) {
+  return new Hono().post("/", zValidator("json", ImageToImageRequestSchema, validationHook), async (c) => {
+    const { model, image } = c.req.valid("json")
     try {
       const result = await service.generate(model, image)
       return c.body(new Uint8Array(result.data), 200, {
@@ -24,6 +20,4 @@ export function imageToImage(service: ImageToImageService): Hono {
       return c.json({ error: error instanceof Error ? error.message : String(error) }, 500)
     }
   })
-
-  return app
 }

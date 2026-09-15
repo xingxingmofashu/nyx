@@ -1,29 +1,36 @@
 import { Hono } from "hono"
+import { zValidator } from "@hono/zod-validator"
+import { safeValidateUIMessages } from "ai"
+import { AgentRequestSchema, type AgentRequest } from "../shared/types"
+import { validationHook } from "../lib/validation"
 import type { AgentService } from "../services/agent"
-import type { AgentRequest } from "../shared/types"
 
 /**
  * POST /v1/agent — runs the agent and returns the AI SDK UI message stream
  * (SSE), so clients can drive it with `useChat` / `readUIMessageStream`.
  */
-export function agent(service: AgentService): Hono {
-  const app = new Hono()
+export function agent(service: AgentService) {
+  return new Hono().post("/", zValidator("json", AgentRequestSchema, validationHook), async (c) => {
+    const { messages, workspaceDir, sessionId, inlineAudio } = c.req.valid("json")
 
-  app.post("/", async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as Partial<AgentRequest>
-    if (!Array.isArray(body.messages) || body.messages.length === 0) {
-      return c.json({ error: "non-empty messages are required" }, 400)
+    const validated = await safeValidateUIMessages({ messages })
+    if (!validated.success) {
+      return c.json({ error: validated.error.message }, 400)
     }
 
     const controller = new AbortController()
     c.req.raw.signal.addEventListener("abort", () => controller.abort())
 
     try {
-      return await service.run(body as AgentRequest, controller.signal)
+      const request: AgentRequest = {
+        messages: validated.data,
+        ...(workspaceDir !== undefined ? { workspaceDir } : {}),
+        ...(sessionId !== undefined ? { sessionId } : {}),
+        ...(inlineAudio !== undefined ? { inlineAudio } : {}),
+      }
+      return await service.run(request, controller.signal)
     } catch (error) {
       return c.json({ error: error instanceof Error ? error.message : String(error) }, 500)
     }
   })
-
-  return app
 }

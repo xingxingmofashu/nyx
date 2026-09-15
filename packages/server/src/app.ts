@@ -1,4 +1,5 @@
 import { Hono } from "hono"
+import type { MiddlewareHandler } from "hono"
 import { auth } from "./middleware/auth"
 import { agent } from "./routes/agent"
 import { automaticSpeechRecognition } from "./routes/automatic-speech-recognition"
@@ -26,8 +27,16 @@ export interface ServerServices {
   agent: AgentService
 }
 
-/** Assemble a fully-wired app: mount services under `/v1`. */
-export function createApp(options: { token?: string; services?: ServerServices } = {}): Hono {
+/** No-op used when the server is started without a token (CLI in-process). */
+const noopAuth: MiddlewareHandler = async (_c, next) => {
+  await next()
+}
+
+/**
+ * Assemble a fully-wired app: mount services under `/v1`. The return type is
+ * intentionally inferred so `@nyx/server/rpc` can expose it to the Hono RPC client.
+ */
+export function createApp(options: { token?: string; services?: ServerServices } = {}) {
   // Share one provider cache between the task services and the model service so
   // removing a model also evicts its loaded weights.
   const cache = new ProviderCache()
@@ -39,19 +48,19 @@ export function createApp(options: { token?: string; services?: ServerServices }
     agent: new AgentService(cache),
   }
 
+  const handle = options.token ? auth(options.token) : noopAuth
+
   const v1 = new Hono()
-  if (options.token) {
-    v1.use("*", auth(options.token))
-  }
-  v1.get("/health", (c) => c.json({ ok: true }))
+    .use("*", handle)
+    .get("/health", (c) => c.json({ ok: true }))
+    .route("/models", models(services.models))
+    .route("/tasks/image-to-image", imageToImage(services.imageToImage))
+    .route("/tasks/text-to-speech", textToSpeech(services.textToSpeech))
+    .route(
+      "/tasks/automatic-speech-recognition",
+      automaticSpeechRecognition(services.automaticSpeechRecognition),
+    )
+    .route("/agent", agent(services.agent))
 
-  v1.route("/models", models(services.models))
-  v1.route("/tasks/image-to-image", imageToImage(services.imageToImage))
-  v1.route("/tasks/text-to-speech", textToSpeech(services.textToSpeech))
-  v1.route("/tasks/automatic-speech-recognition", automaticSpeechRecognition(services.automaticSpeechRecognition))
-  v1.route("/agent", agent(services.agent))
-
-  const app = new Hono()
-  app.route("/v1", v1)
-  return app
+  return new Hono().route("/v1", v1)
 }

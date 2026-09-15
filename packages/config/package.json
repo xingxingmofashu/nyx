@@ -10,9 +10,12 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "@huggingface/hub": "2.16.3",
     "@huggingface/transformers": "catalog:",
     "defu": "6.1.7",
+    "write-file-atomic": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/write-file-atomic": "catalog:"
   }
 }

@@ -7,6 +7,7 @@
   "types": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./rpc": "./src/rpc.ts",
     "./types": "./src/shared/types.ts"
   },
   "scripts": {
@@ -16,9 +17,11 @@
   },
   "dependencies": {
     "@hono/node-server": "catalog:",
+    "@hono/zod-validator": "catalog:",
     "@nyx/agent": "workspace:*",
     "@nyx/config": "workspace:*",
     "@nyx/llm": "workspace:*",
+    "@nyx/shared": "workspace:*",
     "ai": "catalog:",
     "hono": "catalog:",
     "zod": "catalog:"

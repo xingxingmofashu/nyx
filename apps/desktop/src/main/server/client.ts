@@ -1,5 +1,10 @@
 import type { LLMTask } from "@nyx/llm"
 import type { ModelInfo } from "@nyx/config"
+import type { AgentRequestInput } from "@nyx/server/types"
+import type { AppType } from "@nyx/server/rpc"
+import { parseJsonEventStream, uiMessageChunkSchema } from "ai"
+import { createParser } from "eventsource-parser"
+import { hc } from "hono/client"
 import type {
   AudioResult,
   AudioSamples,
@@ -11,6 +16,9 @@ import type {
   UIMessageChunk,
 } from "../../shared/types"
 
+/** Route-typed Hono client; paths, methods, and JSON bodies are inferred. */
+type NyxClient = ReturnType<typeof hc<AppType>>
+
 /** Thrown when a pull was cancelled (server sent the `cancelled` SSE event). */
 export class PullCancelledError extends Error {
   constructor(modelId: string) {
@@ -19,28 +27,31 @@ export class PullCancelledError extends Error {
   }
 }
 
-/** HTTP transport for the @nyx/server child (main talks to it over HTTP; onnxruntime cannot run inside Electron). */
+/** Read the server's `{ error }` JSON, falling back to a status line. */
+async function errorMessage(
+  res: { json: () => Promise<unknown>; status: number },
+  fallback: string,
+): Promise<string> {
+  const body = (await res.json().catch(() => ({}))) as { error?: string }
+  return body.error ?? `${fallback}: ${res.status}`
+}
+
+/**
+ * HTTP transport for the @nyx/server child (main talks to it over HTTP;
+ * onnxruntime cannot run inside Electron). Uses Hono RPC for path/method/body
+ * typing; streaming and raw-byte responses are consumed by hand by design.
+ */
 export class NyxServerClient {
-  constructor(
-    private readonly baseURL: string,
-    private readonly token: string,
-  ) {}
+  private readonly client: NyxClient
 
-  private headers(): Record<string, string> {
-    return { Authorization: `Bearer ${this.token}`, "Content-Type": "application/json" }
-  }
-
-  private async requestJson<T>(path: string, init?: RequestInit): Promise<T> {
-    const res = await fetch(`${this.baseURL}${path}`, { ...init, headers: { ...this.headers(), ...init?.headers } })
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string }
-      throw new Error(body.error ?? `${path} failed: ${res.status}`)
-    }
-    return (await res.json()) as T
+  constructor(baseURL: string, token: string) {
+    this.client = hc<AppType>(baseURL, { headers: { Authorization: `Bearer ${token}` } })
   }
 
   async listModels(): Promise<ModelInfo[]> {
-    return this.requestJson<ModelInfo[]>("/v1/models")
+    const res = await this.client.v1.models.$get()
+    if (!res.ok) throw new Error(await errorMessage(res, "models"))
+    return (await res.json()) as ModelInfo[]
   }
 
   /** Pull a model; download progress events are delivered via `onProgress`. */
@@ -49,44 +60,49 @@ export class NyxServerClient {
     task: LLMTask,
     onProgress?: (p: Omit<ModelPullProgress, "modelId" | "done">) => void,
   ): Promise<void> {
-    const res = await fetch(`${this.baseURL}/v1/models/pull`, {
-      method: "POST",
-      headers: this.headers(),
-      body: JSON.stringify({ model: modelId, task }),
-    })
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string }
-      throw new Error(body.error ?? `models/pull failed: ${res.status}`)
-    }
+    const res = await this.client.v1.models.pull.$post({ json: { model: modelId, task } })
+    if (!res.ok) throw new Error(await errorMessage(res, "models/pull"))
     if (!res.body) throw new Error("no response body")
 
-    for await (const { event, data } of readSseEvents(res.body)) {
-      if (event === "progress") {
-        const frame = JSON.parse(data) as { file?: string; loaded?: number; total?: number; percent?: number }
-        onProgress?.({ file: frame.file, loaded: frame.loaded, total: frame.total, percent: frame.percent })
-      } else if (event === "cancelled") {
-        throw new PullCancelledError(modelId)
-      } else if (event === "error") {
-        const message = (JSON.parse(data) as { message?: string }).message
-        throw new Error(message ?? "model pull failed")
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    const parser = createParser({
+      onEvent(event) {
+        if (event.event === "progress") {
+          const frame = JSON.parse(event.data) as { file?: string; loaded?: number; total?: number; percent?: number }
+          onProgress?.({ file: frame.file, loaded: frame.loaded, total: frame.total, percent: frame.percent })
+        } else if (event.event === "cancelled") {
+          throw new PullCancelledError(modelId)
+        } else if (event.event === "error") {
+          const message = (JSON.parse(event.data) as { message?: string }).message
+          throw new Error(message ?? "model pull failed")
+        }
+      },
+    })
+
+    try {
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        parser.feed(decoder.decode(value, { stream: true }))
       }
+    } finally {
+      // Cancelling matters when a callback threw (e.g. PullCancelledError).
+      await reader.cancel().catch(() => undefined)
+      reader.releaseLock()
     }
   }
 
   /** Ask the server to stop an in-flight pull by model id. */
   async cancelPull(modelId: string): Promise<boolean> {
-    const res = await this.requestJson<{ cancelled: boolean }>("/v1/models/pull/cancel", {
-      method: "POST",
-      body: JSON.stringify({ model: modelId }),
-    })
-    return res.cancelled
+    const res = await this.client.v1.models.pull.cancel.$post({ json: { model: modelId } })
+    if (!res.ok) throw new Error(await errorMessage(res, "models/pull/cancel"))
+    return ((await res.json()) as { cancelled: boolean }).cancelled
   }
 
   async removeModel(modelId: string): Promise<void> {
-    await this.requestJson<{ ok: true }>("/v1/models", {
-      method: "DELETE",
-      body: JSON.stringify({ model: modelId }),
-    })
+    const res = await this.client.v1.models.$delete({ json: { model: modelId } })
+    if (!res.ok) throw new Error(await errorMessage(res, "models"))
   }
 
   /** Stream one agent turn over the AI SDK UI message protocol. */
@@ -94,38 +110,36 @@ export class NyxServerClient {
     body: Record<string, unknown>,
     signal?: AbortSignal,
   ): AsyncIterable<UIMessageChunk> {
-    const res = await fetch(`${this.baseURL}/v1/agent`, {
-      method: "POST",
-      headers: this.headers(),
-      body: JSON.stringify(body),
-      signal,
-    })
+    const res = await this.client.v1.agent.$post(
+      { json: body as AgentRequestInput },
+      { init: signal ? { signal } : undefined },
+    )
 
-    if (!res.ok) {
-      const errorBody = (await res.json().catch(() => ({}))) as { error?: string }
-      throw new Error(errorBody.error ?? `agent failed: ${res.status}`)
-    }
+    if (!res.ok) throw new Error(await errorMessage(res, "agent"))
     if (!res.body) throw new Error("no response body")
 
-    for await (const data of readSseData(res.body)) {
-      if (data === "[DONE]") break
-      yield JSON.parse(data) as UIMessageChunk
+    const chunkStream = parseJsonEventStream({ stream: res.body, schema: uiMessageChunkSchema })
+    const reader = chunkStream.getReader()
+    try {
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        if (!value.success) throw new Error(`invalid agent stream chunk: ${value.error.message}`)
+        yield value.value as UIMessageChunk
+      }
+    } finally {
+      reader.releaseLock()
     }
   }
 
   async imageToImage(modelId: string, input: ImageBytes): Promise<ImageResult> {
-    const res = await fetch(`${this.baseURL}/v1/tasks/image-to-image`, {
-      method: "POST",
-      headers: this.headers(),
-      body: JSON.stringify({
+    const res = await this.client.v1.tasks["image-to-image"].$post({
+      json: {
         model: modelId,
         image: { data: Buffer.from(input.data).toString("base64"), mimeType: input.mimeType },
-      }),
+      },
     })
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string }
-      throw new Error(body.error ?? `image-to-image failed: ${res.status}`)
-    }
+    if (!res.ok) throw new Error(await errorMessage(res, "image-to-image"))
     // Response is the image stream; width/height ride in headers.
     const buf = await res.arrayBuffer()
     const width = Number(res.headers.get("x-image-width"))
@@ -139,20 +153,15 @@ export class NyxServerClient {
   }
 
   async textToSpeech(modelId: string, input: TextToSpeechInput): Promise<AudioResult> {
-    const res = await fetch(`${this.baseURL}/v1/tasks/text-to-speech`, {
-      method: "POST",
-      headers: this.headers(),
-      body: JSON.stringify({
+    const res = await this.client.v1.tasks["text-to-speech"].$post({
+      json: {
         model: modelId,
         text: input.text,
         ...(input.speaker ? { speaker: input.speaker } : {}),
         ...(input.speed !== undefined ? { speed: input.speed } : {}),
-      }),
+      },
     })
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string }
-      throw new Error(body.error ?? `text-to-speech failed: ${res.status}`)
-    }
+    if (!res.ok) throw new Error(await errorMessage(res, "text-to-speech"))
     // Response is the audio stream; the sample rate rides in a header.
     const buf = await res.arrayBuffer()
     const samplingRate = Number(res.headers.get("x-audio-sampling-rate"))
@@ -165,9 +174,8 @@ export class NyxServerClient {
 
   /** Transcribe mono PCM samples; the server responds with JSON text. */
   async automaticSpeechRecognition(modelId: string, input: AudioSamples): Promise<TranscriptResult> {
-    return this.requestJson<TranscriptResult>("/v1/tasks/automatic-speech-recognition", {
-      method: "POST",
-      body: JSON.stringify({
+    const res = await this.client.v1.tasks["automatic-speech-recognition"].$post({
+      json: {
         model: modelId,
         audio: {
           data: Buffer.from(
@@ -177,62 +185,9 @@ export class NyxServerClient {
           ).toString("base64"),
           samplingRate: input.samplingRate,
         },
-      }),
+      },
     })
-  }
-}
-
-interface SseFrame {
-  event: string
-  data: string
-}
-
-/** Parse an SSE byte stream (CRLF/LF framing, multi-line `data:` payloads). */
-async function* readSseEvents(body: ReadableStream<Uint8Array>): AsyncIterable<SseFrame> {
-  const reader = body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ""
-  let event = ""
-
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    // SSE events are separated by a blank line.
-    let sep: number
-    while ((sep = buffer.indexOf("\n\n")) !== -1) {
-      const block = buffer.slice(0, sep)
-      buffer = buffer.slice(sep + 2)
-      let data = ""
-      for (const line of block.split("\n")) {
-        if (line.startsWith("event:")) event = line.slice(6).trim()
-        else if (line.startsWith("data:")) data += line.slice(5).trim()
-      }
-      if (event && data) yield { event, data }
-      event = ""
-    }
-  }
-}
-
-/** Parse the SSE `data:` payloads of the AI SDK UI message stream (unnamed events). */
-async function* readSseData(body: ReadableStream<Uint8Array>): AsyncIterable<string> {
-  const reader = body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ""
-
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    let sep: number
-    while ((sep = buffer.indexOf("\n\n")) !== -1) {
-      const block = buffer.slice(0, sep)
-      buffer = buffer.slice(sep + 2)
-      const lines = block
-        .split("\n")
-        .filter((line) => line.startsWith("data:"))
-        .map((line) => line.slice(5).trimStart())
-      if (lines.length > 0) yield lines.join("\n")
-    }
+    if (!res.ok) throw new Error(await errorMessage(res, "automatic-speech-recognition"))
+    return (await res.json()) as TranscriptResult
   }
 }

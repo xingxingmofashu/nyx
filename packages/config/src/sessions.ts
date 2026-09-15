@@ -3,24 +3,29 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
-  renameSync,
   rmSync,
-  writeFileSync,
 } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
+import writeFileAtomic from "write-file-atomic";
 import { getConfigDir } from "./paths.ts";
 import type { ChatSession, ChatSessionMeta } from "./types.ts";
 
 /** Session ids are client-generated; keep them filesystem-safe (no path escapes). */
 const SESSION_ID_RE = /^[A-Za-z0-9_-]+$/;
 
-/** One workspace's session index: `~/.nyx/sessions/<key>/index.json`. */
-interface WorkspaceIndex {
-  workspaceDir: string;
-  activeId?: string;
-  sessions: ChatSessionMeta[];
-}
+/**
+ * Session store layout (per workspace):
+ *
+ *   ~/.nyx/sessions/<workspaceKey>/
+ *     <id>.json    metadata sidecar: { id, title, workspaceDir, pinned?, createdAt, updatedAt }
+ *     <id>.jsonl   transcript (append-mostly)
+ *     active       last-opened session id (plain text)
+ *     audio/       generated speech clips (`<id>-<model>.wav`)
+ *
+ * Every file has a single writer, so there is no shared mutable index to guard
+ * with cross-process locks.
+ */
 
 /** Root of the session store (`~/.nyx/sessions`), one dir per workspace. */
 export function getSessionsDir(): string {
@@ -50,7 +55,7 @@ export function workspaceKey(workspaceDir: string): string {
   return `${key.slice(0, 160)}-${hash}`;
 }
 
-/** Dir holding one workspace's index, transcripts, and audio. */
+/** Dir holding one workspace's sidecars, transcripts, and audio. */
 export function workspaceSessionsDir(workspaceDir: string): string {
   return join(getSessionsDir(), workspaceKey(workspaceDir));
 }
@@ -60,8 +65,9 @@ export function workspaceAudioDir(workspaceDir: string): string {
   return join(workspaceSessionsDir(workspaceDir), "audio");
 }
 
-function indexPath(workspaceDir: string): string {
-  return join(workspaceSessionsDir(workspaceDir), "index.json");
+/** Metadata sidecar for one session. */
+function metaPath(workspaceDir: string, id: string): string {
+  return join(workspaceSessionsDir(workspaceDir), `${id}.json`);
 }
 
 /** One message per line, so a growing transcript is appended, not rewritten. */
@@ -69,16 +75,19 @@ function transcriptPath(workspaceDir: string, id: string): string {
   return join(workspaceSessionsDir(workspaceDir), `${id}.jsonl`);
 }
 
+/** Plain-text record of the last opened session. */
+function activePath(workspaceDir: string): string {
+  return join(workspaceSessionsDir(workspaceDir), "active");
+}
+
 function isNotFoundError(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as NodeJS.ErrnoException).code === "ENOENT";
 }
 
-/** Atomic write of raw content (temp file + rename) so a crash can't leave a half file. */
-function writeFileAtomic(path: string, content: string): void {
+/** Atomic write (temp file + rename) so a crash can't leave a half file. */
+function writeAtomic(path: string, content: string): void {
   mkdirSync(dirname(path), { recursive: true });
-  const tmp = `${path}.tmp`;
-  writeFileSync(tmp, content);
-  renameSync(tmp, path);
+  writeFileAtomic.sync(path, content);
 }
 
 /** Non-empty lines of a JSONL file ([] when missing). */
@@ -126,38 +135,51 @@ function writeTranscript(path: string, incoming: unknown[]): void {
     appendFileSync(path, serialized.slice(common).map((line) => `${line}\n`).join(""));
     return;
   }
-  writeFileAtomic(path, serialized.map((line) => `${line}\n`).join(""));
+  writeAtomic(path, serialized.map((line) => `${line}\n`).join(""));
 }
 
-/** Read one workspace's index dir; undefined when the dir holds no valid index. */
-function readIndexAtDir(dir: string): WorkspaceIndex | undefined {
-  let stored: WorkspaceIndex | undefined;
+/** Parse and shape-check one metadata sidecar; undefined when missing/corrupt/legacy. */
+function readMeta(path: string, fallbackWorkspaceDir?: string): ChatSessionMeta | undefined {
+  let stored: unknown;
   try {
-    stored = JSON.parse(readFileSync(join(dir, "index.json"), "utf-8")) as WorkspaceIndex;
+    stored = JSON.parse(readFileSync(path, "utf-8"));
   } catch {
-    // Missing or corrupt index: skip this workspace so the cross-workspace
-    // list still works instead of throwing.
     return undefined;
   }
-  if (!stored || typeof stored.workspaceDir !== "string") return undefined;
-  const sessions = (Array.isArray(stored.sessions) ? stored.sessions : []).map((meta) => ({
-    ...meta,
-    workspaceDir: stored.workspaceDir,
-  }));
+  if (!stored || typeof stored !== "object") return undefined;
+  const meta = stored as Partial<ChatSessionMeta>;
+  if (typeof meta.id !== "string" || !SESSION_ID_RE.test(meta.id)) return undefined;
+  if (typeof meta.title !== "string") return undefined;
+  if (typeof meta.createdAt !== "string" || typeof meta.updatedAt !== "string") return undefined;
+  const workspaceDir = typeof meta.workspaceDir === "string" ? meta.workspaceDir : fallbackWorkspaceDir;
+  if (workspaceDir === undefined) return undefined;
   return {
-    workspaceDir: stored.workspaceDir,
-    ...(stored.activeId ? { activeId: stored.activeId } : {}),
-    sessions,
+    id: meta.id,
+    title: meta.title,
+    workspaceDir,
+    createdAt: meta.createdAt,
+    updatedAt: meta.updatedAt,
+    ...(meta.pinned ? { pinned: true } : {}),
   };
 }
 
-/** One workspace's index; an empty one (bound to `workspaceDir`) when absent. */
-function readIndex(workspaceDir: string): WorkspaceIndex {
-  return readIndexAtDir(workspaceSessionsDir(workspaceDir)) ?? { workspaceDir, sessions: [] };
-}
-
-function writeIndex(workspaceDir: string, index: WorkspaceIndex): void {
-  writeFileAtomic(indexPath(workspaceDir), JSON.stringify(index));
+/** Read every valid sidecar directly under one workspace dir. */
+function listWorkspaceSessions(dir: string, fallbackWorkspaceDir?: string): ChatSessionMeta[] {
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch (error) {
+    if (isNotFoundError(error)) return [];
+    throw error;
+  }
+  const metas: ChatSessionMeta[] = [];
+  for (const name of names) {
+    // `index.json` is the legacy shared index, not a session sidecar.
+    if (!name.endsWith(".json") || name === "index.json") continue;
+    const meta = readMeta(join(dir, name), fallbackWorkspaceDir);
+    if (meta) metas.push(meta);
+  }
+  return metas;
 }
 
 /** Pinned first, then most recently updated. */
@@ -169,7 +191,8 @@ function compareSessions(a: ChatSessionMeta, b: ChatSessionMeta): number {
 /** Metadata for every saved session, optionally limited to one workspace. */
 export function listSessions(workspaceDir?: string): ChatSessionMeta[] {
   if (workspaceDir !== undefined) {
-    return readIndex(workspaceDir).sessions.slice().sort(compareSessions);
+    const canonical = canonicalWorkspaceDir(workspaceDir);
+    return listWorkspaceSessions(workspaceSessionsDir(canonical), canonical).sort(compareSessions);
   }
   let entries;
   try {
@@ -181,7 +204,7 @@ export function listSessions(workspaceDir?: string): ChatSessionMeta[] {
   const sessions: ChatSessionMeta[] = [];
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
-    sessions.push(...(readIndexAtDir(join(getSessionsDir(), entry.name))?.sessions ?? []));
+    sessions.push(...listWorkspaceSessions(join(getSessionsDir(), entry.name)));
   }
   return sessions.sort(compareSessions);
 }
@@ -189,9 +212,10 @@ export function listSessions(workspaceDir?: string): ChatSessionMeta[] {
 /** Read one session (metadata + transcript); undefined when missing or invalid. */
 export function getSession(workspaceDir: string, id: string): ChatSession | undefined {
   if (!SESSION_ID_RE.test(id)) return undefined;
-  const meta = readIndex(workspaceDir).sessions.find((s) => s.id === id);
+  const canonical = canonicalWorkspaceDir(workspaceDir);
+  const meta = readMeta(metaPath(canonical, id), canonical);
   if (!meta) return undefined;
-  return { ...meta, messages: parseLines(readLines(transcriptPath(workspaceDir, id))) };
+  return { ...meta, messages: parseLines(readLines(transcriptPath(canonical, id))) };
 }
 
 /**
@@ -206,8 +230,7 @@ export function saveSession(session: {
 }): ChatSessionMeta {
   if (!SESSION_ID_RE.test(session.id)) throw new Error(`invalid session id: ${session.id}`);
   const workspaceDir = canonicalWorkspaceDir(session.workspaceDir);
-  const index = readIndex(workspaceDir);
-  const existing = index.sessions.find((s) => s.id === session.id);
+  const existing = readMeta(metaPath(workspaceDir, session.id), workspaceDir);
   const now = new Date().toISOString();
   const meta: ChatSessionMeta = {
     id: session.id,
@@ -219,21 +242,17 @@ export function saveSession(session: {
   };
 
   writeTranscript(transcriptPath(workspaceDir, session.id), session.messages);
-
-  const sessions = existing
-    ? index.sessions.map((s) => (s.id === session.id ? meta : s))
-    : [...index.sessions, meta];
-  writeIndex(workspaceDir, { ...index, workspaceDir, sessions });
+  writeAtomic(metaPath(workspaceDir, session.id), JSON.stringify(meta));
   return meta;
 }
 
 /** Rename a session (does not change its recency). */
 export function renameSession(workspaceDir: string, id: string, title: string): ChatSessionMeta | undefined {
-  const index = readIndex(workspaceDir);
-  const meta = index.sessions.find((s) => s.id === id);
+  const canonical = canonicalWorkspaceDir(workspaceDir);
+  const meta = readMeta(metaPath(canonical, id), canonical);
   if (!meta) return undefined;
   const next: ChatSessionMeta = { ...meta, title };
-  writeIndex(workspaceDir, { ...index, sessions: index.sessions.map((s) => (s.id === id ? next : s)) });
+  writeAtomic(metaPath(canonical, id), JSON.stringify(next));
   return next;
 }
 
@@ -243,25 +262,24 @@ export function setSessionPinned(
   id: string,
   pinned: boolean,
 ): ChatSessionMeta | undefined {
-  const index = readIndex(workspaceDir);
-  const meta = index.sessions.find((s) => s.id === id);
+  const canonical = canonicalWorkspaceDir(workspaceDir);
+  const meta = readMeta(metaPath(canonical, id), canonical);
   if (!meta) return undefined;
   const next: ChatSessionMeta = { ...meta };
   if (pinned) next.pinned = true;
   else delete next.pinned;
-  writeIndex(workspaceDir, { ...index, sessions: index.sessions.map((s) => (s.id === id ? next : s)) });
+  writeAtomic(metaPath(canonical, id), JSON.stringify(next));
   return next;
 }
 
-/** Delete a session's transcript, audio, and metadata; clears `activeId` when it matched. */
+/** Delete a session's transcript, audio, and metadata; clears `active` when it matched. */
 export function removeSession(workspaceDir: string, id: string): void {
   if (!SESSION_ID_RE.test(id)) return;
-  rmSync(transcriptPath(workspaceDir, id), { force: true });
-  removeAudioFiles(workspaceDir, id);
-  const index = readIndex(workspaceDir);
-  const sessions = index.sessions.filter((s) => s.id !== id);
-  if (index.activeId === id) writeIndex(workspaceDir, { workspaceDir, sessions });
-  else writeIndex(workspaceDir, { ...index, sessions });
+  const canonical = canonicalWorkspaceDir(workspaceDir);
+  rmSync(transcriptPath(canonical, id), { force: true });
+  rmSync(metaPath(canonical, id), { force: true });
+  removeAudioFiles(canonical, id);
+  if (getActiveSessionId(canonical) === id) clearActiveSessionId(canonical);
 }
 
 /** Delete every clip the session generated (named `<id>-<model>.wav`). */
@@ -281,16 +299,26 @@ function removeAudioFiles(workspaceDir: string, id: string): void {
 
 /** Last session opened in one workspace, if any. */
 export function getActiveSessionId(workspaceDir: string): string | undefined {
-  return readIndex(workspaceDir).activeId;
+  try {
+    const id = readFileSync(activePath(canonicalWorkspaceDir(workspaceDir)), "utf-8").trim();
+    return SESSION_ID_RE.test(id) ? id : undefined;
+  } catch (error) {
+    if (isNotFoundError(error)) return undefined;
+    throw error;
+  }
 }
 
 /** Remember the last opened session in one workspace (`null` clears it). */
 export function setActiveSessionId(workspaceDir: string, id: string | null): void {
-  const index = readIndex(workspaceDir);
+  const canonical = canonicalWorkspaceDir(workspaceDir);
   if (id === null) {
-    if (index.activeId === undefined) return;
-    writeIndex(workspaceDir, { workspaceDir, sessions: index.sessions });
+    clearActiveSessionId(canonical);
     return;
   }
-  writeIndex(workspaceDir, { ...index, activeId: id });
+  if (!SESSION_ID_RE.test(id)) throw new Error(`invalid session id: ${id}`);
+  writeAtomic(activePath(canonical), id);
+}
+
+function clearActiveSessionId(workspaceDir: string): void {
+  rmSync(activePath(workspaceDir), { force: true });
 }
