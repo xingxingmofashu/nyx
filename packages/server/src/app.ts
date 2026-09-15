@@ -4,7 +4,6 @@ import { auth } from "./middleware/auth"
 import { agent } from "./routes/agent"
 import { automaticSpeechRecognition } from "./routes/automatic-speech-recognition"
 import { imageToImage } from "./routes/image-to-image"
-import { knowledge } from "./routes/knowledge"
 import { models } from "./routes/models"
 import { textToSpeech } from "./routes/text-to-speech"
 import { AgentService } from "./services/agent"
@@ -25,7 +24,7 @@ export interface ServerServices {
   textToSpeech: TextToSpeechService
   /** Transcribes speech into text. */
   automaticSpeechRecognition: AutomaticSpeechRecognitionService
-  /** Manages and searches local knowledge bases (RAG). */
+  /** Manages and searches the local knowledge base (RAG). */
   knowledge: KnowledgeService
   /** Runs the remote master-brain agent loop. */
   agent: AgentService
@@ -54,13 +53,17 @@ export function createApp(options: { token?: string; services?: ServerServices }
     agent: new AgentService(cache, knowledgeService),
   }
 
+  // Index the knowledge dir in the background on startup (both the CLI `start()`
+  // and the spawned desktop binary go through here). No-op when the dir has no
+  // Markdown files, or the embedding model isn't downloaded.
+  if (!options.services) void services.knowledge.ensureIndexed().catch(() => {})
+
   const handle = options.token ? auth(options.token) : noopAuth
 
   const v1 = new Hono()
     .use("*", handle)
     .get("/health", (c) => c.json({ ok: true }))
     .route("/models", models(services.models))
-    .route("/knowledge", knowledge(services.knowledge))
     .route("/tasks/image-to-image", imageToImage(services.imageToImage))
     .route("/tasks/text-to-speech", textToSpeech(services.textToSpeech))
     .route(

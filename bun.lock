@@ -22,7 +22,6 @@
         "@clack/prompts": "1.7.0",
         "@nyx/agent": "workspace:*",
         "@nyx/config": "workspace:*",
-        "@nyx/knowledge": "workspace:*",
         "@nyx/llm": "workspace:*",
         "@nyx/server": "workspace:*",
         "@nyx/shared": "workspace:*",

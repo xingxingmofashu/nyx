@@ -14,7 +14,7 @@ Bun workspace monorepo (`bun@1.3.14`). `README.md` explains the product and arch
 
 ## Workspace layout
 
-`packages/{shared,config,llm,agent,server,knowledge}` and `apps/{coding-agent,desktop}`. Every package is consumed as raw TS (`"main"/"types": "src/index.ts"`); `@nyx/server` builds a compiled binary. `@nyx/shared` is the browser-safe base layer (`.`, `./chat`, `./node` subpaths: AI-SDK helpers and Node-only helpers stay out of the root); `@nyx/config` must not depend on `ai`, onnx, or LanceDB. `@nyx/knowledge` (LanceDB + ONNX embeddings) is imported only by `@nyx/server` and the CLI — never by the desktop main/renderer.
+`packages/{shared,config,llm,agent,server,knowledge}` and `apps/{coding-agent,desktop}`. Every package is consumed as raw TS (`"main"/"types": "src/index.ts"`); `@nyx/server` builds a compiled binary. `@nyx/shared` is the browser-safe base layer (`.`, `./chat`, `./node` subpaths: AI-SDK helpers and Node-only helpers stay out of the root); `@nyx/config` must not depend on `ai`, onnx, or LanceDB. `@nyx/knowledge` (LanceDB + ONNX embeddings) is imported only by `@nyx/server` — never by the desktop main/renderer or the CLI.
 
 ## Dependencies
 
@@ -31,6 +31,6 @@ Versions are exact-pinned through the root `package.json` `catalog` (with `bunfi
 
 ## On-disk state (`~/.nyx`)
 
-- `models/` (weights, default; override `NYX_MODELS_DIR`), `models.json` (registry), `settings.json` (user/agent settings), `sessions/<workspaceKey>/{<id>.json, <id>.jsonl, active, audio/}` (metadata sidecar, transcript, last-opened id, generated clips), `knowledge/<id>/{config.json, manifest.json, lancedb/}` (knowledge bases: LanceDB table + per-file hashes).
+- `models/` (weights, default; override `NYX_MODELS_DIR`), `models.json` (registry), `settings.json` (user/agent settings), `sessions/<workspaceKey>/{<id>.json, <id>.jsonl, active, audio/}` (metadata sidecar, transcript, last-opened id, generated clips), `knowledge/**/*.md` (user-supplied documents) with the index under `knowledge/.index/{config.json, manifest.json, lancedb/}`.
 - Env overrides: `NYX_AGENT_MODEL`, `NYX_AGENT_API_KEY`, `NYX_AGENT_BASE_URL`, `NYX_AGENT_HEADERS` (JSON), `NYX_AGENT_LOCAL_MODELS`, `HF_ENDPOINT` (HF mirror), `NYX_KNOWLEDGE_DIR`, `NYX_SERVER_TOKEN/PORT/HOST`.
 - The agent brain is a remote model: `agent.model` is `<providerId>/<modelId>` resolved against `agent.provider`; only `@ai-sdk/openai-compatible` and `@ai-sdk/anthropic` are supported (`packages/agent/src/providers.ts`).

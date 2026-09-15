@@ -9,7 +9,7 @@ nyx 通过 transformers.js 本地运行兼容的 ONNX 模型：
 - **图生图**：超分等图像变换（如 4x_APISR_GRL_GAN）
 - **文生语音**：语音合成（如 MMS-TTS），输出 WAV
 - **主脑（agent）**：可选的远程模型（自带 API key），负责编排本地编码工具；agent 循环运行在本地 server 中，文件与命令都不出本机
-- **知识库（RAG）**：对自己的 Markdown/文本文档做本地嵌入与混合检索，让 agent 基于你的资料回答
+- **知识库（RAG）**：把 Markdown 放进 `~/.nyx/knowledge/`，agent 用本地嵌入模型从你的资料中检索回答
 - **CLI 与桌面端**：终端 CLI 与 Electron 桌面应用共享同一份本地模型缓存
 
 ## 架构
@@ -19,9 +19,9 @@ Bun monorepo：
 - `packages/config` — `~/.nyx` 路径、模型注册表（`~/.nyx/models.json`）与用户设置（`~/.nyx/settings.json`）
 - `packages/llm` — 模型运行时 + 任务（`runtime.ts` 共享加载器、`tasks/*`），基于 onnxruntime-node / transformers.js
 - `packages/agent` — 主脑 agent 核心（Vercel AI SDK：provider 注册表 + 工具循环），不依赖 onnx
-- `packages/knowledge` — 本地知识库（RAG）：Markdown/文本切分、LanceDB 混合检索、本地 ONNX 嵌入
-- `packages/server` — `/v1` 下的 Hono HTTP 服务（models / tasks / agent / knowledge），编译为自包含的 Bun 可执行文件（`nyx-server`），桌面端启动它、CLI 以进程内方式运行
-- `apps/coding-agent` — 终端 CLI（yargs）：`nyx`（agent TUI）、`nyx image-to-image`、`nyx text-to-speech`、`nyx model ...`、`nyx knowledge ...`
+- `packages/knowledge` — 本地知识库（RAG）：Markdown 切分、LanceDB 混合检索、本地 ONNX 嵌入
+- `packages/server` — `/v1` 下的 Hono HTTP 服务（models / tasks / agent），编译为自包含的 Bun 可执行文件（`nyx-server`），桌面端启动它、CLI 以进程内方式运行
+- `apps/coding-agent` — 终端 CLI（yargs）：`nyx`（agent TUI）、`nyx image-to-image`、`nyx text-to-speech`、`nyx model ...`
 - `apps/desktop` — Electron 桌面应用（forge + vite + React）
 
 ## 快速开始
@@ -51,10 +51,6 @@ nyx model remove <model> [--yes]                                 # 删除已缓�
 
 nyx image-to-image <input> --model "<id>" [-o out.png]           # 图生图变换
 nyx text-to-speech "<文本>" --model "<id>" [-o out.wav]          # 文生语音合成
-
-nyx knowledge add <dir>                                          # 注册知识库（见下）
-nyx knowledge index [id]                                         # 嵌入并建立索引
-nyx knowledge search "<查询>" [--kb <id>]                        # 混合检索
 ```
 
 agent TUI（由 `@ai-sdk/tui` 提供界面）：输入消息回车发送，内联工具审批用 `y`/`n` 回答，`Esc`（或 Ctrl+C）退出。回复以 markdown 流式显示，工具卡片与推理内容内联展示。
@@ -109,18 +105,15 @@ agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型
 
 ## 知识库（RAG）
 
-把 nyx 指向一个存放 Markdown/文本文件的目录，它就用本地 ONNX 嵌入模型（默认 `Xenova/multilingual-e5-base`）在本地建索引，然后基于你自己的文档回答。片段存在 [LanceDB](https://lancedb.com/) 中并建立原生全文索引；查询使用向量 + 关键词的混合检索，并以 RRF 融合排序。全程在本机运行。
+把 Markdown 文件放进 `~/.nyx/knowledge/` 下的任意位置，nyx 就用本地 ONNX 嵌入模型（默认 `Xenova/multilingual-e5-base`）在本地建索引，然后基于你自己的文档回答。片段存在 [LanceDB](https://lancedb.com/) 中并建立原生全文索引；查询使用向量 + 关键词的混合检索，并以 RRF 融合排序。全程在本机运行。
 
 ```bash
 nyx model pull Xenova/multilingual-e5-base --task feature-extraction   # 一次性：下载嵌入模型
-nyx knowledge add ~/notes                                              # 注册目录
-nyx knowledge index                                                    # 嵌入并建索引（可重复执行以增量更新）
-nyx knowledge search "如何减少大模型的幻觉"                              # 混合检索
-nyx knowledge list                                                     # 查看知识库与索引状态
-nyx knowledge remove <id>                                              # 删除知识库及其索引
+mkdir -p ~/.nyx/knowledge && cp ~/notes/*.md ~/.nyx/knowledge/         # 放入你的 Markdown
+nyx                                                                    # 启动 agent，后台自动建索引
 ```
 
-存在知识库时，agent 还会获得只读的 `search_knowledge` 工具，从而基于你的文档回答（在 `settings.json` 中设 `agent.tools.knowledge: false` 可关闭）。索引位于 `~/.nyx/knowledge/<id>/`（可用 `NYX_KNOWLEDGE_DIR` 覆盖）。
+索引是增量的（按内容哈希跳过未变文件），在启动时后台执行，存放在 `~/.nyx/knowledge/.index/`（可用 `NYX_KNOWLEDGE_DIR` 覆盖知识库目录）。若嵌入模型尚未下载，则跳过索引并给出提示，不会自动下载。只要存在 Markdown 文件，agent 就会获得只读的 `search_knowledge` 工具，从而基于你的文档回答（在 `settings.json` 中设 `agent.tools.knowledge: false` 可关闭）。新增文档将在下次启动时生效。
 
 ## 桌面应用
 

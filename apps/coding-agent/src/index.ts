@@ -8,7 +8,6 @@ import { AgentCommand } from "./cli/commands/agent";
 import { ImageToImageCommand } from "./cli/commands/tasks/image-to-image";
 import { TextToSpeechCommand } from "./cli/commands/tasks/text-to-speech";
 import { ModelCommand } from "./cli/commands/model";
-import { KnowledgeCommand } from "./cli/commands/knowledge";
 
 const cli = yargs(hideBin(process.argv))
   .parserConfiguration({ "populate--": true })
@@ -22,7 +21,6 @@ const cli = yargs(hideBin(process.argv))
   .command(ImageToImageCommand)
   .command(TextToSpeechCommand)
   .command(ModelCommand)
-  .command(KnowledgeCommand)
   .strict();
 
 try {

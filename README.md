@@ -9,6 +9,7 @@ nyx runs transformers.js-compatible ONNX models locally:
 - **Image-to-image** — super-resolution and other image transforms (e.g. 4x_APISR_GRL_GAN)
 - **Text-to-speech** — speech synthesis (e.g. MMS-TTS), WAV output
 - **Master brain (agent)** — an optional remote model (bring your own API key) that orchestrates local coding tools; the agent loop runs in the local server, files/bash stay on your machine
+- **Knowledge base (RAG)** — drop Markdown into `~/.nyx/knowledge/` and the agent retrieves from it with local embeddings
 - **CLI and desktop** — a terminal CLI plus an Electron desktop app sharing the same local model cache
 
 ## Architecture
@@ -18,9 +19,9 @@ Bun monorepo:
 - `packages/config` — `~/.nyx` paths, the model registry (`~/.nyx/models.json`), and user settings (`~/.nyx/settings.json`)
 - `packages/llm` — model runtime + tasks (`runtime.ts` shared loader, `tasks/*`), built on onnxruntime-node / transformers.js
 - `packages/agent` — the master-brain agent core (Vercel AI SDK: providers + tool loop), no onnx dependency
-- `packages/knowledge` — local knowledge bases (RAG): Markdown/text chunking, LanceDB hybrid search, local ONNX embeddings
-- `packages/server` — Hono HTTP service under `/v1` (models / tasks / agent / knowledge), compiled to a self-contained Bun binary (`nyx-server`) that the desktop spawns and the CLI runs in-process
-- `apps/coding-agent` — terminal CLI (yargs): `nyx` (agent TUI), `nyx image-to-image`, `nyx text-to-speech`, `nyx model ...`, `nyx knowledge ...`
+- `packages/knowledge` — local knowledge base (RAG): Markdown chunking, LanceDB hybrid search, local ONNX embeddings
+- `packages/server` — Hono HTTP service under `/v1` (models / tasks / agent), compiled to a self-contained Bun binary (`nyx-server`) that the desktop spawns and the CLI runs in-process
+- `apps/coding-agent` — terminal CLI (yargs): `nyx` (agent TUI), `nyx image-to-image`, `nyx text-to-speech`, `nyx model ...`
 - `apps/desktop` — Electron desktop app (forge + vite + React)
 
 ## Quick start
@@ -44,16 +45,12 @@ nyx                                                              # master-brain 
 nyx --cwd ./project                                              # ...with an explicit workspace directory
 nyx --resume                                                     # pick a saved session for this workspace and continue it
 
-nyx model pull <model> --task <image-to-image|text-to-speech|automatic-speech-recognition>  # pre-download a model
+nyx model pull <model> --task <image-to-image|text-to-speech|automatic-speech-recognition|feature-extraction>  # pre-download a model
 nyx model list                                                   # list locally cached models (alias: ls)
 nyx model remove <model> [--yes]                                 # delete a cached model
 
 nyx image-to-image <input> --model "<id>" [-o out.png]           # image-to-image transform
 nyx text-to-speech "<text>" --model "<id>" [-o out.wav]          # text-to-speech synthesis
-
-nyx knowledge add <dir>                                          # register a knowledge base (see below)
-nyx knowledge index [id]                                         # embed + index its files
-nyx knowledge search "<query>" [--kb <id>]                       # hybrid search
 ```
 
 In the agent TUI (powered by `@ai-sdk/tui`): type a message and press Enter to send, `y`/`n` answers the inline tool-approval prompt, and `Esc` (or Ctrl+C) exits. Replies stream in as markdown, with tool cards and reasoning sections.
@@ -106,20 +103,17 @@ With `agent.tools.localModels` enabled (or `NYX_AGENT_LOCAL_MODELS=1`), the loca
 
 Local inference runs in-process and is not streamed — the agent's reply pauses until the tool finishes — and the tool result (the output file path) is sent to the remote brain like any other tool output.
 
-## Knowledge bases (RAG)
+## Knowledge base (RAG)
 
-Point nyx at a folder of Markdown/text files and it indexes them locally with the ONNX embedding model (`Xenova/multilingual-e5-base` by default), then answers from your own documents. Chunks are stored in [LanceDB](https://lancedb.com/) with a native full-text index; queries use hybrid (vector + keyword) search fused with reciprocal rank fusion. Everything runs on your machine.
+Drop Markdown files anywhere under `~/.nyx/knowledge/` and nyx indexes them locally with the ONNX embedding model (`Xenova/multilingual-e5-base` by default), then answers from your own documents. Chunks are stored in [LanceDB](https://lancedb.com/) with a native full-text index; queries use hybrid (vector + keyword) search fused with reciprocal rank fusion. Everything runs on your machine.
 
 ```bash
 nyx model pull Xenova/multilingual-e5-base --task feature-extraction   # one-time: download the embedding model
-nyx knowledge add ~/notes                                              # register a folder
-nyx knowledge index                                                    # embed + index (re-run to pick up changes)
-nyx knowledge search "如何减少大模型的幻觉"                              # hybrid search
-nyx knowledge list                                                     # show bases and index status
-nyx knowledge remove <id>                                              # delete a base and its index
+mkdir -p ~/.nyx/knowledge && cp ~/notes/*.md ~/.nyx/knowledge/         # drop in your Markdown
+nyx                                                                    # start the agent; it indexes in the background
 ```
 
-When a knowledge base exists, the agent also gets a read-only `search_knowledge` tool, so it can ground its answers in your documents (set `agent.tools.knowledge: false` in `settings.json` to disable). Indexes live under `~/.nyx/knowledge/<id>/` (override with `NYX_KNOWLEDGE_DIR`).
+Indexing is incremental (files are skipped by content hash), runs in the background at startup, and lives in `~/.nyx/knowledge/.index/` (override the knowledge dir with `NYX_KNOWLEDGE_DIR`). If the embedding model isn't downloaded yet, indexing is skipped with a hint — it is not fetched implicitly. While any Markdown file exists, the agent gets a read-only `search_knowledge` tool so it can ground answers in your documents (set `agent.tools.knowledge: false` in `settings.json` to disable). New documents are picked up on the next launch.
 
 ## Desktop app
 

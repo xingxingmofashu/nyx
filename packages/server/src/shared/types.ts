@@ -143,39 +143,9 @@ export interface AgentRequest extends AgentOptions {
   messages: import("@nyx/agent").UIMessage[];
 }
 
-/** Knowledge base summary as returned by GET /v1/knowledge. */
-export interface KnowledgeBaseInfo {
-  id: string;
-  name: string;
-  sourceDir: string;
-  embeddingModel: string;
-  dim?: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-/** Body of POST /v1/knowledge. */
-export const KnowledgeCreateRequestSchema = z.object({
-  name: z.string().trim().min(1),
-  /** Directory scanned for `.md`/`.markdown`/`.txt` files (absolute or relative to the server cwd). */
-  sourceDir: z.string().min(1),
-  /** ONNX embedding model id; defaults to the configured knowledge model. */
-  embeddingModel: z.string().min(1).optional(),
-});
-export type KnowledgeCreateRequest = z.infer<typeof KnowledgeCreateRequestSchema>;
-
-/** Body of POST /v1/knowledge/:id/search. */
-export const KnowledgeSearchRequestSchema = z.object({
-  query: z.string().trim().min(1),
-  topK: z.number().int().positive().max(50).optional(),
-});
-export type KnowledgeSearchRequest = z.infer<typeof KnowledgeSearchRequestSchema>;
-
-/** One retrieved passage. */
+/** One retrieved passage from the local knowledge base. */
 export interface KnowledgeSearchHit {
-  /** Knowledge base the passage came from. */
-  knowledgeBase: string;
-  /** Path of the source file, relative to the knowledge base root. */
+  /** Path of the source file, relative to the knowledge dir. */
   file: string;
   /** Heading breadcrumb within the file. */
   heading: string;
