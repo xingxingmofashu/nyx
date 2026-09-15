@@ -1,21 +1,13 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { defu } from "defu";
+import { readJson } from "./json.ts";
 import { getConfigDir, getModelsDir } from "./path.ts";
 import { ModelConfigSchema } from "./schema.ts";
 import type { ModelConfig, ModelInfo } from "./types.ts";
 
 function getModelConfigPath(): string {
   return join(getConfigDir(), "models.json");
-}
-
-/** Parse a JSON file leniently; undefined when missing or malformed. */
-function readJson(path: string): unknown {
-  try {
-    return JSON.parse(readFileSync(path, "utf-8"));
-  } catch {
-    return undefined;
-  }
 }
 
 /**

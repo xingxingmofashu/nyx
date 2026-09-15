@@ -164,6 +164,7 @@
       "dependencies": {
         "@ai-sdk/tui": "catalog:",
         "@nyx/config": "workspace:*",
+        "@nyx/server": "workspace:*",
         "@nyx/shared": "workspace:*",
         "ai": "catalog:",
       },

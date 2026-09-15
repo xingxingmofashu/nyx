@@ -1,6 +1,7 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { defu } from "defu";
+import { isPlainObject, readJson } from "./json.ts";
 import { getConfigDir } from "./path.ts";
 import { AgentHeadersSchema, SettingsSchema } from "./schema.ts";
 import type { AgentSettings, Settings } from "./types.ts";
@@ -10,19 +11,6 @@ export const DEFAULT_HUB_URL = "https://huggingface.co";
 
 function getSettingsPath(): string {
   return join(getConfigDir(), "settings.json");
-}
-
-/** Parse a JSON file leniently; undefined when missing or malformed. */
-function readJson(path: string): unknown {
-  try {
-    return JSON.parse(readFileSync(path, "utf-8"));
-  } catch {
-    return undefined;
-  }
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
