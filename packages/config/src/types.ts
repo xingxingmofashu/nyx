@@ -74,8 +74,8 @@ export interface ChatSessionMeta {
   id: string
   /** Display title (auto-derived from the first user message, then renamed by hand). */
   title: string
-  /** Workspace the session belongs to; the UI groups sessions by this. */
-  workspaceDir?: string
+  /** Workspace the session belongs to; sessions are stored per workspace. */
+  workspaceDir: string
   /** Pinned sessions sort before the rest. */
   pinned?: boolean
   createdAt: string

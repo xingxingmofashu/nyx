@@ -46,7 +46,7 @@ export const IPC = {
     selectDirectory: "dialog:selectDirectory",
     saveFile: "dialog:saveFile",
   },
-  /** Read a generated workspace file (e.g. a spoken reply) back for playback. */
+  /** Read an agent-generated file (e.g. a spoken reply) back for playback. */
   files: {
     readDataUrl: "files:readDataUrl",
   },

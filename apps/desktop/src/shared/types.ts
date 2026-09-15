@@ -52,7 +52,7 @@ export interface ChatSession extends ChatSessionMeta {
 export interface ChatSessionSaveRequest {
   id: string
   title: string
-  workspaceDir?: string
+  workspaceDir: string
   messages: UIMessage[]
 }
 
@@ -113,14 +113,15 @@ export interface NyxApi {
     setSettings: (patch: Settings) => Promise<Settings>
   }
   sessions: {
+    /** All sessions across workspaces (the sidebar groups them). */
     list: () => Promise<ChatSessionMeta[]>
-    get: (id: string) => Promise<ChatSession | null>
+    get: (workspaceDir: string, id: string) => Promise<ChatSession | null>
     save: (session: ChatSessionSaveRequest) => Promise<ChatSessionMeta>
-    rename: (id: string, title: string) => Promise<ChatSessionMeta | null>
-    setPinned: (id: string, pinned: boolean) => Promise<ChatSessionMeta | null>
-    remove: (id: string) => Promise<void>
-    getActive: () => Promise<string | null>
-    setActive: (id: string | null) => Promise<void>
+    rename: (workspaceDir: string, id: string, title: string) => Promise<ChatSessionMeta | null>
+    setPinned: (workspaceDir: string, id: string, pinned: boolean) => Promise<ChatSessionMeta | null>
+    remove: (workspaceDir: string, id: string) => Promise<void>
+    getActive: (workspaceDir: string) => Promise<string | null>
+    setActive: (workspaceDir: string, id: string | null) => Promise<void>
   }
   dialog: {
     /** Native folder picker; resolves the chosen path, or null if cancelled. */
@@ -129,7 +130,7 @@ export interface NyxApi {
     saveFile: (request: SaveFileRequest) => Promise<string | null>
   }
   files: {
-    /** Read a workspace file as a data URL (confined to the workspace); null if unavailable. */
+    /** Read an agent-generated file (a workspace output or an audio clip) as a data URL; null if unavailable. */
     readDataUrl: (path: string) => Promise<string | null>
   }
   window: {

@@ -59,7 +59,7 @@ export const AgentCommand = cmd<Record<string, unknown>, AgentArgs>({
     let resumed: { id: string; title: string } | undefined;
 
     if (args.resume) {
-      const metas = listSessions().filter((meta) => (meta.workspaceDir ?? "") === workspaceDir);
+      const metas = listSessions(workspaceDir);
       if (metas.length === 0) {
         log.warn(`No saved sessions for ${workspaceDir}.`);
       } else {
@@ -72,7 +72,7 @@ export const AgentCommand = cmd<Record<string, unknown>, AgentArgs>({
           })),
         });
         if (isCancel(picked)) return;
-        const stored = getSession(picked);
+        const stored = getSession(workspaceDir, picked);
         if (stored) {
           history = stored.messages as UIMessage[];
           resumed = { id: stored.id, title: stored.title };
@@ -83,14 +83,15 @@ export const AgentCommand = cmd<Record<string, unknown>, AgentArgs>({
 
     const server = await start({ port: 0 });
     try {
+      const sessionId = resumed?.id ?? newSessionId();
       const transport = new SessionTransport(
         new DefaultChatTransport({
           api: `${server.url}/v1/agent`,
-          body: { workspaceDir },
+          body: { workspaceDir, sessionId },
         }),
         {
           history,
-          sessionId: resumed?.id ?? newSessionId(),
+          sessionId,
           workspaceDir,
           onTurn: (id, dir, messages) => {
             try {

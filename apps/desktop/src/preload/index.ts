@@ -64,19 +64,20 @@ const api: NyxApi = {
   },
   sessions: {
     list: (): Promise<ChatSessionMeta[]> => ipcRenderer.invoke(IPC.sessions.list),
-    get: (id: string) => ipcRenderer.invoke(IPC.sessions.get, id),
+    get: (workspaceDir: string, id: string) =>
+      ipcRenderer.invoke(IPC.sessions.get, workspaceDir, id),
     save: (session: ChatSessionSaveRequest) =>
       ipcRenderer.invoke(IPC.sessions.save, session),
-    rename: (id: string, title: string) =>
-      ipcRenderer.invoke(IPC.sessions.rename, id, title),
-    setPinned: (id: string, pinned: boolean) =>
-      ipcRenderer.invoke(IPC.sessions.setPinned, id, pinned),
-    remove: (id: string): Promise<void> =>
-      ipcRenderer.invoke(IPC.sessions.remove, id),
-    getActive: (): Promise<string | null> =>
-      ipcRenderer.invoke(IPC.sessions.getActive),
-    setActive: (id: string | null): Promise<void> =>
-      ipcRenderer.invoke(IPC.sessions.setActive, id),
+    rename: (workspaceDir: string, id: string, title: string) =>
+      ipcRenderer.invoke(IPC.sessions.rename, workspaceDir, id, title),
+    setPinned: (workspaceDir: string, id: string, pinned: boolean) =>
+      ipcRenderer.invoke(IPC.sessions.setPinned, workspaceDir, id, pinned),
+    remove: (workspaceDir: string, id: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.sessions.remove, workspaceDir, id),
+    getActive: (workspaceDir: string): Promise<string | null> =>
+      ipcRenderer.invoke(IPC.sessions.getActive, workspaceDir),
+    setActive: (workspaceDir: string, id: string | null): Promise<void> =>
+      ipcRenderer.invoke(IPC.sessions.setActive, workspaceDir, id),
   },
   dialog: {
     selectDirectory: (): Promise<string | null> =>

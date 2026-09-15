@@ -14,7 +14,7 @@ import {
   setSettings,
 } from "@nyx/config"
 import { IPC } from "../shared/ipc"
-import { readWorkspaceFileDataUrl } from "./lib/workspace-file"
+import { readGeneratedFileDataUrl } from "./lib/generated-file"
 import type {
   AudioSamples,
   ChatSendRequest,
@@ -97,16 +97,24 @@ export function registerIpc(services: Services): void {
 
   // --- Sessions ---
   ipcMain.handle(IPC.sessions.list, () => listSessions())
-  ipcMain.handle(IPC.sessions.get, (_e, id: string) => getSession(id) ?? null)
+  ipcMain.handle(IPC.sessions.get, (_e, workspaceDir: string, id: string) =>
+    getSession(workspaceDir, id) ?? null,
+  )
   ipcMain.handle(IPC.sessions.save, (_e, session: ChatSessionSaveRequest) => saveSession(session))
-  ipcMain.handle(IPC.sessions.rename, (_e, id: string, title: string) => renameSession(id, title) ?? null)
-  ipcMain.handle(IPC.sessions.setPinned, (_e, id: string, pinned: boolean) => setSessionPinned(id, pinned) ?? null)
-  ipcMain.handle(IPC.sessions.remove, (_e, id: string) => {
-    removeSession(id)
+  ipcMain.handle(IPC.sessions.rename, (_e, workspaceDir: string, id: string, title: string) =>
+    renameSession(workspaceDir, id, title) ?? null,
+  )
+  ipcMain.handle(IPC.sessions.setPinned, (_e, workspaceDir: string, id: string, pinned: boolean) =>
+    setSessionPinned(workspaceDir, id, pinned) ?? null,
+  )
+  ipcMain.handle(IPC.sessions.remove, (_e, workspaceDir: string, id: string) => {
+    removeSession(workspaceDir, id)
   })
-  ipcMain.handle(IPC.sessions.getActive, () => getActiveSessionId() ?? null)
-  ipcMain.handle(IPC.sessions.setActive, (_e, id: string | null) => {
-    setActiveSessionId(id)
+  ipcMain.handle(IPC.sessions.getActive, (_e, workspaceDir: string) =>
+    getActiveSessionId(workspaceDir) ?? null,
+  )
+  ipcMain.handle(IPC.sessions.setActive, (_e, workspaceDir: string, id: string | null) => {
+    setActiveSessionId(workspaceDir, id)
   })
 
   // --- Dialog ---
@@ -130,7 +138,7 @@ export function registerIpc(services: Services): void {
   })
 
   // --- Files ---
-  ipcMain.handle(IPC.files.readDataUrl, (_e, path: string) => readWorkspaceFileDataUrl(path))
+  ipcMain.handle(IPC.files.readDataUrl, (_e, path: string) => readGeneratedFileDataUrl(path))
 
   // --- Window controls (frameless) ---
   ipcMain.on(IPC.window.minimize, (e) =>

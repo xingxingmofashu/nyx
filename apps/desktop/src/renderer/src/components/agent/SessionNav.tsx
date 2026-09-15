@@ -59,10 +59,9 @@ export function SessionNav() {
     const matches = needle ? sessions.filter((s) => s.title.toLowerCase().includes(needle)) : sessions
     const byWorkspace = new Map<string, typeof sessions>()
     for (const session of matches) {
-      const key = session.workspaceDir ?? ""
-      const list = byWorkspace.get(key)
+      const list = byWorkspace.get(session.workspaceDir)
       if (list) list.push(session)
-      else byWorkspace.set(key, [session])
+      else byWorkspace.set(session.workspaceDir, [session])
     }
     return [...byWorkspace.entries()]
   }, [sessions, query])
@@ -107,7 +106,7 @@ export function SessionNav() {
           </p>
         ) : (
           groups.map(([workspaceDir, items]) => (
-            <div key={workspaceDir || "none"}>
+            <div key={workspaceDir}>
               <div className="truncate px-2 pt-1 pb-0.5 text-xs text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
                 {workspaceDir ? baseName(workspaceDir) : "No workspace"}
               </div>

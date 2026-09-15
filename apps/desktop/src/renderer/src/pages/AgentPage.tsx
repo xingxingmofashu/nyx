@@ -57,22 +57,18 @@ export function AgentPage() {
   const restored = useRef(false)
 
   useEffect(() => {
-    void init()
-    // Restore the last opened session once (StrictMode-safe).
+    // Restore the last opened session of the current workspace once (StrictMode-safe).
     if (restored.current) return
     restored.current = true
     void (async () => {
+      await init()
       const store = useSessionsStore.getState()
       await store.load()
-      await store.restoreLast()
+      await store.restoreLast(useAgentStore.getState().workspaceDir)
     })()
   }, [init])
 
   const title = (activeId ? sessions.find((s) => s.id === activeId)?.title : undefined) ?? "New chat"
-
-  useEffect(() => {
-    void init()
-  }, [init])
 
   const busy = status === "submitted" || status === "streaming"
 
@@ -84,8 +80,12 @@ export function AgentPage() {
   }
 
   const pickWorkspace = async () => {
+    if (busy) return
     const dir = await window.nyx.dialog.selectDirectory()
-    if (dir) await setWorkspace(dir)
+    if (!dir) return
+    // Sessions are per workspace, so start a fresh chat in the new one.
+    await setWorkspace(dir)
+    createSession()
   }
 
   const reset = () => {
@@ -109,7 +109,7 @@ export function AgentPage() {
               {configured ? brainLabel : "No master brain configured"}
             </CardDescription>
             <CardAction className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => void pickWorkspace()}>
+              <Button variant="outline" size="sm" onClick={() => void pickWorkspace()} disabled={busy}>
                 <FolderOpen data-icon="inline-start" />
                 {workspaceDir ? baseName(workspaceDir) : "Choose workspace"}
               </Button>

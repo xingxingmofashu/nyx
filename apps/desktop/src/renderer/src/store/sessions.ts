@@ -5,18 +5,20 @@ import { newSessionId, sessionTitle, messagesToMarkdown } from "../lib/sessions"
 import { useAgentStore } from "./agent"
 
 interface SessionsState {
-  /** Saved sessions, newest first (pinned on top). */
+  /** Saved sessions across all workspaces (the sidebar groups them). */
   sessions: ChatSessionMeta[]
-  /** Id of the open session; null for an unsaved ("draft") chat. */
+  /** Id of the open chat; a fresh id for an unsaved draft (names its audio). */
   activeId: string | null
   /** True while a turn is streaming; switching sessions is disallowed then. */
   busy: boolean
   load: () => Promise<void>
-  /** Open the last session the user had open, if any. */
-  restoreLast: () => Promise<void>
-  /** Start a fresh, unsaved chat. */
-  create: () => Promise<void>
+  /** Open the last session of `workspaceDir` the user had open, if any. */
+  restoreLast: (workspaceDir: string) => Promise<void>
+  /** Start a fresh, unsaved chat in the current workspace. */
+  create: () => void
   open: (id: string) => Promise<void>
+  /** Id of the current chat, generating one for an unsaved draft. */
+  ensureId: () => string
   /** Rename a saved session. */
   rename: (id: string, title: string) => Promise<void>
   setPinned: (id: string, pinned: boolean) => Promise<void>
@@ -37,64 +39,91 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
     set({ sessions: await window.nyx.sessions.list() })
   },
 
-  restoreLast: async () => {
-    const active = await window.nyx.sessions.getActive()
+  restoreLast: async (workspaceDir) => {
+    const active = await window.nyx.sessions.getActive(workspaceDir)
     if (active) await get().open(active)
   },
 
-  create: async () => {
+  create: () => {
     if (get().busy) return
     agentChat.messages = []
-    set({ activeId: null })
-    await window.nyx.sessions.setActive(null)
+    set({ activeId: newSessionId() })
   },
 
   open: async (id) => {
     if (get().busy) return
-    const session = await window.nyx.sessions.get(id)
+    const meta = get().sessions.find((session) => session.id === id)
+    if (!meta) {
+      await get().load()
+      return
+    }
+    // A session belongs to its workspace: switch (and persist) so the coding
+    // tools and generated audio land in the same place the session did.
+    if (meta.workspaceDir !== useAgentStore.getState().workspaceDir) {
+      await useAgentStore.getState().setWorkspace(meta.workspaceDir)
+    }
+    const session = await window.nyx.sessions.get(meta.workspaceDir, id)
     if (!session) {
       await get().load()
       return
     }
     agentChat.messages = session.messages
     set({ activeId: id })
-    await window.nyx.sessions.setActive(id)
+    await window.nyx.sessions.setActive(meta.workspaceDir, id)
+  },
+
+  ensureId: () => {
+    const current = get().activeId
+    if (current) return current
+    const id = newSessionId()
+    set({ activeId: id })
+    return id
   },
 
   rename: async (id, title) => {
-    const meta = await window.nyx.sessions.rename(id, title)
-    if (meta) await get().load()
+    const meta = get().sessions.find((session) => session.id === id)
+    if (!meta) return
+    const next = await window.nyx.sessions.rename(meta.workspaceDir, id, title)
+    if (next) await get().load()
   },
 
   setPinned: async (id, pinned) => {
-    await window.nyx.sessions.setPinned(id, pinned)
+    const meta = get().sessions.find((session) => session.id === id)
+    if (!meta) return
+    await window.nyx.sessions.setPinned(meta.workspaceDir, id, pinned)
     await get().load()
   },
 
   duplicate: async (id) => {
-    const session = await window.nyx.sessions.get(id)
+    const meta = get().sessions.find((session) => session.id === id)
+    if (!meta) return
+    const session = await window.nyx.sessions.get(meta.workspaceDir, id)
     if (!session) return
     await window.nyx.sessions.save({
       id: newSessionId(),
       title: `${session.title} (copy)`,
-      ...(session.workspaceDir !== undefined ? { workspaceDir: session.workspaceDir } : {}),
+      workspaceDir: meta.workspaceDir,
       messages: session.messages,
     })
     await get().load()
   },
 
   remove: async (id) => {
-    await window.nyx.sessions.remove(id)
+    const meta = get().sessions.find((session) => session.id === id)
+    if (!meta) return
+    await window.nyx.sessions.remove(meta.workspaceDir, id)
     if (get().activeId === id) {
       agentChat.messages = []
       set({ activeId: null })
-      await window.nyx.sessions.setActive(null)
+      await window.nyx.sessions.setActive(meta.workspaceDir, null)
     }
     await get().load()
   },
 
   exportSession: async (id) => {
-    const session = await window.nyx.sessions.get(id)
+    const meta = get().sessions.find((session) => session.id === id)
+    if (!meta) return null
+    const session = await window.nyx.sessions.get(meta.workspaceDir, id)
     if (!session) return null
     const safeTitle = session.title.replace(/[\\/:*?"<>|]/g, "-") || "session"
     return window.nyx.dialog.saveFile({
@@ -107,19 +136,18 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
   persist: async () => {
     const messages = agentChat.messages
     if (!messages.some((message) => message.role === "user")) return
-    const { activeId, sessions } = get()
-    const id = activeId ?? newSessionId()
-    const existing = sessions.find((session) => session.id === id)
+    const id = get().activeId ?? newSessionId()
+    const existing = get().sessions.find((session) => session.id === id)
     const workspaceDir = useAgentStore.getState().workspaceDir
     const request: ChatSessionSaveRequest = {
       id,
       title: existing?.title ?? sessionTitle(messages),
+      workspaceDir,
       messages,
-      ...(workspaceDir ? { workspaceDir } : {}),
     }
     await window.nyx.sessions.save(request)
     set({ activeId: id })
-    await window.nyx.sessions.setActive(id)
+    await window.nyx.sessions.setActive(workspaceDir, id)
     await get().load()
   },
 }))

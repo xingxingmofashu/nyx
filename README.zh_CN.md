@@ -53,7 +53,7 @@ nyx text-to-speech "<文本>" --model "<id>" [-o out.wav]          # 文生语�
 
 agent TUI（由 `@ai-sdk/tui` 提供界面）：输入消息回车发送，内联工具审批用 `y`/`n` 回答，`Esc`（或 Ctrl+C）退出。回复以 markdown 流式显示，工具卡片与推理内容内联展示。
 
-会话保存在 `~/.nyx/sessions*`，与桌面端共用。`nyx --resume` 会列出当前工作区的会话，把选中的历史作为上下文喂给模型（终端界面无法回放历史，只显示新回复）。
+会话按工作区保存在 `~/.nyx/sessions/<workspace>/`，与桌面端共用。`nyx --resume` 会列出当前工作区的会话，把选中的历史作为上下文喂给模型（终端界面无法回放历史，只显示新回复）。
 
 ### 语音输入（桌面端）
 
@@ -87,7 +87,7 @@ agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型
 
 ### 本地模型作为工具
 
-开启 `agent.tools.localModels`（或 `NYX_AGENT_LOCAL_MODELS=1`）后，本机已安装的 ONNX 模型也会暴露给主脑：`local_image_to_image` 对工作区内的图片做变换并把结果写回（需要 `y/n` 审批）；`local_text_to_speech` 合成 WAV 写入工作区（需要 `y/n` 审批）。
+开启 `agent.tools.localModels`（或 `NYX_AGENT_LOCAL_MODELS=1`）后，本机已安装的 ONNX 模型也会暴露给主脑：`local_image_to_image` 对工作区内的图片做变换并把结果写回（需要 `y/n` 审批）；`local_text_to_speech` 合成 WAV 写入该工作区的会话目录（需要 `y/n` 审批）。
 
 ```json
 {
@@ -112,7 +112,7 @@ bun run dev:desktop                   # 启动 Electron 应用
 
 打包使用 `bun run --cwd apps/desktop make`。
 
-Agent 页面会保存对话历史（侧栏 **Chats** 分组，按工作区分组）：新建/切换/重命名/置顶/复制/导出/删除、标题搜索，并在启动时恢复上次的会话。生成的语音 WAV 写入工作区，会话里只引用路径，因此会话文件很小；播放时按需重新读取该文件。
+Agent 页面会保存对话历史（侧栏 **Chats** 分组，按工作区分组）：新建/切换/重命名/置顶/复制/导出/删除、标题搜索，并在启动时恢复上次的会话。生成的语音 WAV 写入该工作区的会话目录，会话里只引用路径，因此会话文件很小；播放时按需重新读取该文件。
 
 ## 开发
 

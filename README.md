@@ -53,7 +53,7 @@ nyx text-to-speech "<text>" --model "<id>" [-o out.wav]          # text-to-speec
 
 In the agent TUI (powered by `@ai-sdk/tui`): type a message and press Enter to send, `y`/`n` answers the inline tool-approval prompt, and `Esc` (or Ctrl+C) exits. Replies stream in as markdown, with tool cards and reasoning sections.
 
-Sessions are saved under `~/.nyx/sessions*` and shared with the desktop app. `nyx --resume` lists the sessions for the current workspace and feeds the chosen one to the model as context (the terminal UI cannot re-render past turns, so only new replies are shown).
+Sessions are saved per workspace under `~/.nyx/sessions/<workspace>/` and shared with the desktop app. `nyx --resume` lists the sessions for the current workspace and feeds the chosen one to the model as context (the terminal UI cannot re-render past turns, so only new replies are shown).
 
 ### Voice input (desktop)
 
@@ -87,7 +87,7 @@ The agent loop runs in the local server (`POST /v1/agent`), so API calls go out 
 
 ### Local models as tools
 
-With `agent.tools.localModels` enabled (or `NYX_AGENT_LOCAL_MODELS=1`), the locally installed ONNX models are also exposed to the brain: `local_image_to_image` transforms an image from the workspace and writes the result back (`y/n` approval), and `local_text_to_speech` synthesizes a WAV into the workspace (`y/n` approval).
+With `agent.tools.localModels` enabled (or `NYX_AGENT_LOCAL_MODELS=1`), the locally installed ONNX models are also exposed to the brain: `local_image_to_image` transforms an image from the workspace and writes the result back (`y/n` approval), and `local_text_to_speech` synthesizes a WAV into the workspace's session folder (`y/n` approval).
 
 ```json
 {
@@ -112,7 +112,7 @@ bun run dev:desktop                   # start the Electron app
 
 Package it with `bun run --cwd apps/desktop make`.
 
-The Agent page keeps a chat history (sidebar **Chats**, grouped by workspace): new/switch/rename/pin/duplicate/export/delete, title search, and the last session is restored on launch. Generated WAV replies are written into the workspace and only referenced from the transcript, so sessions stay small; playback re-reads the file on demand.
+The Agent page keeps a chat history (sidebar **Chats**, grouped by workspace): new/switch/rename/pin/duplicate/export/delete, title search, and the last session is restored on launch. Generated WAV replies are written into the workspace's session folder and only referenced from the transcript, so sessions stay small; playback re-reads the file on demand.
 
 ## Development
 

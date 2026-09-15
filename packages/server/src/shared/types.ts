@@ -76,6 +76,11 @@ export interface AgentRequest {
   /** Directory all file/bash tools are confined to; defaults to the server cwd. */
   workspaceDir?: string
   /**
+   * Client-generated session id; names generated speech clips so deleting the
+   * session also deletes its audio. Omitted for non-session clients.
+   */
+  sessionId?: string
+  /**
    * When true, local speech tools inline the generated audio in their result so
    * the client can play it (e.g. the desktop chat). Omitted, they play it aloud
    * on the server machine instead (for terminal clients).

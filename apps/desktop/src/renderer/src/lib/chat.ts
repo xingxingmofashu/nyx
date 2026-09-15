@@ -1,6 +1,7 @@
 import { Chat } from "@ai-sdk/react"
 import { lastAssistantMessageIsCompleteWithApprovalResponses, type ChatTransport, type UIMessage, type UIMessageChunk } from "ai"
 import { useAgentStore } from "../store/agent"
+import { useSessionsStore } from "../store/sessions"
 
 /** Unique-ish id without relying on a secure-context `crypto.randomUUID`. */
 function streamId(): string {
@@ -73,6 +74,8 @@ class IpcChatTransport implements ChatTransport<UIMessage> {
 export const agentChat = new Chat<UIMessage>({
   transport: new IpcChatTransport(() => ({
     workspaceDir: useAgentStore.getState().workspaceDir || undefined,
+    // Names generated speech clips so a deleted session takes its audio with it.
+    sessionId: useSessionsStore.getState().ensureId(),
     // The desktop can render audio inline, so speech tools return it instead of
     // playing it on the server machine.
     inlineAudio: true,

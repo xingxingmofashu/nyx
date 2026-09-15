@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { baseName } from "../../lib/format"
 import { ToolCardShell, type ToolPartState } from "./ToolCallCard"
 
 /** Output shape of the `local_text_to_speech` agent tool. */
@@ -26,11 +27,16 @@ function useSpeechDataUrl(output: SpeechOutput | undefined): { url?: string; mis
     }
     if (!path) return
     let cancelled = false
-    void window.nyx.files.readDataUrl(path).then((dataUrl) => {
-      if (cancelled) return
-      if (dataUrl) setUrl(dataUrl)
-      else setMissing(true)
-    })
+    void window.nyx.files
+      .readDataUrl(path)
+      .then((dataUrl) => {
+        if (cancelled) return
+        if (dataUrl) setUrl(dataUrl)
+        else setMissing(true)
+      })
+      .catch(() => {
+        if (!cancelled) setMissing(true)
+      })
     return () => {
       cancelled = true
     }
@@ -74,7 +80,7 @@ export function SpeechCard({ toolCallId, name, state, output, errorText }: Speec
   const { url: dataUrl, missing } = useSpeechDataUrl(data)
   const url = useObjectUrl(dataUrl)
   const detail = data?.path
-    ? `${data.path}${data.seconds ? ` · ${data.seconds}s` : ""}${data.samplingRate ? ` @ ${data.samplingRate} Hz` : ""}`
+    ? `${baseName(data.path)}${data.seconds ? ` · ${data.seconds}s` : ""}${data.samplingRate ? ` @ ${data.samplingRate} Hz` : ""}`
     : undefined
 
   return (

@@ -30,7 +30,12 @@ export class AgentService {
     const tools = [
       ...createAgentTools(workspaceDir),
       ...(settings.tools?.localModels
-        ? createModelTools({ cache: this.cache, workspaceDir, inlineAudio: request.inlineAudio })
+        ? createModelTools({
+            cache: this.cache,
+            workspaceDir,
+            sessionId: request.sessionId,
+            inlineAudio: request.inlineAudio,
+          })
         : []),
     ]
     return streamAgent({
