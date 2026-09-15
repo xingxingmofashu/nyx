@@ -113,8 +113,8 @@ export interface NyxApi {
     setSettings: (patch: Settings) => Promise<Settings>
   }
   sessions: {
-    /** All sessions across workspaces (the sidebar groups them). */
-    list: () => Promise<ChatSessionMeta[]>
+    /** Sessions of one workspace (the sidebar is scoped to the active one). */
+    list: (workspaceDir: string) => Promise<ChatSessionMeta[]>
     get: (workspaceDir: string, id: string) => Promise<ChatSession | null>
     save: (session: ChatSessionSaveRequest) => Promise<ChatSessionMeta>
     rename: (workspaceDir: string, id: string, title: string) => Promise<ChatSessionMeta | null>

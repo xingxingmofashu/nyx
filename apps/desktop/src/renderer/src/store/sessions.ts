@@ -6,7 +6,7 @@ import { agentChat } from "../lib/chat"
 import { useAgentStore } from "./agent"
 
 interface SessionsState {
-  /** Saved sessions across all workspaces (the sidebar groups them). */
+  /** Saved sessions of the active workspace (the sidebar lists them flat). */
   sessions: ChatSessionMeta[]
   /** Id of the open chat; a fresh id for an unsaved draft (names its audio). */
   activeId: string | null
@@ -37,7 +37,10 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
   busy: false,
 
   load: async () => {
-    set({ sessions: await window.nyx.sessions.list() })
+    // Chats created before a workspace is picked persist to the `_default`
+    // workspace (workspaceDir ""), so list that rather than hiding them.
+    const workspaceDir = useAgentStore.getState().workspaceDir
+    set({ sessions: await window.nyx.sessions.list(workspaceDir) })
   },
 
   restoreLast: async (workspaceDir) => {
@@ -57,11 +60,6 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
     if (!meta) {
       await get().load()
       return
-    }
-    // A session belongs to its workspace: switch (and persist) so the coding
-    // tools and generated audio land in the same place the session did.
-    if (meta.workspaceDir !== useAgentStore.getState().workspaceDir) {
-      await useAgentStore.getState().setWorkspace(meta.workspaceDir)
     }
     const session = await window.nyx.sessions.get(meta.workspaceDir, id)
     if (!session) {

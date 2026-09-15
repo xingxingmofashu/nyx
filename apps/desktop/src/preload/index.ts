@@ -63,7 +63,8 @@ const api: NyxApi = {
     setSettings: (patch) => ipcRenderer.invoke(IPC.config.setSettings, patch),
   },
   sessions: {
-    list: (): Promise<ChatSessionMeta[]> => ipcRenderer.invoke(IPC.sessions.list),
+    list: (workspaceDir: string): Promise<ChatSessionMeta[]> =>
+      ipcRenderer.invoke(IPC.sessions.list, workspaceDir),
     get: (workspaceDir: string, id: string) =>
       ipcRenderer.invoke(IPC.sessions.get, workspaceDir, id),
     save: (session: ChatSessionSaveRequest) =>

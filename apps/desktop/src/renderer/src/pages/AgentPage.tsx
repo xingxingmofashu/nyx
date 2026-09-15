@@ -83,8 +83,10 @@ export function AgentPage() {
     if (busy) return
     const dir = await window.nyx.dialog.selectDirectory()
     if (!dir) return
-    // Sessions are per workspace, so start a fresh chat in the new one.
+    // Sessions are per workspace: switch, reload the sidebar for the new one,
+    // and start a fresh chat.
     await setWorkspace(dir)
+    await useSessionsStore.getState().load()
     createSession()
   }
 

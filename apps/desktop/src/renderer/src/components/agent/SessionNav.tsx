@@ -13,6 +13,7 @@ import {
   Trash2,
 } from "lucide-react"
 import { baseName, relativeTime } from "@nyx/shared"
+import { useAgentStore } from "../../store/agent"
 import { useSessionsStore } from "../../store/sessions"
 import {
   SidebarGroup,
@@ -33,9 +34,10 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu"
 
-/** Sidebar section listing saved agent chats, grouped by workspace. */
+/** Sidebar section listing saved agent chats for the active workspace. */
 export function SessionNav() {
   const navigate = useNavigate()
+  const workspaceDir = useAgentStore((s) => s.workspaceDir)
   const sessions = useSessionsStore((s) => s.sessions)
   const activeId = useSessionsStore((s) => s.activeId)
   const busy = useSessionsStore((s) => s.busy)
@@ -53,16 +55,9 @@ export function SessionNav() {
   const renameInput = useRef<HTMLInputElement>(null)
   const renameOpenedAt = useRef(0)
 
-  const groups = useMemo(() => {
+  const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    const matches = needle ? sessions.filter((s) => s.title.toLowerCase().includes(needle)) : sessions
-    const byWorkspace = new Map<string, typeof sessions>()
-    for (const session of matches) {
-      const list = byWorkspace.get(session.workspaceDir)
-      if (list) list.push(session)
-      else byWorkspace.set(session.workspaceDir, [session])
-    }
-    return [...byWorkspace.entries()]
+    return needle ? sessions.filter((s) => s.title.toLowerCase().includes(needle)) : sessions
   }, [sessions, query])
 
   const startRename = (id: string, title: string) => {
@@ -84,7 +79,7 @@ export function SessionNav() {
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Chats</SidebarGroupLabel>
+      <SidebarGroupLabel>Chats{workspaceDir ? ` · ${baseName(workspaceDir)}` : ""}</SidebarGroupLabel>
       <SidebarGroupAction onClick={() => void create()} title="New chat" disabled={busy}>
         <Plus />
       </SidebarGroupAction>
@@ -99,18 +94,13 @@ export function SessionNav() {
           />
         </div>
 
-        {groups.length === 0 ? (
+        {filtered.length === 0 ? (
           <p className="px-2 py-1 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
             {query ? "No matching chats" : "No chats yet"}
           </p>
         ) : (
-          groups.map(([workspaceDir, items]) => (
-            <div key={workspaceDir}>
-              <div className="truncate px-2 pt-1 pb-0.5 text-xs text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden">
-                {workspaceDir ? baseName(workspaceDir) : "No workspace"}
-              </div>
-              <SidebarMenu>
-                {items.map((session) => (
+          <SidebarMenu>
+            {filtered.map((session) => (
                   <SidebarMenuItem key={session.id}>
                     {renamingId === session.id ? (
                       <SidebarInput
@@ -185,10 +175,8 @@ export function SessionNav() {
                       </>
                     )}
                   </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </div>
-          ))
+            ))}
+          </SidebarMenu>
         )}
       </SidebarGroupContent>
     </SidebarGroup>

@@ -96,7 +96,7 @@ export function registerIpc(services: Services): void {
   ipcMain.handle(IPC.config.setSettings, (_e, patch: Settings) => setSettings(patch))
 
   // --- Sessions ---
-  ipcMain.handle(IPC.sessions.list, () => listSessions())
+  ipcMain.handle(IPC.sessions.list, (_e, workspaceDir: string) => listSessions(workspaceDir))
   ipcMain.handle(IPC.sessions.get, (_e, workspaceDir: string, id: string) =>
     getSession(workspaceDir, id) ?? null,
   )
