@@ -22,6 +22,8 @@ const SESSION_ID_RE = /^[A-Za-z0-9_-]+$/;
  *     <id>.jsonl   transcript (append-mostly)
  *     active       last-opened session id (plain text)
  *     audio/       generated speech clips (`<id>-<model>.wav`)
+ *     images/      generated image transforms (`<id>-<input>-<model>.png`)
+ *     attachments/ user-uploaded chat attachments (`<id>-<name>`)
  *
  * Every file has a single writer, so there is no shared mutable index to guard
  * with cross-process locks.
@@ -63,6 +65,16 @@ export function workspaceSessionsDir(workspaceDir: string): string {
 /** Dir holding one workspace's generated speech clips. */
 export function workspaceAudioDir(workspaceDir: string): string {
   return join(workspaceSessionsDir(workspaceDir), "audio");
+}
+
+/** Dir holding one workspace's generated image transforms. */
+export function workspaceImageDir(workspaceDir: string): string {
+  return join(workspaceSessionsDir(workspaceDir), "images");
+}
+
+/** Dir holding one workspace's user-uploaded chat attachments. */
+export function workspaceAttachmentsDir(workspaceDir: string): string {
+  return join(workspaceSessionsDir(workspaceDir), "attachments");
 }
 
 /** Metadata sidecar for one session. */
@@ -272,19 +284,20 @@ export function setSessionPinned(
   return next;
 }
 
-/** Delete a session's transcript, audio, and metadata; clears `active` when it matched. */
+/** Delete a session's transcript, generated media, and metadata; clears `active` when it matched. */
 export function removeSession(workspaceDir: string, id: string): void {
   if (!SESSION_ID_RE.test(id)) return;
   const canonical = canonicalWorkspaceDir(workspaceDir);
   rmSync(transcriptPath(canonical, id), { force: true });
   rmSync(metaPath(canonical, id), { force: true });
-  removeAudioFiles(canonical, id);
+  removeSessionFiles(workspaceAudioDir(canonical), id);
+  removeSessionFiles(workspaceImageDir(canonical), id);
+  removeSessionFiles(workspaceAttachmentsDir(canonical), id);
   if (getActiveSessionId(canonical) === id) clearActiveSessionId(canonical);
 }
 
-/** Delete every clip the session generated (named `<id>-<model>.wav`). */
-function removeAudioFiles(workspaceDir: string, id: string): void {
-  const dir = workspaceAudioDir(workspaceDir);
+/** Delete every file a session generated in `dir` (named `<id>-…`). */
+function removeSessionFiles(dir: string, id: string): void {
   let names: string[];
   try {
     names = readdirSync(dir);

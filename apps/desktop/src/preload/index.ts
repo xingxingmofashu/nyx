@@ -5,6 +5,7 @@ import type {
   ChatSessionMeta,
   ChatSessionSaveRequest,
   ChatStreamEvent,
+  AttachmentInput,
   AudioResult,
   AudioSamples,
   ImageBytes,
@@ -97,6 +98,8 @@ const api: NyxApi = {
   files: {
     readDataUrl: (path: string): Promise<string | null> =>
       ipcRenderer.invoke(IPC.files.readDataUrl, path),
+    saveAttachment: (input: AttachmentInput & { workspaceDir: string; sessionId: string }) =>
+      ipcRenderer.invoke(IPC.files.saveAttachment, input),
   },
   window: {
     minimize: () => ipcRenderer.send(IPC.window.minimize),

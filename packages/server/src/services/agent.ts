@@ -2,6 +2,7 @@ import { resolve } from "node:path"
 import { resolveModelConfig, streamAgent, type ResolvedAgentModel } from "@nyx/agent"
 import { getAgentSettings } from "@nyx/config"
 import { createAgentTools } from "../lib/agent-tools"
+import { withAttachmentNotes } from "../lib/attachments"
 import { createKnowledgeTools } from "../lib/knowledge-tools"
 import { createModelTools } from "../lib/model-tools"
 import { ProviderCache } from "../lib/provider-cache"
@@ -47,7 +48,7 @@ export class AgentService {
     return streamAgent({
       model,
       tools,
-      messages: request.messages,
+      messages: withAttachmentNotes(request.messages),
       workspaceDir,
       systemPrompt: settings.systemPrompt,
       maxSteps: settings.maxSteps,

@@ -16,10 +16,12 @@ import {
   writeSettings,
 } from "@nyx/config"
 import { IPC } from "../shared/ipc"
+import { saveAttachment } from "./lib/attachment"
 import { readGeneratedFileDataUrl } from "./lib/generated-file"
 import { listProviderModels } from "./lib/provider-models"
 import type {
   AgentProviderEntry,
+  AttachmentInput,
   AudioSamples,
   AppEnvironment,
   ChatSendRequest,
@@ -169,6 +171,10 @@ export function registerIpc(services: Services): void {
 
   // --- Files ---
   ipcMain.handle(IPC.files.readDataUrl, (_e, path: string) => readGeneratedFileDataUrl(path))
+  ipcMain.handle(
+    IPC.files.saveAttachment,
+    (_e, input: AttachmentInput & { workspaceDir: string; sessionId: string }) => saveAttachment(input),
+  )
 
   // --- Window controls (frameless) ---
   ipcMain.on(IPC.window.minimize, (e) =>

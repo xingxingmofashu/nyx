@@ -3,11 +3,13 @@ import { Bot, FolderOpen, RotateCcw, Settings2 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useChat } from "@ai-sdk/react"
 import { getToolName, isReasoningUIPart, isToolUIPart } from "ai"
+import { newId } from "@nyx/shared"
 import { agentChat } from "../lib/chat"
 import { baseName } from "../lib/format"
 import { useAgentStore } from "../store/agent"
 import { useModelsStore } from "../store/models"
 import { useSessionsStore } from "../store/sessions"
+import type { ChatMessageMetadata, SavedAttachment } from "../../../shared/types"
 import { Button } from "../components/ui/button"
 import {
   Card,
@@ -34,13 +36,18 @@ import {
 } from "../components/ui/message-scroller"
 import { Message, MessageContent } from "../components/ui/message"
 import { Bubble, BubbleContent } from "../components/ui/bubble"
-import { ChatComposer } from "../components/chat/ChatComposer"
+import { ChatComposer, type PendingAttachment } from "../components/chat/ChatComposer"
+import { AttachmentStrip } from "../components/chat/AttachmentStrip"
 import { VoiceInputButton } from "../components/chat/VoiceInputButton"
 import { MarkdownText } from "../components/chat/MarkdownText"
 import { StreamingMarker } from "../components/chat/StreamingMarker"
 import { ToolCallCard, type ToolPartState } from "../components/agent/ToolCallCard"
 import { SpeechCard } from "../components/agent/SpeechCard"
+import { ImageCard } from "../components/agent/ImageCard"
 import { ApprovalCard } from "../components/agent/ApprovalCard"
+
+/** How many images one message may carry (keeps the composer tidy). */
+const MAX_ATTACHMENTS = 5
 
 export function AgentPage() {
   const { messages, sendMessage, status, stop, error, clearError, addToolApprovalResponse } =
@@ -55,6 +62,9 @@ export function AgentPage() {
   const sessions = useSessionsStore((s) => s.sessions)
   const createSession = useSessionsStore((s) => s.create)
   const [input, setInput] = useState("")
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([])
+  const [attachError, setAttachError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
   const restored = useRef(false)
   const navigate = useNavigate()
 
@@ -74,11 +84,81 @@ export function AgentPage() {
 
   const busy = status === "submitted" || status === "streaming"
 
+  /** Keep object URLs alive until send/remove so unmount never leaks them. */
+  const attachmentsRef = useRef(attachments)
+  attachmentsRef.current = attachments
+  useEffect(() => {
+    return () => {
+      for (const file of attachmentsRef.current) URL.revokeObjectURL(file.url)
+    }
+  }, [])
+
+  const addAttachments = (files: File[]) => {
+    const images = files.filter((file) => file.type.startsWith("image/"))
+    if (images.length === 0) return
+    const room = MAX_ATTACHMENTS - attachments.length
+    if (room <= 0) {
+      setAttachError(`At most ${MAX_ATTACHMENTS} images per message`)
+      return
+    }
+    setAttachError(images.length > room ? `At most ${MAX_ATTACHMENTS} images per message` : null)
+    setAttachments((prev) => [
+      ...prev,
+      ...images.slice(0, Math.max(0, MAX_ATTACHMENTS - prev.length)).map((file) => ({
+        id: newId(),
+        name: file.name || "image",
+        url: URL.createObjectURL(file),
+        file,
+      })),
+    ])
+  }
+
+  const removeAttachment = (id: string) => {
+    const removed = attachments.find((file) => file.id === id)
+    if (removed) URL.revokeObjectURL(removed.url)
+    setAttachments((prev) => prev.filter((file) => file.id !== id))
+    setAttachError(null)
+  }
+
   const submit = () => {
     const text = input.trim()
-    if (!text || busy) return
-    setInput("")
-    void sendMessage({ text })
+    if (busy || uploading || (!text && attachments.length === 0)) return
+    const pending = attachments
+    setAttachError(null)
+
+    void (async () => {
+      // Copy attachments into the workspace first: the agent's tools read files
+      // by workspace-relative path, and the brain only needs that path.
+      let saved: SavedAttachment[] = []
+      if (pending.length > 0) {
+        setUploading(true)
+        try {
+          saved = await Promise.all(
+            pending.map(async (file) => {
+              const data = new Uint8Array(await file.file.arrayBuffer())
+              return window.nyx.files.saveAttachment({
+                workspaceDir: useAgentStore.getState().workspaceDir,
+                sessionId: useSessionsStore.getState().ensureId(),
+                data,
+                name: file.name,
+                mimeType: file.file.type || "image/png",
+              })
+            }),
+          )
+        } catch (error) {
+          setAttachError(error instanceof Error ? error.message : String(error))
+          return
+        } finally {
+          setUploading(false)
+        }
+      }
+
+      setInput("")
+      setAttachments([])
+      for (const file of pending) URL.revokeObjectURL(file.url)
+      const metadata: ChatMessageMetadata = saved.length > 0 ? { attachments: saved } : {}
+      await sendMessage({ text, metadata })
+    })()
   }
 
   const pickWorkspace = async () => {
@@ -158,12 +238,22 @@ export function AgentPage() {
                         status === "streaming" &&
                         messageIndex === messages.length - 1 &&
                         message.role === "assistant"
+                      const meta = message.metadata as ChatMessageMetadata | undefined
+                      const userAttachments =
+                        message.role === "user" ? (meta?.attachments ?? []) : []
                       return (
                         <MessageScrollerItem
                           key={message.id}
                           messageId={message.id}
                           scrollAnchor={message.role === "user"}
                         >
+                          {userAttachments.length > 0 && (
+                            <Message align="end">
+                              <MessageContent>
+                                <AttachmentStrip attachments={userAttachments} />
+                              </MessageContent>
+                            </Message>
+                          )}
                           {message.parts.map((part, index) => {
                             if (part.type === "text") {
                               return (
@@ -240,6 +330,18 @@ export function AgentPage() {
                               )
                             }
 
+                            if (name === "local_image_to_image") {
+                              return (
+                                <ImageCard
+                                  key={part.toolCallId}
+                                  name={name}
+                                  state={part.state as ToolPartState}
+                                  output={part.state === "output-available" ? part.output : undefined}
+                                  errorText={part.state === "output-error" ? part.errorText : undefined}
+                                />
+                              )
+                            }
+
                             return (
                               <ToolCallCard
                                 key={part.toolCallId}
@@ -265,8 +367,10 @@ export function AgentPage() {
               </MessageScroller>
             )}
           </CardContent>
-          {error && (
-            <p className="border-t px-4 py-2 text-xs text-destructive">{error.message}</p>
+          {(error || attachError) && (
+            <p className="border-t px-4 py-2 text-xs text-destructive">
+              {attachError ?? error?.message}
+            </p>
           )}
           <ChatComposer
             value={input}
@@ -274,8 +378,11 @@ export function AgentPage() {
             onSend={submit}
             onAbort={() => stop()}
             streaming={busy}
-            disabled={!configured || busy}
+            disabled={!configured || busy || uploading}
             placeholder={placeholder}
+            attachments={attachments}
+            onAttach={workspaceDir ? addAttachments : undefined}
+            onRemoveAttachment={removeAttachment}
             trailing={
               <VoiceInputButton
                 model={voiceModel}

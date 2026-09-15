@@ -57,6 +57,8 @@ export const IPC = {
   /** Read an agent-generated file (e.g. a spoken reply) back for playback. */
   files: {
     readDataUrl: "files:readDataUrl",
+    /** Copy a user-picked attachment into the workspace so agent tools can read it. */
+    saveAttachment: "files:saveAttachment",
   },
   window: {
     minimize: "window:minimize",

@@ -109,6 +109,24 @@ export type ModelIdRequest = z.infer<typeof ModelIdRequestSchema>;
  */
 export type { UIMessage, UIMessageChunk } from "@nyx/agent";
 
+/** One file copied into the workspace's session folder, referenced by a chat attachment. */
+export interface SavedAttachment {
+  /** Absolute path inside the workspace's session folder. */
+  path: string;
+  name: string;
+  mimeType: string;
+  size: number;
+}
+
+/**
+ * Metadata a client may put on a user UI message. Descriptors only — never the
+ * bytes — so a persisted transcript stays small; the server turns each entry
+ * into a workspace-path hint for the brain.
+ */
+export interface ChatMessageMetadata {
+  attachments?: SavedAttachment[];
+}
+
 /** Non-transcript options of POST /v1/agent; `messages` is validated by the AI SDK. */
 export const AgentOptionsSchema = z.object({
   /** Directory all file/bash tools are confined to; defaults to the server cwd. */

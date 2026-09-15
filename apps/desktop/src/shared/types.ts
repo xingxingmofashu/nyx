@@ -7,8 +7,10 @@
 import type {
   AudioResult,
   AudioSamples,
+  ChatMessageMetadata,
   ImageBytes,
   ImageResult,
+  SavedAttachment,
   TextToSpeechInput,
   TranscriptResult,
   UIMessage,
@@ -21,9 +23,11 @@ export type {
   AgentSettings,
   AudioResult,
   AudioSamples,
+  ChatMessageMetadata,
   ChatSessionMeta,
   ImageBytes,
   ImageResult,
+  SavedAttachment,
   TextToSpeechInput,
   TranscriptResult,
   UIMessage,
@@ -63,6 +67,13 @@ export interface SaveFileRequest {
   defaultPath?: string
   filters?: Array<{ name: string; extensions: string[] }>
   content: string
+}
+
+/** Bytes of one attachment the user attached to a chat message. */
+export interface AttachmentInput {
+  data: Uint8Array
+  name: string
+  mimeType: string
 }
 
 /** Read-only environment info for the Settings page. */
@@ -155,6 +166,8 @@ export interface NyxApi {
   files: {
     /** Read an agent-generated file (a workspace output or an audio clip) as a data URL; null if unavailable. */
     readDataUrl: (path: string) => Promise<string | null>
+    /** Copy an attachment into the workspace's session folder; resolves its absolute path. */
+    saveAttachment: (input: AttachmentInput & { workspaceDir: string; sessionId: string }) => Promise<SavedAttachment>
   }
   window: {
     minimize: () => void

@@ -1,9 +1,9 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, extname, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, extname, join, resolve } from "node:path";
 import { RawImage } from "@huggingface/transformers";
-import { workspaceAudioDir } from "@nyx/config";
+import { workspaceAudioDir, workspaceImageDir } from "@nyx/config";
 import { mimeFor } from "@nyx/shared";
 import {
   encodeWavPcm16,
@@ -14,14 +14,15 @@ import {
 import { z } from "zod/v4";
 import type { AgentTool, AgentToolSet } from "@nyx/agent";
 import { ProviderCache } from "./provider-cache";
-import { realpathNearest, workspacePath } from "./workspace";
+import { mediaPath } from "./workspace";
 
 /**
  * Expose locally installed ONNX models as agent tools: one tool per task, each
  * offering the installed models of that task as an enum. Providers come from
- * the shared cache, so the agent reuses loaded weights. Both tasks write files,
- * so they need approval: images go into the workspace, speech clips into the
- * workspace's session audio dir so deleting a session also deletes its clips.
+ * the shared cache, so the agent reuses loaded weights. Both tasks write into
+ * the workspace's session folder (images/, audio/) so deleting a session also
+ * deletes its generated files — and so the workspace itself stays untouched.
+ * Both need approval.
  */
 export function createModelTools(options: {
   cache: ProviderCache;
@@ -30,7 +31,9 @@ export function createModelTools(options: {
   inlineAudio?: boolean;
 }): AgentToolSet {
   const { cache, workspaceDir, sessionId, inlineAudio = false } = options;
-  const root = realpathNearest(resolve(workspaceDir));
+  // Not realpath-resolved: the session folder is keyed off this exact path
+  // (`workspaceKey`), and the app writes media with the same raw path.
+  const root = resolve(workspaceDir);
   const installed = list();
   const imageModels = installed.filter((m) => m.task === "image-to-image").map((m) => m.id);
   const speechModels = installed.filter((m) => m.task === "text-to-speech").map((m) => m.id);
@@ -41,16 +44,21 @@ export function createModelTools(options: {
     tools.push({
       name: "local_image_to_image",
       description:
-        `Transform an image with a local ONNX model and write the result into the workspace (requires approval). ` +
+        `Transform an image with a local ONNX model and save the result into the session's image folder, where the client shows it (requires approval). ` +
         `Installed image models: ${imageModels.join(", ")}.`,
       approval: "always",
       inputSchema: z.object({
         model: z.enum(imageModels as [string, ...string[]]).describe("Installed local image-to-image model id"),
-        inputPath: z.string().describe("Input image path relative to the workspace root"),
-        outputPath: z.string().optional().describe("Output path relative to the workspace root (default: <input>-<model>.png)"),
+        inputPath: z
+          .string()
+          .describe("Input image: a workspace-relative path, or the absolute path of an attachment"),
       }),
-      execute: async ({ model, inputPath, outputPath }, ctx) => {
-        const source = workspacePath(root, inputPath);
+      toModelOutput: (output) =>
+        typeof output === "string"
+          ? output
+          : `Wrote ${output.path} (${output.width}x${output.height})`,
+      execute: async ({ model, inputPath }, ctx) => {
+        const source = mediaPath(root, inputPath);
         const bytes = await readFile(source);
         const image = await RawImage.fromBlob(new Blob([bytes], { type: mimeFor(source, "image/png") }));
         throwIfAborted(ctx.signal);
@@ -59,12 +67,12 @@ export function createModelTools(options: {
         const output = await provider.generate(image);
         throwIfAborted(ctx.signal);
 
-        const target = outputPath
-          ? workspacePath(root, outputPath)
-          : uniqueOutputPath(workspacePath(root, defaultOutputPath(inputPath, model)));
+        const target = uniqueOutputPath(
+          join(workspaceImageDir(workspaceDir), imageFileName(sessionId, model, inputPath)),
+        );
         await mkdir(dirname(target), { recursive: true });
         await writeFile(target, await output.toSharp().png().toBuffer());
-        return `Wrote ${relative(root, target).split(sep).join("/")} (${output.width}x${output.height})`;
+        return { path: target, width: output.width, height: output.height };
       },
     });
   }
@@ -114,11 +122,17 @@ export function createModelTools(options: {
   return tools;
 }
 
-/** Default output path next to the input, suffixed with the model slug. */
-function defaultOutputPath(inputPath: string, model: string): string {
-  const stem = inputPath.replace(/\.[^./\\]+$/, "");
+/**
+ * Image file name: session id (so removing a session finds it) + input stem +
+ * model slug, e.g. `<id>-cat-4x_APISR_GRL_GAN.png`.
+ */
+function imageFileName(sessionId: string | undefined, model: string, inputPath: string): string {
   const slug = (model.split("/").pop() ?? model).replace(/[^a-zA-Z0-9_-]/g, "_");
-  return `${stem}-${slug}.png`;
+  const prefix = sessionId && /^[A-Za-z0-9_-]+$/.test(sessionId) ? `${sessionId}-` : "";
+  let stem = basename(inputPath).replace(/\.[^./\\]+$/, "").replace(/[^a-zA-Z0-9_-]/g, "_") || "image";
+  // An attachment's file name already starts with the session id; don't repeat it.
+  if (prefix && stem.startsWith(prefix)) stem = stem.slice(prefix.length);
+  return `${prefix}${stem}-${slug}.png`;
 }
 
 /** Clip file name, prefixed with the session id so removing a session finds it. */
