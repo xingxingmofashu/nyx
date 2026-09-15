@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
-import { ImageToImageRequestSchema } from "../shared/types"
-import { validationHook } from "../lib/validation"
+import { ImageToImageRequestSchema } from "../schema"
+import { validationHook } from "../validation"
 import type { ImageToImageService } from "../services/tasks/image-to-image"
 
 /** POST /v1/tasks/image-to-image — transform an image; responds with image bytes. */

@@ -17,8 +17,8 @@ export type { LLMTask } from "./types.ts";
 export { configureEnv, loadPipeline, clearModelCache } from "./runtime.ts";
 export type { ModelRuntimeOptions, ProgressInfo } from "./runtime.ts";
 
-export { list, pull, find } from "./models.ts";
-export { PullAbortedError } from "./models.ts";
+export { listModels, pullModel, findModel } from "./model.ts";
+export { PullAbortedError } from "./model.ts";
 export { encodeWavPcm16 } from "./wav.ts";
 
 export { OnnxImageToImageProvider } from "./tasks/image-to-image.ts";
@@ -29,5 +29,5 @@ export { OnnxAutomaticSpeechRecognitionProvider } from "./tasks/automatic-speech
 export type { OnnxAutomaticSpeechRecognitionOptions } from "./tasks/automatic-speech-recognition.ts";
 export { OnnxEmbeddingProvider } from "./tasks/feature-extraction.ts";
 export type { OnnxEmbeddingOptions } from "./tasks/feature-extraction.ts";
-export { createOnnxEmbeddingModel } from "./embedding-model.ts";
-export type { OnnxEmbeddingModelOptions } from "./embedding-model.ts";
+export { createOnnxEmbeddingModel } from "./embedding.ts";
+export type { OnnxEmbeddingModelOptions } from "./embedding.ts";

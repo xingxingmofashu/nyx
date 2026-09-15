@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
-import { TextToSpeechRequestSchema } from "../shared/types"
-import { validationHook } from "../lib/validation"
+import { TextToSpeechRequestSchema } from "../schema"
+import { validationHook } from "../validation"
 import type { TextToSpeechService } from "../services/tasks/text-to-speech"
 
 /** POST /v1/tasks/text-to-speech — synthesize speech; responds with WAV bytes. */

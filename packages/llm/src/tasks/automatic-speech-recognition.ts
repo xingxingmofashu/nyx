@@ -1,6 +1,6 @@
 import type { AutomaticSpeechRecognitionPipeline, DataType } from "@huggingface/transformers";
 import { loadPipeline } from "../runtime.ts";
-import { find } from "../models.ts";
+import { findModel } from "../model.ts";
 import type { AutomaticSpeechRecognitionOptions, TranscriptionProvider } from "../types.ts";
 
 export interface OnnxAutomaticSpeechRecognitionOptions {
@@ -23,7 +23,7 @@ export class OnnxAutomaticSpeechRecognitionProvider implements TranscriptionProv
     this.model = options.model;
     // Default to the dtype recorded when the model was pulled, so inference
     // matches what's cached instead of re-downloading another variant.
-    this.dtype = options.dtype ?? find(options.model)?.dtype;
+    this.dtype = options.dtype ?? findModel(options.model)?.dtype;
     this.cacheDir = options.cacheDir;
     this.allowDownload = options.allowDownload;
   }

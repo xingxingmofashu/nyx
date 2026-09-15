@@ -4,10 +4,10 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { log } from "@clack/prompts";
 import pkg from "../package.json";
-import { AgentCommand } from "./cli/commands/agent";
-import { ImageToImageCommand } from "./cli/commands/tasks/image-to-image";
-import { TextToSpeechCommand } from "./cli/commands/tasks/text-to-speech";
-import { ModelCommand } from "./cli/commands/model";
+import { AgentCommand } from "./cli/cmd/agent";
+import { ImageToImageCommand } from "./cli/cmd/tasks/image-to-image";
+import { TextToSpeechCommand } from "./cli/cmd/tasks/text-to-speech";
+import { ModelCommand } from "./cli/cmd/model";
 
 const cli = yargs(hideBin(process.argv))
   .parserConfiguration({ "populate--": true })

@@ -12,7 +12,7 @@ import { ImageToImageService } from "./services/tasks/image-to-image"
 import { KnowledgeService } from "./services/knowledge"
 import { ModelsService } from "./services/models"
 import { TextToSpeechService } from "./services/tasks/text-to-speech"
-import { ProviderCache } from "./lib/provider-cache"
+import { ProviderCache } from "./provider/cache"
 
 /** Service dependencies shared by every route, wired once per app instance. */
 export interface ServerServices {
@@ -37,7 +37,7 @@ const noopAuth: MiddlewareHandler = async (_c, next) => {
 
 /**
  * Assemble a fully-wired app: mount services under `/v1`. The return type is
- * intentionally inferred so `@nyx/server/rpc` can expose it to the Hono RPC client.
+ * intentionally inferred so `@nyx/server/api` can expose it to the Hono RPC client.
  */
 export function createApp(options: { token?: string; services?: ServerServices; onLog?: (message: string) => void } = {}) {
   // Share one provider cache between the task services and the model service so

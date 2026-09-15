@@ -2,8 +2,8 @@ import { Hono } from "hono"
 import { streamSSE } from "hono/streaming"
 import { zValidator } from "@hono/zod-validator"
 import { PullAbortedError, type ProgressInfo } from "@nyx/llm"
-import { ModelIdRequestSchema, ModelPullRequestSchema } from "../shared/types"
-import { validationHook } from "../lib/validation"
+import { ModelIdRequestSchema, ModelPullRequestSchema } from "../schema"
+import { validationHook } from "../validation"
 import type { ModelsService } from "../services/models"
 
 /** /v1/models — list, download, cancel, and delete cached models. */

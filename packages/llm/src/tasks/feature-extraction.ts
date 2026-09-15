@@ -1,6 +1,6 @@
 import type { DataType, FeatureExtractionPipeline, Tensor } from "@huggingface/transformers";
 import { loadPipeline } from "../runtime.ts";
-import { find } from "../models.ts";
+import { findModel } from "../model.ts";
 import type { EmbeddingOptions, EmbeddingProvider } from "../types.ts";
 
 export interface OnnxEmbeddingOptions {
@@ -23,7 +23,7 @@ export class OnnxEmbeddingProvider implements EmbeddingProvider {
     this.model = options.model;
     // Default to the dtype recorded when the model was pulled, so inference
     // matches what's cached instead of re-downloading another variant.
-    this.dtype = options.dtype ?? find(options.model)?.dtype;
+    this.dtype = options.dtype ?? findModel(options.model)?.dtype;
     this.cacheDir = options.cacheDir;
     this.allowDownload = options.allowDownload;
   }

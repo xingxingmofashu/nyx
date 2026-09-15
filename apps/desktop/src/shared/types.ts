@@ -3,7 +3,7 @@
  * structured-cloneable across the contextBridge (no classes/Errors).
  */
 
-// HTTP wire types live in @nyx/server/types.
+// HTTP wire types live in @nyx/server/schema.
 import type {
   AudioResult,
   AudioSamples,
@@ -15,7 +15,7 @@ import type {
   TranscriptResult,
   UIMessage,
   UIMessageChunk,
-} from "@nyx/server/types"
+} from "@nyx/server/schema"
 import type { AgentProviderEntry, AgentSettings, ChatSessionMeta, ModelInfo, Settings } from "@nyx/config"
 import type { LLMTask } from "@nyx/llm"
 export type {

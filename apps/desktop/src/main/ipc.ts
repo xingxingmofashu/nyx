@@ -16,9 +16,9 @@ import {
   writeSettings,
 } from "@nyx/config"
 import { IPC } from "../shared/ipc"
-import { saveAttachment } from "./lib/attachment"
-import { readGeneratedFileDataUrl } from "./lib/generated-file"
-import { listProviderModels } from "./lib/provider-models"
+import { saveAttachment } from "./attachment"
+import { readGeneratedFileDataUrl } from "./generated-file"
+import { listProviderModels } from "./provider-models"
 import type {
   AgentProviderEntry,
   AttachmentInput,

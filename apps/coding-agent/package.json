@@ -14,13 +14,13 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/tui": "catalog:",
     "@clack/prompts": "1.7.0",
-    "@nyx/agent": "workspace:*",
     "@nyx/config": "workspace:*",
+    "@nyx/core": "workspace:*",
     "@nyx/llm": "workspace:*",
     "@nyx/server": "workspace:*",
     "@nyx/shared": "workspace:*",
+    "@nyx/tui": "workspace:*",
     "@types/yargs": "17.0.35",
     "ai": "catalog:",
     "yargs": "catalog:"

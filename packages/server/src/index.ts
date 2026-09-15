@@ -31,4 +31,4 @@ export function start(options: { token?: string; port?: number; host?: string; s
   })
 }
 
-export * from "./shared/types"
+export * from "./schema"

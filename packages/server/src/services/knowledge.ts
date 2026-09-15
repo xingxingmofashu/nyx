@@ -1,6 +1,6 @@
 import { KnowledgeBase, resolveEmbeddingModel } from "@nyx/knowledge"
-import { find } from "@nyx/llm"
-import type { KnowledgeSearchHit } from "../shared/types"
+import { findModel } from "@nyx/llm"
+import type { KnowledgeSearchHit } from "../schema"
 
 /**
  * Owns the single local knowledge base (Markdown files under the nyx knowledge
@@ -42,7 +42,7 @@ export class KnowledgeService {
   private async run(): Promise<void> {
     if (!this.kb.hasDocuments()) return
     const model = resolveEmbeddingModel()
-    if (!find(model)) {
+    if (!findModel(model)) {
       this.unavailable = `Embedding model "${model}" is not downloaded. Run: nyx model pull ${model} --task feature-extraction`
       this.log(this.unavailable)
       return

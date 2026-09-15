@@ -1,6 +1,6 @@
-import { list, pull, type LLMTask, type ProgressInfo } from "@nyx/llm"
-import { remove, type ModelInfo } from "@nyx/config"
-import { ProviderCache } from "../lib/provider-cache"
+import { listModels, pullModel, type LLMTask, type ProgressInfo } from "@nyx/llm"
+import { removeModel, type ModelInfo } from "@nyx/config"
+import { ProviderCache } from "../provider/cache"
 
 /**
  * Model lifecycle: list cached models, download (pull) with progress, cancel an
@@ -40,7 +40,7 @@ export class ModelsService {
 
   /** List locally installed models. */
   listModels(): ModelInfo[] {
-    return list()
+    return listModels()
   }
 
   /** Download a model into the local cache, streaming progress when a callback is given. */
@@ -50,12 +50,12 @@ export class ModelsService {
     onProgress?: (info: ProgressInfo) => void,
     signal?: AbortSignal,
   ): Promise<void> {
-    await pull(modelId, task, onProgress, undefined, signal)
+    await pullModel(modelId, task, onProgress, undefined, signal)
   }
 
   /** Remove a model from disk and the provider cache; true when it was cached. */
   removeModel(modelId: string): boolean {
     this.cache.evict(modelId)
-    return remove(modelId)
+    return removeModel(modelId)
   }
 }

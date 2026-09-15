@@ -27,7 +27,7 @@ const target = `bun-${os}-${process.arch}`;
 
 const args = [
   "build",
-  "./src/server.ts",
+  "./src/main.ts",
   "--compile",
   `--target=${target}`,
   "--compile-autoload-package-json",

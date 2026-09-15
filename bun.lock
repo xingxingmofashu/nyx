@@ -18,13 +18,13 @@
         "nyx": "src/index.ts",
       },
       "dependencies": {
-        "@ai-sdk/tui": "catalog:",
         "@clack/prompts": "1.7.0",
-        "@nyx/agent": "workspace:*",
         "@nyx/config": "workspace:*",
+        "@nyx/core": "workspace:*",
         "@nyx/llm": "workspace:*",
         "@nyx/server": "workspace:*",
         "@nyx/shared": "workspace:*",
+        "@nyx/tui": "workspace:*",
         "@types/yargs": "17.0.35",
         "ai": "catalog:",
         "yargs": "catalog:",
@@ -78,17 +78,6 @@
         "vite": "7.0.0",
       },
     },
-    "packages/agent": {
-      "name": "@nyx/agent",
-      "version": "0.1.0",
-      "dependencies": {
-        "@ai-sdk/anthropic": "catalog:",
-        "@ai-sdk/openai-compatible": "catalog:",
-        "@nyx/config": "workspace:*",
-        "ai": "catalog:",
-        "zod": "catalog:",
-      },
-    },
     "packages/config": {
       "name": "@nyx/config",
       "version": "0.1.0",
@@ -100,6 +89,17 @@
       },
       "devDependencies": {
         "@types/write-file-atomic": "catalog:",
+      },
+    },
+    "packages/core": {
+      "name": "@nyx/core",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ai-sdk/anthropic": "catalog:",
+        "@ai-sdk/openai-compatible": "catalog:",
+        "@nyx/config": "workspace:*",
+        "ai": "catalog:",
+        "zod": "catalog:",
       },
     },
     "packages/knowledge": {
@@ -131,8 +131,8 @@
         "@hono/node-server": "catalog:",
         "@hono/zod-validator": "catalog:",
         "@lancedb/lancedb": "catalog:",
-        "@nyx/agent": "workspace:*",
         "@nyx/config": "workspace:*",
+        "@nyx/core": "workspace:*",
         "@nyx/knowledge": "workspace:*",
         "@nyx/llm": "workspace:*",
         "@nyx/shared": "workspace:*",
@@ -156,6 +156,16 @@
         "mrmime": "catalog:",
         "nanoid": "catalog:",
         "pathe": "catalog:",
+      },
+    },
+    "packages/tui": {
+      "name": "@nyx/tui",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ai-sdk/tui": "catalog:",
+        "@nyx/config": "workspace:*",
+        "@nyx/shared": "workspace:*",
+        "ai": "catalog:",
       },
     },
   },
@@ -515,11 +525,11 @@
 
     "@npmcli/move-file": ["@npmcli/move-file@2.0.1", "", { "dependencies": { "mkdirp": "^1.0.4", "rimraf": "^3.0.2" } }, "sha512-mJd2Z5TjYWq/ttPLLGqArdtnC74J6bOzg4rMDnN+p1xTacZ2yPRCk2y0oSWQtygLR9YVQXgOcONrwtnk3JupxQ=="],
 
-    "@nyx/agent": ["@nyx/agent@workspace:packages/agent"],
-
     "@nyx/coding-agent": ["@nyx/coding-agent@workspace:apps/coding-agent"],
 
     "@nyx/config": ["@nyx/config@workspace:packages/config"],
+
+    "@nyx/core": ["@nyx/core@workspace:packages/core"],
 
     "@nyx/desktop": ["@nyx/desktop@workspace:apps/desktop"],
 
@@ -530,6 +540,8 @@
     "@nyx/server": ["@nyx/server@workspace:packages/server"],
 
     "@nyx/shared": ["@nyx/shared@workspace:packages/shared"],
+
+    "@nyx/tui": ["@nyx/tui@workspace:packages/tui"],
 
     "@opentelemetry/api": ["@opentelemetry/api@1.9.1", "", {}, "sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q=="],
 

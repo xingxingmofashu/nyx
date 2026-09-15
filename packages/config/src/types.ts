@@ -1,5 +1,5 @@
 /**
- * Config types are derived from the zod schemas in `./schemas.ts` (single
+ * Config types are derived from the zod schemas in `./schema.ts` (single
  * source of truth); this module re-exports them so importers don't care.
  */
 export type {
@@ -14,4 +14,4 @@ export type {
   ModelConfig,
   ChatSession,
   ChatSessionMeta,
-} from "./schemas.ts";
+} from "./schema.ts";

@@ -1,14 +1,11 @@
 import { resolve } from "node:path"
-import { resolveModelConfig, streamAgent, type ResolvedAgentModel } from "@nyx/agent"
+import { resolveModelConfig, streamAgent, type ResolvedAgentModel } from "@nyx/core"
 import { getAgentSettings } from "@nyx/config"
-import { createAgentTools } from "../lib/agent-tools"
-import { withAttachmentNotes } from "../lib/attachments"
-import { createKnowledgeTools } from "../lib/knowledge-tools"
-import { createModelTools } from "../lib/model-tools"
-import { ProviderCache } from "../lib/provider-cache"
-import { createWebTools } from "../lib/web-tools"
+import { withAttachmentNotes } from "../attachment"
+import { createAgentTools, createKnowledgeTools, createModelTools, createWebTools } from "../tools/index.ts"
+import { ProviderCache } from "../provider/cache"
 import { KnowledgeService } from "./knowledge"
-import type { AgentRequest } from "../shared/types"
+import type { AgentRequest } from "../schema"
 
 /**
  * Runs the remote "master brain" agent loop. The brain is a cloud model

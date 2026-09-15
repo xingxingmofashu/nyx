@@ -1,6 +1,6 @@
 import { OnnxAutomaticSpeechRecognitionProvider } from "@nyx/llm"
 import type { AutomaticSpeechRecognitionOptions } from "@nyx/llm"
-import { ProviderCache } from "../../lib/provider-cache"
+import { ProviderCache } from "../../provider/cache"
 
 /** Runs automatic-speech-recognition inference against cached model providers. */
 export class AutomaticSpeechRecognitionService {

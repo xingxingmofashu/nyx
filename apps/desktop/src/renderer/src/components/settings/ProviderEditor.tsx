@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "../ui/select"
 
-/** AI SDK provider packages the agent supports (see @nyx/agent providers). */
+/** AI SDK provider packages the agent supports (see @nyx/core providers). */
 const PROVIDER_PACKAGES = ["@ai-sdk/openai-compatible", "@ai-sdk/anthropic"] as const
 
 interface HeaderRow {

@@ -1,8 +1,8 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { safeValidateUIMessages } from "ai"
-import { AgentRequestSchema, type AgentRequest } from "../shared/types"
-import { validationHook } from "../lib/validation"
+import { AgentRequestSchema, type AgentRequest } from "../schema"
+import { validationHook } from "../validation"
 import type { AgentService } from "../services/agent"
 
 /**

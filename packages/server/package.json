@@ -7,19 +7,19 @@
   "types": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./rpc": "./src/rpc.ts",
-    "./types": "./src/shared/types.ts"
+    "./api": "./src/api.ts",
+    "./schema": "./src/schema.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && bun run scripts/build.ts",
-    "dev": "bun run src/server.ts"
+    "dev": "bun run src/main.ts"
   },
   "dependencies": {
     "@hono/node-server": "catalog:",
     "@hono/zod-validator": "catalog:",
     "@lancedb/lancedb": "catalog:",
-    "@nyx/agent": "workspace:*",
+    "@nyx/core": "workspace:*",
     "@nyx/config": "workspace:*",
     "@nyx/knowledge": "workspace:*",
     "@nyx/llm": "workspace:*",

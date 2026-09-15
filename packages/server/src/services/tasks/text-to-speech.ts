@@ -1,6 +1,6 @@
 import { encodeWavPcm16, OnnxTextToSpeechProvider } from "@nyx/llm"
 import type { TextToSpeechOptions } from "@nyx/llm"
-import { ProviderCache } from "../../lib/provider-cache"
+import { ProviderCache } from "../../provider/cache"
 
 /** One synthesized clip: WAV bytes plus the waveform's sample rate. */
 export interface GeneratedAudio {
