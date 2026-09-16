@@ -33,8 +33,12 @@ export function createBashTool(workspaceDir: string): ToolSet {
           });
           return clamp(`exit 0\n${stdout}${stderr}`);
         } catch (error) {
-          const e = error as { code?: number; stdout?: string; stderr?: string; message: string };
-          return clamp(`exit ${e.code ?? 1}\n${e.stdout ?? ""}${e.stderr ?? e.message}`);
+          const e = error as { code?: number; stdout?: string; stderr?: string; message: string; killed?: boolean };
+          // `exec` reports a timeout kill with `killed` and a null exit code, which
+          // is otherwise indistinguishable from a command that exited non-zero.
+          const headline = e.killed ? `timed out after ${timeout}ms` : `exit ${e.code ?? 1}`;
+          const detail = `${e.stdout ?? ""}${e.stderr ?? ""}` || (e.killed ? "" : e.message);
+          return clamp(`${headline}\n${detail}`);
         }
       },
     }),

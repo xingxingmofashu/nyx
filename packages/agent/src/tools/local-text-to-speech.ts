@@ -40,7 +40,7 @@ export function createTextToSpeechTools(options: TextToSpeechToolOptions): ToolS
       description: DESCRIPTION.replace("{{models}}", speechModels.join(", ")),
       inputSchema: z.object({
         model: z.enum(speechModels as [string, ...string[]]).describe("Installed local text-to-speech model id"),
-        text: z.string().describe("Text to synthesize into speech"),
+        text: z.string().trim().min(1).describe("Text to synthesize into speech"),
         speaker: z.string().optional().describe("Optional speaker/voice embeddings path or URL (models that require them)"),
       }),
       toModelOutput: ({ output }) => ({
