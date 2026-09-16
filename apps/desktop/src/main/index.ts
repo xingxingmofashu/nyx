@@ -26,6 +26,12 @@ if (!gotLock) {
 const server = new NyxServerProcess()
 const windows = new Set<BrowserWindow>()
 
+// `assets/` is excluded from the asar, so this source path only exists in dev.
+// Packaged builds get their icon from `packagerConfig.icon` at bundle time (the
+// .icns on macOS, the .ico rcedit'd into the Windows exe).
+const devIcon = join(__dirname, "../../assets/light/icon.png")
+const windowIcon = !app.isPackaged && process.platform !== "darwin" ? devIcon : undefined
+
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 1280,
@@ -34,6 +40,7 @@ function createWindow(): BrowserWindow {
     minHeight: 640,
     title: "Nyx",
     backgroundColor: "#1a1a1e",
+    ...(windowIcon ? { icon: windowIcon } : {}),
     // Frameless: the renderer header provides the drag region and controls.
     frame: false,
     webPreferences: {
@@ -79,6 +86,12 @@ function createWindow(): BrowserWindow {
 }
 
 app.whenReady().then(async () => {
+  // In dev the app still shows Electron's own icon; use the real one so the
+  // dock matches packaged builds. (Packaged apps read it from the bundle.)
+  if (!app.isPackaged && process.platform === "darwin") {
+    app.dock?.setIcon(devIcon)
+  }
+
   // Voice input needs the microphone: prompt for the macOS system permission
   // and let the renderer's `getUserMedia` through (audio only, plus clipboard
   // for copy actions).

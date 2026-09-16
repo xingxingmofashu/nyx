@@ -29,6 +29,10 @@ const config: ForgeConfig = {
     asar: true,
     name: "Nyx",
     appBundleId: "com.nyx.desktop",
+    // Extension-less path: packager appends `.icns` (darwin) / `.ico` (win32).
+    // `assets/light` is the default; `assets/dark` ships the same artwork on a
+    // dark plate — swap the folder here to switch.
+    icon: join(__dirname, "assets", "light", "icon"),
     // macOS requires a usage description for the microphone; without it the OS
     // terminates the app on the first `getUserMedia` call.
     extendInfo: {
