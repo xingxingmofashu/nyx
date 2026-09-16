@@ -53,6 +53,8 @@ export const IPC = {
   dialog: {
     selectDirectory: "dialog:selectDirectory",
     saveFile: "dialog:saveFile",
+    /** Native yes/no confirmation; resolves true when confirmed. */
+    confirm: "dialog:confirm",
   },
   /** Read an agent-generated file (e.g. a spoken reply) back for playback. */
   files: {

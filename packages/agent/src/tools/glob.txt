@@ -1,5 +1,8 @@
-List workspace files whose relative path matches a glob pattern.
+List workspace files and directories whose relative path matches a glob pattern.
 
 Usage:
 - Supports *, ?, and ** (e.g. "src/**/*.ts").
+- Directories are returned with a trailing "/" (e.g. "src/"); a directory
+  matches both "src" and "src/", so "*/" lists the top-level directories and
+  "src/*" lists a directory's children.
 - maxResults caps the number of paths returned (default 200).

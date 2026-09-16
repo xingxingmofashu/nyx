@@ -8,6 +8,7 @@ import type {
   AttachmentInput,
   AudioResult,
   AudioSamples,
+  ConfirmDialogRequest,
   ImageBytes,
   ImageResult,
   ModelInfo,
@@ -94,6 +95,8 @@ const api: NyxApi = {
       ipcRenderer.invoke(IPC.dialog.selectDirectory),
     saveFile: (request: SaveFileRequest): Promise<string | null> =>
       ipcRenderer.invoke(IPC.dialog.saveFile, request),
+    confirm: (request: ConfirmDialogRequest): Promise<boolean> =>
+      ipcRenderer.invoke(IPC.dialog.confirm, request),
   },
   files: {
     readDataUrl: (path: string): Promise<string | null> =>

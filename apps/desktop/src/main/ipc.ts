@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain } from "electron"
+import { BrowserWindow, dialog, ipcMain, type MessageBoxOptions } from "electron"
 import { writeFile } from "node:fs/promises"
 import {
   getActiveSessionId,
@@ -26,6 +26,7 @@ import type {
   AppEnvironment,
   ChatSendRequest,
   ChatSessionSaveRequest,
+  ConfirmDialogRequest,
   ImageBytes,
   LLMTask,
   SaveFileRequest,
@@ -171,6 +172,22 @@ export function registerIpc(services: Services): void {
     if (result.canceled || !result.filePath) return null
     await writeFile(result.filePath, request.content, "utf8")
     return result.filePath
+  })
+  ipcMain.handle(IPC.dialog.confirm, async (e, request: ConfirmDialogRequest) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const options: MessageBoxOptions = {
+      type: "warning",
+      buttons: [request.cancelLabel ?? "Cancel", request.confirmLabel ?? "Confirm"],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+      message: request.message,
+      detail: request.detail,
+    }
+    const result = win
+      ? await dialog.showMessageBox(win, options)
+      : await dialog.showMessageBox(options)
+    return result.response === 1
   })
 
   // --- Files ---

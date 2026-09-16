@@ -69,6 +69,16 @@ export interface SaveFileRequest {
   content: string
 }
 
+/** Native yes/no confirmation dialog request. */
+export interface ConfirmDialogRequest {
+  message: string
+  detail?: string
+  /** Label for the affirmative button (default "Confirm"). */
+  confirmLabel?: string
+  /** Label for the negative button (default "Cancel"). */
+  cancelLabel?: string
+}
+
 /** Bytes of one attachment the user attached to a chat message. */
 export interface AttachmentInput {
   data: Uint8Array
@@ -162,6 +172,8 @@ export interface NyxApi {
     selectDirectory: () => Promise<string | null>
     /** Native save dialog; main writes the content and resolves the path (or null). */
     saveFile: (request: SaveFileRequest) => Promise<string | null>
+    /** Native yes/no confirmation; resolves true when the user confirms. */
+    confirm: (request: ConfirmDialogRequest) => Promise<boolean>
   }
   files: {
     /** Read an agent-generated file (a workspace output or an audio clip) as a data URL; null if unavailable. */

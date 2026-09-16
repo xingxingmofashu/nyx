@@ -77,6 +77,15 @@ export function SessionNav() {
     navigate("/agent")
   }
 
+  const confirmRemove = async (id: string, title: string) => {
+    const ok = await window.nyx.dialog.confirm({
+      message: `Delete “${title}”?`,
+      detail: "This permanently removes the chat and its transcript.",
+      confirmLabel: "Delete",
+    })
+    if (ok) await remove(id)
+  }
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Chats{workspaceDir ? ` · ${baseName(workspaceDir)}` : ""}</SidebarGroupLabel>
@@ -166,7 +175,10 @@ export function SessionNav() {
                               Export Markdown
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem variant="destructive" onClick={() => void remove(session.id)}>
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => void confirmRemove(session.id, session.title)}
+                            >
                               <Trash2 />
                               Delete
                             </DropdownMenuItem>

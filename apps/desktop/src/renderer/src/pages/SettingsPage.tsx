@@ -17,6 +17,27 @@ const THEME_OPTIONS: Array<{ id: Theme; label: string }> = [
   { id: "system", label: "System" },
 ]
 
+/**
+ * Canonical JSON for change detection. Tool toggles default to on whether the
+ * key is absent or explicitly `true`, so collapse the two to compare equal —
+ * otherwise flipping a switch off and back on leaves "Save changes" enabled.
+ */
+function normalizeSettings(settings: Settings): string {
+  const tools = settings.agent?.tools
+  if (!tools) return JSON.stringify(settings)
+  const clean = { ...tools }
+  for (const key of ["localModels", "knowledge", "webSearch"] as const) {
+    if (clean[key] === true) delete clean[key]
+  }
+  const agent = { ...settings.agent, tools: clean }
+  const normalized: Settings = { ...settings, agent }
+  if (Object.keys(clean).length === 0) {
+    const { tools: _omitted, ...rest } = agent
+    normalized.agent = rest
+  }
+  return JSON.stringify(normalized)
+}
+
 /** App settings: theme, the agent (master brain), and Hugging Face downloads. */
 export function SettingsPage() {
   const [theme, setThemeState] = useState<Theme>(getTheme)
@@ -33,7 +54,7 @@ export function SettingsPage() {
         window.nyx.config.getEnvironment(),
       ])
       setSettings(loaded)
-      setSnapshot(JSON.stringify(loaded))
+      setSnapshot(normalizeSettings(loaded))
       setEnv(environment)
     })()
   }, [])
@@ -53,7 +74,7 @@ export function SettingsPage() {
       return next
     })
 
-  const dirty = settings !== null && JSON.stringify(settings) !== snapshot
+  const dirty = settings !== null && normalizeSettings(settings) !== snapshot
 
   const save = async (): Promise<boolean> => {
     if (!settings) return false
@@ -62,7 +83,7 @@ export function SettingsPage() {
     try {
       const saved = await window.nyx.config.writeSettings(settings)
       setSettings(saved)
-      setSnapshot(JSON.stringify(saved))
+      setSnapshot(normalizeSettings(saved))
       await useAgentStore.getState().refresh()
       toast.add({ title: "Settings saved" })
       return true
