@@ -47,30 +47,33 @@ const InputSchema = z.object({
 })
 type Input = z.infer<typeof InputSchema>
 
-export const WebFetchTool: ToolSet = {
-  web_fetch: tool({
-    description: DESCRIPTION.replace(
-      "{{year}}",
-      new Date().getFullYear().toString(),
-    ),
-    inputSchema: InputSchema,
-    execute: async (input: Input, { abortSignal }) => {
-      try {
-        const timeoutMs = (input.timeout ?? DEFAULT_TIMEOUT_SECONDS) * 1000
-        return clamp(
-          await fetchUrl(
-            input.url,
-            input.format ?? "markdown",
-            timeoutMs,
-            abortSignal,
-          ),
-        )
-      } catch (error) {
-        if (abortSignal?.aborted) throw error
-        return `Web fetch failed: ${errorMessage(error)}`
-      }
-    },
-  }),
+/** Build the `web_fetch` tool; it needs no configuration. */
+export function createWebFetchTool(): ToolSet {
+  return {
+    web_fetch: tool({
+      description: DESCRIPTION.replace(
+        "{{year}}",
+        new Date().getFullYear().toString(),
+      ),
+      inputSchema: InputSchema,
+      execute: async (input: Input, { abortSignal }) => {
+        try {
+          const timeoutMs = (input.timeout ?? DEFAULT_TIMEOUT_SECONDS) * 1000
+          return clamp(
+            await fetchUrl(
+              input.url,
+              input.format ?? "markdown",
+              timeoutMs,
+              abortSignal,
+            ),
+          )
+        } catch (error) {
+          if (abortSignal?.aborted) throw error
+          return `Web fetch failed: ${errorMessage(error)}`
+        }
+      },
+    }),
+  }
 }
 
 async function fetchUrl(

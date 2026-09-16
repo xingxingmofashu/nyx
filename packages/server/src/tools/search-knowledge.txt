@@ -1,0 +1,1 @@
+Search the user's local knowledge base (their own Markdown documents) and return the most relevant passages with their sources. Use it to ground answers in the user's documents.

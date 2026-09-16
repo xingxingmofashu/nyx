@@ -1,0 +1,8 @@
+Search file contents with a JavaScript regular expression, recursively under the workspace.
+
+Usage:
+- pattern is a JavaScript regular expression source (not a glob).
+- path optionally limits the search to a workspace-relative file or directory (default: the workspace root).
+- glob optionally restricts which files are searched by a glob pattern (supports *, ?, **).
+- maxResults caps the number of matches (default 100).
+- Output is truncated at 40000 characters.

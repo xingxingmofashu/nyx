@@ -1,0 +1,5 @@
+List workspace files whose relative path matches a glob pattern.
+
+Usage:
+- Supports *, ?, and ** (e.g. "src/**/*.ts").
+- maxResults caps the number of paths returned (default 200).

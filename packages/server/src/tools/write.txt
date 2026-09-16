@@ -1,0 +1,6 @@
+Create or overwrite a UTF-8 text file in the workspace.
+
+Usage:
+- Missing parent directories are created.
+- Paths are relative to the workspace root.
+- Requires user approval.

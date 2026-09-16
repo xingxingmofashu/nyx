@@ -1,0 +1,1 @@
+Transform an image with a local ONNX model and save the result into the session's image folder, where the client shows it (requires approval). Installed image models: {{models}}.

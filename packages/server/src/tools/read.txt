@@ -1,0 +1,7 @@
+Read a UTF-8 text file from the workspace and return its line-numbered content.
+
+Usage:
+- Paths are relative to the workspace root; paths that escape it are refused.
+- offset (1-based) and limit read a slice of a large file.
+- Each line is prefixed with its line number followed by a tab.
+- Output is truncated at 40000 characters.

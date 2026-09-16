@@ -1,0 +1,6 @@
+Replace an exact string in a workspace file.
+
+Usage:
+- oldString must occur exactly once unless replaceAll is true; otherwise the edit fails.
+- Paths are relative to the workspace root.
+- Requires user approval.

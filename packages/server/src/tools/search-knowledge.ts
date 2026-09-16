@@ -2,6 +2,7 @@ import { tool, type ToolSet } from "ai"
 import { z } from "zod/v4"
 import type { KnowledgeSearchHit } from "../schema"
 import type { KnowledgeService } from "../services/knowledge"
+import DESCRIPTION from "./search-knowledge.txt"
 
 /** Cap on text handed back to the model, in characters. */
 const MAX_OUTPUT = 40_000
@@ -16,9 +17,7 @@ export function createKnowledgeTools(service: KnowledgeService): ToolSet {
 
   return {
     search_knowledge: tool({
-      description:
-        "Search the user's local knowledge base (their own Markdown documents) and return the most relevant " +
-        "passages with their sources. Use it to ground answers in the user's documents.",
+      description: DESCRIPTION,
       inputSchema: z.object({
         query: z.string().describe("Natural-language search query"),
         topK: z.number().int().positive().max(20).optional().describe("Number of passages to return (default 6)"),

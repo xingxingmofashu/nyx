@@ -1,0 +1,1 @@
+Run a shell command in the workspace root. Returns combined stdout/stderr and the exit code. Requires user approval.

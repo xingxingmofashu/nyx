@@ -1,0 +1,1 @@
+Synthesize speech from text with a local ONNX model and save a WAV file to the session's audio folder; the client plays it back (requires approval). Installed text-to-speech models: {{models}}.
