@@ -1,8 +1,8 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
-import { TextToSpeechRequestSchema } from "../schema"
+import { TextToSpeechRequestSchema } from "@nyx/agent/schema"
 import { validationHook } from "../validation"
-import type { TextToSpeechService } from "../services/tasks/text-to-speech"
+import type { TextToSpeechService } from "@nyx/agent"
 
 /** POST /v1/tasks/text-to-speech — synthesize speech; responds with WAV bytes. */
 export function textToSpeech(service: TextToSpeechService) {

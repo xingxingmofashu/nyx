@@ -1,7 +1,7 @@
 import { RawImage } from "@huggingface/transformers"
 import { OnnxImageToImageProvider } from "@nyx/llm"
 import type { ImageBase64Input } from "../../schema"
-import { ProviderCache } from "../../provider/cache"
+import { Provider } from "../../provider.ts"
 
 /** One generated image: encoded bytes plus the pipeline's shape metadata. */
 export interface GeneratedImage {
@@ -14,7 +14,7 @@ export interface GeneratedImage {
 
 /** Runs image-to-image inference against cached model providers. */
 export class ImageToImageService {
-  constructor(private readonly cache: ProviderCache = new ProviderCache()) {}
+  constructor(private readonly cache: Provider = new Provider()) {}
 
   /** Transform a single image with an image-to-image model. */
   async generate(modelId: string, input: ImageBase64Input): Promise<GeneratedImage> {

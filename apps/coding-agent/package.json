@@ -15,8 +15,8 @@
   },
   "dependencies": {
     "@clack/prompts": "1.7.0",
+    "@nyx/agent": "workspace:*",
     "@nyx/config": "workspace:*",
-    "@nyx/core": "workspace:*",
     "@nyx/llm": "workspace:*",
     "@nyx/server": "workspace:*",
     "@nyx/shared": "workspace:*",

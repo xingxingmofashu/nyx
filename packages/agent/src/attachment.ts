@@ -1,4 +1,4 @@
-import type { UIMessage } from "@nyx/core";
+import type { UIMessage } from "./types.ts";
 import type { ChatMessageMetadata } from "./schema";
 
 /**

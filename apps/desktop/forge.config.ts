@@ -176,12 +176,13 @@ async function copyRuntimeClosure(runtimeDir: string): Promise<void> {
   const seen = new Set<string>()
 
   // Seed from a context whose node_modules graph already resolves these.
-  // packages/server links @huggingface/transformers and @lancedb/lancedb;
-  // walking up from that package's real store location reaches the enclosing
-  // node_modules that links onnxruntime-node, its common lib, and sharp.
-  const seedDir = resolve(__dirname, "../../packages/server")
+  // packages/agent links @huggingface/transformers (the ONNX stack lives in
+  // @nyx/agent / @nyx/llm / @nyx/knowledge, not @nyx/server); walking up from
+  // that package's real store location reaches the bun store that links
+  // onnxruntime-node, its common lib, sharp, LanceDB, and apache-arrow.
+  const seedDir = resolve(__dirname, "../../packages/agent")
   const transformersDir = await resolvePackageDir("@huggingface/transformers", seedDir)
-  if (!transformersDir) throw new Error("cannot resolve @huggingface/transformers from packages/server")
+  if (!transformersDir) throw new Error("cannot resolve @huggingface/transformers from packages/agent")
 
   for (const spec of [
     "@huggingface/transformers",

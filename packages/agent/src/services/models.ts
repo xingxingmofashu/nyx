@@ -1,6 +1,6 @@
 import { listModels as listInstalledModels, pullModel as pullInstalledModel, type LLMTask, type ProgressInfo } from "@nyx/llm"
 import { removeModel as removeInstalledModel, type ModelInfo } from "@nyx/config"
-import { ProviderCache } from "../provider/cache"
+import { Provider } from "../provider.ts"
 
 /**
  * Model lifecycle: list cached models, download (pull) with progress, cancel an
@@ -11,7 +11,7 @@ export class ModelsService {
   /** modelId → controller for the in-flight pull; lets cancelPull abort it. */
   private readonly activePulls = new Map<string, AbortController>()
 
-  constructor(private readonly cache: ProviderCache = new ProviderCache()) {}
+  constructor(private readonly cache: Provider = new Provider()) {}
 
   /** True when a pull for this model is already running. */
   isPulling(modelId: string): boolean {

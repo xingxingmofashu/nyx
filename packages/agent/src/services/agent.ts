@@ -1,10 +1,11 @@
 import { resolve } from "node:path"
 import type { ToolSet } from "ai"
-import { resolveModelConfig, streamAgent, type ResolvedAgentModel } from "@nyx/core"
+import { Provider } from "../provider.ts"
+import { streamAgent } from "../agent.ts"
+import type { ResolvedAgentModel } from "../types.ts"
 import { getAgentSettings } from "@nyx/config"
 import { withAttachmentNotes } from "../attachment"
 import { createAgentTools, createKnowledgeTools, createModelTools, createWebTools, toolApproval } from "../tools/index.ts"
-import { ProviderCache } from "../provider/cache"
 import { KnowledgeService } from "./knowledge"
 import type { AgentRequest } from "../schema"
 
@@ -16,7 +17,7 @@ import type { AgentRequest } from "../schema"
  */
 export class AgentService {
   constructor(
-    private readonly cache: ProviderCache = new ProviderCache(),
+    private readonly cache: Provider = new Provider(),
     private readonly knowledge: KnowledgeService = new KnowledgeService(),
   ) {}
 
@@ -26,7 +27,7 @@ export class AgentService {
 
     let model: ResolvedAgentModel
     try {
-      model = resolveModelConfig(settings)
+      model = Provider.resolveModelConfig(settings)
     } catch (error) {
       return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 400 })
     }

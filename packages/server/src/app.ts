@@ -1,18 +1,20 @@
 import { Hono } from "hono"
 import type { MiddlewareHandler } from "hono"
+import {
+  AgentService,
+  AutomaticSpeechRecognitionService,
+  ImageToImageService,
+  KnowledgeService,
+  ModelsService,
+  Provider,
+  TextToSpeechService,
+} from "@nyx/agent"
 import { auth } from "./middleware/auth"
 import { agent } from "./routes/agent"
 import { automaticSpeechRecognition } from "./routes/automatic-speech-recognition"
 import { imageToImage } from "./routes/image-to-image"
 import { models } from "./routes/models"
 import { textToSpeech } from "./routes/text-to-speech"
-import { AgentService } from "./services/agent"
-import { AutomaticSpeechRecognitionService } from "./services/tasks/automatic-speech-recognition"
-import { ImageToImageService } from "./services/tasks/image-to-image"
-import { KnowledgeService } from "./services/knowledge"
-import { ModelsService } from "./services/models"
-import { TextToSpeechService } from "./services/tasks/text-to-speech"
-import { ProviderCache } from "./provider/cache"
 
 /** Service dependencies shared by every route, wired once per app instance. */
 export interface ServerServices {
@@ -42,7 +44,7 @@ const noopAuth: MiddlewareHandler = async (_c, next) => {
 export function createApp(options: { token?: string; services?: ServerServices; onLog?: (message: string) => void } = {}) {
   // Share one provider cache between the task services and the model service so
   // removing a model also evicts its loaded weights.
-  const cache = new ProviderCache()
+  const cache = new Provider()
   const knowledgeService = new KnowledgeService(options.onLog)
   const services: ServerServices = options.services ?? {
     models: new ModelsService(cache),

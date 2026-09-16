@@ -6,7 +6,7 @@ import { encodeWavPcm16, listModels, OnnxTextToSpeechProvider } from "@nyx/llm";
 import { workspaceAudioDir } from "@nyx/config";
 import { tool, type ToolSet } from "ai";
 import { z } from "zod/v4";
-import { ProviderCache } from "../provider/cache";
+import { Provider } from "../provider.ts";
 import DESCRIPTION from "./local-text-to-speech.txt";
 
 /**
@@ -18,7 +18,7 @@ import DESCRIPTION from "./local-text-to-speech.txt";
  */
 
 export interface TextToSpeechToolOptions {
-  cache: ProviderCache;
+  cache: Provider;
   workspaceDir: string;
   sessionId?: string;
   /** Inline the generated audio in the result for clients that play it back. */

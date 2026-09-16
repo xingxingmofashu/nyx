@@ -14,7 +14,7 @@ import { resolve } from "node:path";
 import { isCancel, log, select } from "@clack/prompts";
 import type { UIMessage } from "ai";
 import { getAgentSettings, getSession, listSessions } from "@nyx/config";
-import { resolveModelConfig } from "@nyx/core";
+import { Provider } from "@nyx/agent/provider";
 import { runAgent } from "@nyx/tui";
 import { cmd } from "../cmd";
 
@@ -44,7 +44,7 @@ export const AgentCommand = cmd<Record<string, unknown>, AgentArgs>({
 
     const settings = getAgentSettings();
     try {
-      resolveModelConfig(settings);
+      Provider.resolveModelConfig(settings);
     } catch (error) {
       log.error(error instanceof Error ? error.message : String(error));
       log.info("Configure it in ~/.nyx/settings.json under agent.{model,provider}.");

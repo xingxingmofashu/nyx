@@ -7,11 +7,11 @@ import type {
 } from "ai";
 
 /**
- * Wire + domain types for @nyx/core. The agent loop is provider-agnostic:
+ * Wire + domain types for @nyx/agent. The agent loop is provider-agnostic:
  * the caller injects a model config, a set of tools, and the full transcript.
  */
 
-/** Resolved remote-brain model: built from settings by resolveModelConfig. */
+/** Resolved remote-brain model: built from settings by Provider.resolveModelConfig. */
 export interface ResolvedAgentModel {
   /** AI SDK provider package, e.g. "@ai-sdk/openai-compatible" or "@ai-sdk/anthropic". */
   npm: string;

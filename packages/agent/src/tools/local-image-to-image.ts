@@ -7,7 +7,7 @@ import { workspaceImageDir } from "@nyx/config";
 import { mimeFor } from "@nyx/shared";
 import { tool, type ToolSet } from "ai";
 import { z } from "zod/v4";
-import { ProviderCache } from "../provider/cache";
+import { Provider } from "../provider.ts";
 import { mediaPath } from "../workspace";
 import DESCRIPTION from "./local-image-to-image.txt";
 
@@ -21,7 +21,7 @@ import DESCRIPTION from "./local-image-to-image.txt";
  */
 
 export interface ImageToImageToolOptions {
-  cache: ProviderCache;
+  cache: Provider;
   workspaceDir: string;
   sessionId?: string;
 }

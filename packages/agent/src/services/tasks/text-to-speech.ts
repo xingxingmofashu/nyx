@@ -1,6 +1,6 @@
 import { encodeWavPcm16, OnnxTextToSpeechProvider } from "@nyx/llm"
 import type { TextToSpeechOptions } from "@nyx/llm"
-import { ProviderCache } from "../../provider/cache"
+import { Provider } from "../../provider.ts"
 
 /** One synthesized clip: WAV bytes plus the waveform's sample rate. */
 export interface GeneratedAudio {
@@ -11,7 +11,7 @@ export interface GeneratedAudio {
 
 /** Runs text-to-speech synthesis against cached model providers. */
 export class TextToSpeechService {
-  constructor(private readonly cache: ProviderCache = new ProviderCache()) {}
+  constructor(private readonly cache: Provider = new Provider()) {}
 
   /** Synthesize speech from `text` with a text-to-speech model. */
   async generate(modelId: string, text: string, options: TextToSpeechOptions = {}): Promise<GeneratedAudio> {

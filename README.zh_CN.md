@@ -18,9 +18,9 @@ Bun monorepo：
 
 - `packages/config` — `~/.nyx` 路径、模型注册表（`~/.nyx/models.json`）与用户设置（`~/.nyx/settings.json`）
 - `packages/llm` — 模型运行时 + 任务（`runtime.ts` 共享加载器、`tasks/*`），基于 onnxruntime-node / transformers.js
-- `packages/core` — 主脑 agent 核心（Vercel AI SDK：provider 注册表 + 工具循环），不依赖 onnx
+- `packages/agent` — agent 本体：`agent.ts` 是 provider 无关的主脑循环（Vercel AI SDK），`provider.ts` 是 `Provider` 层（主脑模型解析 + 本地 ONNX provider 缓存，以 `@nyx/agent/provider` 暴露），包根补充具体能力（编码 / 模型 / 知识 / 网络工具、工作区沙箱、model/knowledge/task 服务）
 - `packages/knowledge` — 本地知识库（RAG）：Markdown 切分、LanceDB 混合检索、本地 ONNX 嵌入
-- `packages/server` — `/v1` 下的 Hono HTTP 服务（models / tasks / agent），编译为自包含的 Bun 可执行文件（`nyx-server`），桌面端与 CLI 都以子进程方式启动它
+- `packages/server` — `/v1` 下的 Hono HTTP 传输层（models / tasks / agent），构建在 `@nyx/agent` 之上，编译为自包含的 Bun 可执行文件（`nyx-server`），桌面端与 CLI 都以子进程方式启动它；并 re-export 线协议 schema
 - `packages/tui` — 终端 agent 界面（`@ai-sdk/tui`）：会话传输与子进程服务器生命周期
 - `apps/coding-agent` — 终端 CLI（yargs）：`nyx`（agent TUI）、`nyx image-to-image`、`nyx text-to-speech`、`nyx model ...`
 - `apps/desktop` — Electron 桌面应用（forge + vite + React）

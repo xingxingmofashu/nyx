@@ -1,10 +1,10 @@
 import { OnnxAutomaticSpeechRecognitionProvider } from "@nyx/llm"
 import type { AutomaticSpeechRecognitionOptions } from "@nyx/llm"
-import { ProviderCache } from "../../provider/cache"
+import { Provider } from "../../provider.ts"
 
 /** Runs automatic-speech-recognition inference against cached model providers. */
 export class AutomaticSpeechRecognitionService {
-  constructor(private readonly cache: ProviderCache = new ProviderCache()) {}
+  constructor(private readonly cache: Provider = new Provider()) {}
 
   /**
    * Transcribe mono 16 kHz PCM samples with an automatic-speech-recognition

@@ -19,8 +19,8 @@
       },
       "dependencies": {
         "@clack/prompts": "1.7.0",
+        "@nyx/agent": "workspace:*",
         "@nyx/config": "workspace:*",
-        "@nyx/core": "workspace:*",
         "@nyx/llm": "workspace:*",
         "@nyx/server": "workspace:*",
         "@nyx/shared": "workspace:*",
@@ -78,6 +78,26 @@
         "vite": "7.0.0",
       },
     },
+    "packages/agent": {
+      "name": "@nyx/agent",
+      "version": "0.1.0",
+      "dependencies": {
+        "@ai-sdk/anthropic": "catalog:",
+        "@ai-sdk/openai-compatible": "catalog:",
+        "@huggingface/transformers": "catalog:",
+        "@nyx/config": "workspace:*",
+        "@nyx/knowledge": "workspace:*",
+        "@nyx/llm": "workspace:*",
+        "@nyx/shared": "workspace:*",
+        "ai": "catalog:",
+        "htmlparser2": "catalog:",
+        "turndown": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@types/turndown": "catalog:",
+      },
+    },
     "packages/config": {
       "name": "@nyx/config",
       "version": "0.1.0",
@@ -89,17 +109,6 @@
       },
       "devDependencies": {
         "@types/write-file-atomic": "catalog:",
-      },
-    },
-    "packages/core": {
-      "name": "@nyx/core",
-      "version": "0.1.0",
-      "dependencies": {
-        "@ai-sdk/anthropic": "catalog:",
-        "@ai-sdk/openai-compatible": "catalog:",
-        "@nyx/config": "workspace:*",
-        "ai": "catalog:",
-        "zod": "catalog:",
       },
     },
     "packages/knowledge": {
@@ -130,21 +139,11 @@
       "dependencies": {
         "@hono/node-server": "catalog:",
         "@hono/zod-validator": "catalog:",
-        "@lancedb/lancedb": "catalog:",
-        "@nyx/config": "workspace:*",
-        "@nyx/core": "workspace:*",
-        "@nyx/knowledge": "workspace:*",
+        "@nyx/agent": "workspace:*",
         "@nyx/llm": "workspace:*",
-        "@nyx/shared": "workspace:*",
         "ai": "catalog:",
-        "apache-arrow": "catalog:",
         "hono": "catalog:",
-        "htmlparser2": "catalog:",
-        "turndown": "catalog:",
         "zod": "catalog:",
-      },
-      "devDependencies": {
-        "@types/turndown": "catalog:",
       },
     },
     "packages/shared": {
@@ -526,11 +525,11 @@
 
     "@npmcli/move-file": ["@npmcli/move-file@2.0.1", "", { "dependencies": { "mkdirp": "^1.0.4", "rimraf": "^3.0.2" } }, "sha512-mJd2Z5TjYWq/ttPLLGqArdtnC74J6bOzg4rMDnN+p1xTacZ2yPRCk2y0oSWQtygLR9YVQXgOcONrwtnk3JupxQ=="],
 
+    "@nyx/agent": ["@nyx/agent@workspace:packages/agent"],
+
     "@nyx/coding-agent": ["@nyx/coding-agent@workspace:apps/coding-agent"],
 
     "@nyx/config": ["@nyx/config@workspace:packages/config"],
-
-    "@nyx/core": ["@nyx/core@workspace:packages/core"],
 
     "@nyx/desktop": ["@nyx/desktop@workspace:apps/desktop"],
 

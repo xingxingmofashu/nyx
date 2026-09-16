@@ -1,9 +1,9 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { safeValidateUIMessages } from "ai"
-import { AgentRequestSchema, type AgentRequest } from "../schema"
+import { AgentRequestSchema, type AgentRequest } from "@nyx/agent/schema"
 import { validationHook } from "../validation"
-import type { AgentService } from "../services/agent"
+import type { AgentService } from "@nyx/agent"
 
 /**
  * POST /v1/agent — runs the agent and returns the AI SDK UI message stream

@@ -17,7 +17,7 @@ import { createWriteFileTool } from "./write.ts";
 import { createWebFetchTool } from "./webfetch.ts";
 import { createWebSearchTools } from "./websearch.ts";
 import type { WebSearchToolsOptions } from "./websearch.ts";
-import type { ProviderCache } from "../provider/cache";
+import type { Provider } from "../provider.ts";
 
 export { createBashTool } from "./bash.ts";
 export { createEditFileTool } from "./edit.ts";
@@ -68,7 +68,7 @@ export function createAgentTools(workspaceDir: string): ToolSet {
 
 /** Options for every locally installed ONNX model tool. */
 export interface ModelToolsOptions {
-  cache: ProviderCache;
+  cache: Provider;
   workspaceDir: string;
   sessionId?: string;
   /** Inline the generated audio in the result for clients that play it back. */

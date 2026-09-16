@@ -1,8 +1,8 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
-import { AutomaticSpeechRecognitionRequestSchema } from "../schema"
+import { AutomaticSpeechRecognitionRequestSchema } from "@nyx/agent/schema"
 import { validationHook } from "../validation"
-import type { AutomaticSpeechRecognitionService } from "../services/tasks/automatic-speech-recognition"
+import type { AutomaticSpeechRecognitionService } from "@nyx/agent"
 
 /** POST /v1/tasks/automatic-speech-recognition — transcribe PCM samples; responds with JSON text. */
 export function automaticSpeechRecognition(service: AutomaticSpeechRecognitionService) {

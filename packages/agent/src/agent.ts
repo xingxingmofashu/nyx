@@ -4,15 +4,9 @@ import {
   ToolLoopAgent,
   type LanguageModel,
 } from "ai";
-import { resolveModel } from "./provider.ts";
+import { Provider } from "./provider.ts";
 import type { AgentRunOptions, ResolvedAgentModel } from "./types.ts";
-
-const DEFAULT_SYSTEM_PROMPT = [
-  "You are nyx, a coding agent operating inside a single workspace directory.",
-  "Use the provided tools to inspect and modify files; paths are relative to the workspace root.",
-  "Read before you edit, keep changes minimal, and never attempt to access paths outside the workspace.",
-  "When a tool call is denied by the user, do not retry it.",
-].join(" ");
+import DEFAULT_SYSTEM_PROMPT from "./system-prompt.txt";
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -33,7 +27,7 @@ function isModelConfig(value: AgentRunOptions["model"]): value is ResolvedAgentM
  */
 export async function streamAgent(options: AgentRunOptions): Promise<Response> {
   const { model, tools, toolApproval, messages, systemPrompt, maxSteps, signal } = options;
-  const languageModel: LanguageModel = isModelConfig(model) ? resolveModel(model) : model;
+  const languageModel: LanguageModel = isModelConfig(model) ? Provider.resolveModel(model) : model;
   const maxOutputTokens = isModelConfig(model) ? model.maxOutputTokens : undefined;
 
   const agent = new ToolLoopAgent({

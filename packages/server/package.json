@@ -18,20 +18,10 @@
   "dependencies": {
     "@hono/node-server": "catalog:",
     "@hono/zod-validator": "catalog:",
-    "@lancedb/lancedb": "catalog:",
-    "@nyx/core": "workspace:*",
-    "@nyx/config": "workspace:*",
-    "@nyx/knowledge": "workspace:*",
+    "@nyx/agent": "workspace:*",
     "@nyx/llm": "workspace:*",
-    "@nyx/shared": "workspace:*",
     "ai": "catalog:",
-    "apache-arrow": "catalog:",
     "hono": "catalog:",
-    "htmlparser2": "catalog:",
-    "turndown": "catalog:",
     "zod": "catalog:"
-  },
-  "devDependencies": {
-    "@types/turndown": "catalog:"
   }
 }
