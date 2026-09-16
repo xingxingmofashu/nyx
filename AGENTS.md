@@ -26,7 +26,7 @@ Versions are exact-pinned through the root `package.json` `catalog` (with `bunfi
 - Only `@nyx/llm` touches onnx/transformers. The desktop main/renderer Vite builds bundle pure TS (`@nyx/*`) and keep `onnxruntime-node`, `sharp`, `@huggingface/transformers`, `electron` external. `@nyx/knowledge` must never be imported by the desktop.
 - `packages/server` routes are Hono sub-apps mounted under `/v1`; services are constructor-injected through `createApp({ services })` (see `packages/server/src/app.ts`). Request bodies are validated with `@hono/zod-validator`; `AppType` is exported type-only from `@nyx/server/api` for `hc<AppType>` on the desktop side; the wire schema lives at `@nyx/server/schema`.
 - Relative imports inside TS source use explicit `.ts` extensions (`allowImportingTsExtensions`). Zod is imported as `zod/v4` everywhere in this repo.
-- `apps/desktop` uses `#components/*`, `#lib/*`, `#hooks/*` import aliases; renderer and main are typechecked by separate tsconfigs (`tsconfig.json` / `tsconfig.node.json`).
+- `apps/desktop` uses `#components/*`, `#lib/*`, `#hooks/*` import aliases; a single `tsconfig.json` covers renderer, main, preload and the forge/vite configs (`vite/client` + `node` types).
 - Forge `packageAfterCopy` stages `nyx-server` + its external native closure (transformers, onnxruntime-node, sharp, LanceDB) into `Resources/runtime/`; the packaged asar ships no `node_modules`.
 
 ## On-disk state (`~/.nyx`)
