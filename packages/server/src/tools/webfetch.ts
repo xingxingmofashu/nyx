@@ -1,9 +1,9 @@
 import { lookup } from "node:dns/promises"
 import { isIP } from "node:net"
+import { tool, type ToolSet } from "ai"
 import { Parser } from "htmlparser2"
 import TurndownService from "turndown"
 import { z } from "zod/v4"
-import type { AgentToolSet } from "@nyx/core"
 import DESCRIPTION from "./webfetch.txt"
 
 /**
@@ -47,35 +47,30 @@ const InputSchema = z.object({
 })
 type Input = z.infer<typeof InputSchema>
 
-/** Build the `web_fetch` tool; it needs no configuration. */
-export function createWebFetchTools(): AgentToolSet {
-  return [
-    {
-      name: "web_fetch",
-      description: DESCRIPTION.replace(
-        "{{year}}",
-        new Date().getFullYear().toString(),
-      ),
-      approval: "never",
-      inputSchema: InputSchema,
-      execute: async (input: Input, ctx) => {
-        try {
-          const timeoutMs = (input.timeout ?? DEFAULT_TIMEOUT_SECONDS) * 1000
-          return clamp(
-            await fetchUrl(
-              input.url,
-              input.format ?? "markdown",
-              timeoutMs,
-              ctx.signal,
-            ),
-          )
-        } catch (error) {
-          if (ctx.signal?.aborted) throw error
-          return `Web fetch failed: ${errorMessage(error)}`
-        }
-      },
+export const WebFetchTool: ToolSet = {
+  web_fetch: tool({
+    description: DESCRIPTION.replace(
+      "{{year}}",
+      new Date().getFullYear().toString(),
+    ),
+    inputSchema: InputSchema,
+    execute: async (input: Input, { abortSignal }) => {
+      try {
+        const timeoutMs = (input.timeout ?? DEFAULT_TIMEOUT_SECONDS) * 1000
+        return clamp(
+          await fetchUrl(
+            input.url,
+            input.format ?? "markdown",
+            timeoutMs,
+            abortSignal,
+          ),
+        )
+      } catch (error) {
+        if (abortSignal?.aborted) throw error
+        return `Web fetch failed: ${errorMessage(error)}`
+      }
     },
-  ]
+  }),
 }
 
 async function fetchUrl(

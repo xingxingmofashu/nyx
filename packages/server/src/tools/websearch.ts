@@ -1,5 +1,5 @@
+import { tool, type ToolSet } from "ai";
 import { z } from "zod/v4";
-import type { AgentToolSet } from "@nyx/core";
 import DESCRIPTION from "./websearch.txt";
 
 /**
@@ -82,36 +82,34 @@ const InputSchema = z.object({
 type Input = z.infer<typeof InputSchema>;
 
 /** Build the `web_search` tool. */
-export function createWebSearchTools(options: WebSearchToolsOptions = {}): AgentToolSet {
+export function createWebSearchTools(options: WebSearchToolsOptions = {}): ToolSet {
   const provider = options.provider ?? providerFromEnv();
   const exaApiKey = options.exaApiKey ?? process.env.NYX_WEB_SEARCH_API_KEY;
   const parallelApiKey = options.parallelApiKey ?? process.env.NYX_PARALLEL_API_KEY;
   const sessionId = options.sessionId ?? FALLBACK_SESSION;
 
-  return [
-    {
-      name: "web_search",
+  return {
+    web_search: tool({
       description:DESCRIPTION.replace("{{year}}", new Date().getFullYear().toString()),
-      approval: "never",
       inputSchema: InputSchema,
-      execute: async (input: Input, ctx) => {
+      execute: async (input: Input, { abortSignal }) => {
         try {
           // Parallel's backend has no knobs for the optional controls, so they
           // only reach Exa; `query` is all Parallel needs.
           const text =
             provider === "parallel"
-              ? await searchParallel(input.query, parallelApiKey, sessionId, ctx.signal)
-              : await searchExa(input, exaApiKey, ctx.signal);
+              ? await searchParallel(input.query, parallelApiKey, sessionId, abortSignal)
+              : await searchExa(input, exaApiKey, abortSignal);
           return clamp(text ?? NO_RESULTS);
         } catch (error) {
           // An aborted run must not look like a tool that produced an answer.
-          if (ctx.signal?.aborted) throw error;
+          if (abortSignal?.aborted) throw error;
           // Otherwise surface the reason to the model instead of failing the run.
           return `Web search failed: ${errorMessage(error)}`;
         }
       },
-    },
-  ];
+    }),
+  };
 }
 
 /** Exa's MCP tool; `objective` keeps the query inside the tool's required shape. */

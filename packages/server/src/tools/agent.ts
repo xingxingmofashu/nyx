@@ -2,8 +2,8 @@ import { exec } from "node:child_process";
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
+import { tool, type ToolSet } from "ai";
 import { z } from "zod/v4";
-import type { AgentTool, AgentToolSet } from "@nyx/core";
 import { realpathNearest, workspacePath } from "../workspace";
 
 const execAsync = promisify(exec);
@@ -17,15 +17,13 @@ const MAX_OUTPUT = 40_000;
  * Build the coding tools for one workspace. Every path-based tool refuses to
  * escape `workspaceDir`; writes and shell commands require user approval.
  */
-export function createAgentTools(workspaceDir: string): AgentToolSet {
+export function createAgentTools(workspaceDir: string): ToolSet {
   const root = realpathNearest(resolve(workspaceDir));
 
-  return [
-    {
-      name: "read_file",
+  return {
+    read_file: tool({
       description:
         "Read a UTF-8 text file from the workspace. Returns line-numbered content. Use offset/limit for large files.",
-      approval: "never",
       inputSchema: z.object({
         path: z.string().describe("Path relative to the workspace root"),
         offset: z.number().int().positive().optional().describe("1-based first line to read"),
@@ -43,11 +41,9 @@ export function createAgentTools(workspaceDir: string): AgentToolSet {
             .join("\n") || "(empty file)",
         );
       },
-    },
-    {
-      name: "write_file",
+    }),
+    write_file: tool({
       description: "Create or overwrite a UTF-8 text file in the workspace. Creates parent directories.",
-      approval: "always",
       inputSchema: z.object({
         path: z.string().describe("Path relative to the workspace root"),
         content: z.string().describe("Full file content"),
@@ -58,12 +54,10 @@ export function createAgentTools(workspaceDir: string): AgentToolSet {
         await writeFile(file, content, "utf8");
         return `Wrote ${Buffer.byteLength(content)} bytes to ${path}`;
       },
-    },
-    {
-      name: "edit_file",
+    }),
+    edit_file: tool({
       description:
         "Replace an exact string in a file. Fails if oldString is not found or is ambiguous (multiple matches) unless replaceAll is true.",
-      approval: "always",
       inputSchema: z.object({
         path: z.string().describe("Path relative to the workspace root"),
         oldString: z.string().min(1).describe("Exact text to replace"),
@@ -82,12 +76,10 @@ export function createAgentTools(workspaceDir: string): AgentToolSet {
         await writeFile(file, updated, "utf8");
         return `Edited ${path} (${replaceAll ? count : 1} replacement${replaceAll && count > 1 ? "s" : ""})`;
       },
-    },
-    {
-      name: "bash",
+    }),
+    bash: tool({
       description:
         "Run a shell command in the workspace root. Returns combined stdout/stderr and the exit code. Requires user approval.",
-      approval: "always",
       inputSchema: z.object({
         command: z.string().describe("Shell command to execute"),
         timeoutMs: z.number().int().positive().optional().describe("Timeout in ms (default 30000, max 120000)"),
@@ -107,11 +99,9 @@ export function createAgentTools(workspaceDir: string): AgentToolSet {
           return clamp(`exit ${e.code ?? 1}\n${e.stdout ?? ""}${e.stderr ?? e.message}`);
         }
       },
-    },
-    {
-      name: "grep",
+    }),
+    grep: tool({
       description: "Search file contents with a JavaScript regular expression, recursively under the workspace.",
-      approval: "never",
       inputSchema: z.object({
         pattern: z.string().describe("JavaScript regular expression source"),
         path: z.string().optional().describe("Directory or file to search, relative to the workspace (default: root)"),
@@ -147,11 +137,9 @@ export function createAgentTools(workspaceDir: string): AgentToolSet {
         }
         return clamp(out.join("\n") || "(no matches)");
       },
-    },
-    {
-      name: "glob",
+    }),
+    glob: tool({
       description: "List workspace files whose relative path matches a glob pattern (supports *, ?, **).",
-      approval: "never",
       inputSchema: z.object({
         pattern: z.string().describe("Glob pattern, e.g. 'src/**/*.ts'"),
         maxResults: z.number().int().positive().optional().describe("Maximum results (default 200)"),
@@ -168,8 +156,8 @@ export function createAgentTools(workspaceDir: string): AgentToolSet {
         }
         return clamp(matches.join("\n") || "(no matches)");
       },
-    },
-  ] as AgentToolSet;
+    }),
+  };
 }
 
 function clamp(text: string): string {

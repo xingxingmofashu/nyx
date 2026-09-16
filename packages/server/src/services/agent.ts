@@ -1,8 +1,9 @@
 import { resolve } from "node:path"
+import type { ToolSet } from "ai"
 import { resolveModelConfig, streamAgent, type ResolvedAgentModel } from "@nyx/core"
 import { getAgentSettings } from "@nyx/config"
 import { withAttachmentNotes } from "../attachment"
-import { createAgentTools, createKnowledgeTools, createModelTools, createWebTools } from "../tools/index.ts"
+import { createAgentTools, createKnowledgeTools, createModelTools, createWebTools, toolApproval } from "../tools/index.ts"
 import { ProviderCache } from "../provider/cache"
 import { KnowledgeService } from "./knowledge"
 import type { AgentRequest } from "../schema"
@@ -31,24 +32,24 @@ export class AgentService {
     }
 
     const workspaceDir = resolve(request.workspaceDir ?? settings.workspaceDir ?? process.cwd())
-    const tools = [
+    const tools: ToolSet = {
       ...createAgentTools(workspaceDir),
       ...(settings.tools?.localModels === false
-        ? []
+        ? {}
         : createModelTools({
             cache: this.cache,
             workspaceDir,
             sessionId: request.sessionId,
             inlineAudio: request.inlineAudio,
           })),
-      ...(settings.tools?.knowledge === false ? [] : createKnowledgeTools(this.knowledge)),
-      ...(settings.tools?.webSearch === false ? [] : createWebTools({ sessionId: request.sessionId })),
-    ]
+      ...(settings.tools?.knowledge === false ? {} : createKnowledgeTools(this.knowledge)),
+      ...(settings.tools?.webSearch === false ? {} : createWebTools({ sessionId: request.sessionId })),
+    }
     return streamAgent({
       model,
       tools,
+      toolApproval,
       messages: withAttachmentNotes(request.messages),
-      workspaceDir,
       systemPrompt: settings.systemPrompt,
       maxSteps: settings.maxSteps,
       signal,

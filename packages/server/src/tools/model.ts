@@ -11,8 +11,8 @@ import {
   OnnxImageToImageProvider,
   OnnxTextToSpeechProvider,
 } from "@nyx/llm";
+import { tool, type ToolSet } from "ai";
 import { z } from "zod/v4";
-import type { AgentTool, AgentToolSet } from "@nyx/core";
 import { ProviderCache } from "../provider/cache";
 import { mediaPath } from "../workspace";
 
@@ -29,7 +29,7 @@ export function createModelTools(options: {
   workspaceDir: string;
   sessionId?: string;
   inlineAudio?: boolean;
-}): AgentToolSet {
+}): ToolSet {
   const { cache, workspaceDir, sessionId, inlineAudio = false } = options;
   // Not realpath-resolved: the session folder is keyed off this exact path
   // (`workspaceKey`), and the app writes media with the same raw path.
@@ -38,34 +38,32 @@ export function createModelTools(options: {
   const imageModels = installed.filter((m) => m.task === "image-to-image").map((m) => m.id);
   const speechModels = installed.filter((m) => m.task === "text-to-speech").map((m) => m.id);
 
-  const tools: AgentToolSet = [];
+  const tools: ToolSet = {};
 
   if (imageModels.length > 0) {
-    tools.push({
-      name: "local_image_to_image",
+    tools.local_image_to_image = tool({
       description:
         `Transform an image with a local ONNX model and save the result into the session's image folder, where the client shows it (requires approval). ` +
         `Installed image models: ${imageModels.join(", ")}.`,
-      approval: "always",
       inputSchema: z.object({
         model: z.enum(imageModels as [string, ...string[]]).describe("Installed local image-to-image model id"),
         inputPath: z
           .string()
           .describe("Input image: a workspace-relative path, or the absolute path of an attachment"),
       }),
-      toModelOutput: (output) =>
-        typeof output === "string"
-          ? output
-          : `Wrote ${output.path} (${output.width}x${output.height})`,
-      execute: async ({ model, inputPath }, ctx) => {
+      toModelOutput: ({ output }) => ({
+        type: "text",
+        value: typeof output === "string" ? output : `Wrote ${output.path} (${output.width}x${output.height})`,
+      }),
+      execute: async ({ model, inputPath }, { abortSignal }) => {
         const source = mediaPath(root, inputPath);
         const bytes = await readFile(source);
         const image = await RawImage.fromBlob(new Blob([bytes], { type: mimeFor(source, "image/png") }));
-        throwIfAborted(ctx.signal);
+        throwIfAborted(abortSignal);
 
         const provider = cache.get(model, () => new OnnxImageToImageProvider({ model }));
         const output = await provider.generate(image);
-        throwIfAborted(ctx.signal);
+        throwIfAborted(abortSignal);
 
         const target = uniqueOutputPath(
           join(workspaceImageDir(workspaceDir), imageFileName(sessionId, model, inputPath)),
@@ -78,25 +76,23 @@ export function createModelTools(options: {
   }
 
   if (speechModels.length > 0) {
-    tools.push({
-      name: "local_text_to_speech",
+    tools.local_text_to_speech = tool({
       description:
         `Synthesize speech from text with a local ONNX model and save a WAV file to the session's audio folder; the client plays it back (requires approval). ` +
         `Installed text-to-speech models: ${speechModels.join(", ")}.`,
-      approval: "always",
       inputSchema: z.object({
         model: z.enum(speechModels as [string, ...string[]]).describe("Installed local text-to-speech model id"),
         text: z.string().describe("Text to synthesize into speech"),
         speaker: z.string().optional().describe("Optional speaker/voice embeddings path or URL (models that require them)"),
       }),
-      toModelOutput: (output) =>
-        typeof output === "string"
-          ? output
-          : `Wrote ${output.path} (${output.seconds}s @ ${output.samplingRate} Hz)`,
-      execute: async ({ model, text, speaker }, ctx) => {
+      toModelOutput: ({ output }) => ({
+        type: "text",
+        value: typeof output === "string" ? output : `Wrote ${output.path} (${output.seconds}s @ ${output.samplingRate} Hz)`,
+      }),
+      execute: async ({ model, text, speaker }, { abortSignal }) => {
         const provider = cache.get(model, () => new OnnxTextToSpeechProvider({ model }));
         const audio = await provider.generate(text, speaker ? { speaker } : {});
-        throwIfAborted(ctx.signal);
+        throwIfAborted(abortSignal);
 
         const target = uniqueOutputPath(
           join(workspaceAudioDir(workspaceDir), speechFileName(sessionId, model)),

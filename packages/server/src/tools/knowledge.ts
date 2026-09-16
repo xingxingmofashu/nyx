@@ -1,5 +1,5 @@
+import { tool, type ToolSet } from "ai"
 import { z } from "zod/v4"
-import type { AgentToolSet } from "@nyx/core"
 import type { KnowledgeSearchHit } from "../schema"
 import type { KnowledgeService } from "../services/knowledge"
 
@@ -8,19 +8,17 @@ const MAX_OUTPUT = 40_000
 
 /**
  * Expose the local knowledge base as a read-only `search_knowledge` tool.
- * Returns [] when there are no Markdown documents, so the agent never sees a
+ * Returns {} when there are no Markdown documents, so the agent never sees a
  * dead tool.
  */
-export function createKnowledgeTools(service: KnowledgeService): AgentToolSet {
-  if (!service.hasDocuments()) return []
+export function createKnowledgeTools(service: KnowledgeService): ToolSet {
+  if (!service.hasDocuments()) return {}
 
-  return [
-    {
-      name: "search_knowledge",
+  return {
+    search_knowledge: tool({
       description:
         "Search the user's local knowledge base (their own Markdown documents) and return the most relevant " +
         "passages with their sources. Use it to ground answers in the user's documents.",
-      approval: "never",
       inputSchema: z.object({
         query: z.string().describe("Natural-language search query"),
         topK: z.number().int().positive().max(20).optional().describe("Number of passages to return (default 6)"),
@@ -37,8 +35,8 @@ export function createKnowledgeTools(service: KnowledgeService): AgentToolSet {
         const text = hits.map((hit, index) => formatHit(hit, index + 1)).join("\n\n")
         return text.length > MAX_OUTPUT ? `${text.slice(0, MAX_OUTPUT)}\n… (truncated)` : text
       },
-    },
-  ]
+    }),
+  }
 }
 
 function formatHit(hit: KnowledgeSearchHit, index: number): string {

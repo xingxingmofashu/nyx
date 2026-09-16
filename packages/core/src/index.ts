@@ -2,10 +2,6 @@
 
 export type {
   ResolvedAgentModel,
-  AgentToolApproval,
-  AgentToolContext,
-  AgentTool,
-  AgentToolSet,
   AgentRunOptions,
   UIMessage,
   UIMessageChunk,

@@ -1,13 +1,11 @@
 import {
   createAgentUIStreamResponse,
   isStepCount,
-  tool as aiTool,
   ToolLoopAgent,
   type LanguageModel,
-  type ToolSet,
 } from "ai";
 import { resolveModel } from "./provider.ts";
-import type { AgentRunOptions, AgentToolSet, ResolvedAgentModel } from "./types.ts";
+import type { AgentRunOptions, ResolvedAgentModel } from "./types.ts";
 
 const DEFAULT_SYSTEM_PROMPT = [
   "You are nyx, a coding agent operating inside a single workspace directory.",
@@ -25,27 +23,6 @@ function isModelConfig(value: AgentRunOptions["model"]): value is ResolvedAgentM
   return typeof value === "object" && value !== null && "npm" in value && "model" in value;
 }
 
-/** Adapt our declarative AgentTool[] into AI SDK tools + approval policy. */
-function toAiTools(tools: AgentToolSet, workspaceDir: string, signal?: AbortSignal): {
-  tools: ToolSet;
-  toolApproval: Record<string, "user-approval" | "not-applicable">;
-} {
-  const aiTools: ToolSet = {};
-  const toolApproval: Record<string, "user-approval" | "not-applicable"> = {};
-  for (const t of tools) {
-    aiTools[t.name] = aiTool({
-      description: t.description,
-      inputSchema: t.inputSchema,
-      execute: (input, { abortSignal }) => t.execute(input, { workspaceDir, signal: abortSignal ?? signal }),
-      ...(t.toModelOutput
-        ? { toModelOutput: ({ output }) => ({ type: "text" as const, value: t.toModelOutput!(output) }) }
-        : {}),
-    });
-    toolApproval[t.name] = t.approval === "always" ? "user-approval" : "not-applicable";
-  }
-  return { tools: aiTools, toolApproval };
-}
-
 /**
  * Run one agent round-trip and return the AI SDK UI message stream response.
  * The `ToolLoopAgent` owns the tool-calling loop (default stop: 20 steps) and
@@ -55,16 +32,15 @@ function toAiTools(tools: AgentToolSet, workspaceDir: string, signal?: AbortSign
  * next request, and the server stays stateless.
  */
 export async function streamAgent(options: AgentRunOptions): Promise<Response> {
-  const { model, tools, messages, workspaceDir, systemPrompt, maxSteps, signal } = options;
-  const { tools: aiTools, toolApproval } = toAiTools(tools, workspaceDir, signal);
+  const { model, tools, toolApproval, messages, systemPrompt, maxSteps, signal } = options;
   const languageModel: LanguageModel = isModelConfig(model) ? resolveModel(model) : model;
   const maxOutputTokens = isModelConfig(model) ? model.maxOutputTokens : undefined;
 
   const agent = new ToolLoopAgent({
     model: languageModel,
     instructions: systemPrompt ?? DEFAULT_SYSTEM_PROMPT,
-    tools: aiTools,
-    toolApproval,
+    tools,
+    ...(toolApproval === undefined ? {} : { toolApproval }),
     ...(maxSteps === undefined ? {} : { stopWhen: isStepCount(maxSteps) }),
     ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
   });
