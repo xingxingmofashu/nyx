@@ -10,7 +10,7 @@ nyx is a coding agent. The master brain is a remote model you bring your own key
 - **Text-to-speech** — speech synthesis (e.g. MMS-TTS), WAV output
 - **Master brain (agent)** — a remote model (bring your own API key) that orchestrates local coding tools; the agent loop runs in the local server, files/bash stay on your machine
 - **Knowledge base (RAG)** — drop Markdown into `~/.nyx/knowledge/` and the agent retrieves from it with local embeddings
-- **CLI and desktop** — a terminal CLI plus an Electron desktop app sharing the same local model cache
+- **Desktop app** — an Electron app over a local `nyx-server` child process that owns inference, the agent loop, sessions, and the knowledge base
 
 ## Architecture
 
@@ -18,53 +18,36 @@ Bun monorepo:
 
 - `packages/config` — `~/.nyx` paths, the model registry (`~/.nyx/models.json`), and user settings (`~/.nyx/settings.json`)
 - `packages/llm` — model runtime + tasks (`runtime.ts` shared loader, `tasks/*`), built on onnxruntime-node / transformers.js
-- `packages/agent` — the agent: `agent.ts` is the provider-agnostic master loop (Vercel AI SDK), `provider.ts` is the `Provider` layer (brain model resolution + local ONNX provider cache, exposed as `@nyx/agent/provider`), and the root entry adds the concrete capabilities (coding / model / knowledge / web tools, workspace sandbox, model/knowledge/task services)
+- `packages/agent` — the agent: `agent.ts` is the provider-agnostic master loop (Vercel AI SDK), `provider.ts` is the `Provider` layer (brain model resolution + local ONNX provider cache), and the root entry adds the concrete capabilities (coding / model / knowledge / web tools, workspace sandbox, model/knowledge/task services)
 - `packages/knowledge` — local knowledge base (RAG): Markdown chunking, LanceDB hybrid search, local ONNX embeddings
-- `packages/server` — Hono HTTP transport under `/v1` (models / tasks / agent) over `@nyx/agent`, compiled to a self-contained Bun binary (`nyx-server`) that the desktop and the CLI spawn as a child process; re-exports the wire schema
-- `packages/tui` — the terminal agent UI (`@ai-sdk/tui`): session transport and the spawned server lifecycle
-- `apps/coding-agent` — terminal CLI (yargs): `nyx` (agent TUI), `nyx image-to-image`, `nyx text-to-speech`, `nyx model ...`
-- `apps/desktop` — Electron desktop app (forge + vite + React)
+- `packages/server` — Hono HTTP transport under `/v1` (models / tasks / agent / knowledge) over `@nyx/agent`, compiled to a self-contained Bun binary (`nyx-server`) that the desktop spawns as a child process; re-exports the wire schema
+- `apps/desktop` — Electron desktop app (forge + vite + React): the front end, talking to the spawned server over authenticated HTTP
 
 ## Quick start
 
 ```bash
 bun install
-bun run dev -- --help       # run the CLI (default command starts the agent TUI; see Master brain)
-bun run --cwd apps/coding-agent src/index.ts --help
+bun run --cwd packages/server build   # emit packages/server/dist/nyx-server (the desktop spawns it)
+bun run dev                           # start the desktop app
 ```
+
+Configure the brain in **Settings → Agent** before the first chat; local ONNX models are pulled on demand from **Local models**.
 
 ### Local models
 
-Models are cached in `~/.nyx/models/` and auto-downloaded from Hugging Face on first use. Pre-download with `nyx model pull`. To download via a mirror (e.g. in restricted networks), set `HF_ENDPOINT` (e.g. `https://hf-mirror.com`) or pick a hub URL in **Settings → Hugging Face**. That section also has an offline toggle (`allowRemoteModels: false`), which uses only the local cache and never contacts the hub.
+Models are cached in `~/.nyx/models/` and auto-downloaded from Hugging Face on first use. Pre-download them on the **Local models** page. To download via a mirror (e.g. in restricted networks), set `HF_ENDPOINT` (e.g. `https://hf-mirror.com`) or pick a hub URL in **Settings → Hugging Face**. That section also has an offline toggle (`allowRemoteModels: false`), which uses only the local cache and never contacts the hub.
 
-## Commands
+## Pages
 
-`nyx` (no subcommand) is the master-brain agent and needs a configured remote model (see below). Local task commands require an explicit `--model <id>` (any transformers.js-compatible ONNX model); `model` subcommands take the model id as a positional argument.
+The sidebar is the map of the front end: **Agent** (chat, workspace picker, inline tool approvals, context meter), **Chats** (the saved sessions of that workspace), **Knowledge base**, **Image to image**, **Text to speech**, **Automatic speech recognition**, **Local models**, and **Settings** (providers, agent, Hugging Face, general).
 
-```bash
-nyx                                                              # master-brain agent TUI (remote model + coding tools)
-nyx --cwd ./project                                              # ...with an explicit workspace directory
-nyx --resume                                                     # pick a saved session for this workspace and continue it
+### Voice input
 
-nyx model pull <model> --task <image-to-image|text-to-speech|automatic-speech-recognition|feature-extraction>  # pre-download a model
-nyx model list                                                   # list locally cached models (alias: ls)
-nyx model remove <model> [--yes]                                 # delete a cached model
-
-nyx image-to-image <input> --model "<id>" [-o out.png]           # image-to-image transform
-nyx text-to-speech "<text>" --model "<id>" [-o out.wav]          # text-to-speech synthesis
-```
-
-In the agent TUI (powered by `@ai-sdk/tui`): type a message and press Enter to send, `y`/`n` answers the inline tool-approval prompt, and `Esc` (or Ctrl+C) exits. Replies stream in as markdown, with tool cards and reasoning sections.
-
-Sessions are saved per workspace under `~/.nyx/sessions/<workspace>/` and shared with the desktop app. `nyx --resume` lists the sessions for the current workspace and feeds the chosen one to the model as context (the terminal UI cannot re-render past turns, so only new replies are shown).
-
-### Voice input (desktop)
-
-Pull an automatic-speech-recognition model (e.g. `Xenova/whisper-base`) in **Manage models**, then either use the mic in the agent composer (the transcript is sent to the agent automatically) or open the **Automatic speech recognition** page to record and copy a transcript. Audio is captured at 16 kHz mono and transcribed locally; language is auto-detected.
+Pull an automatic-speech-recognition model (e.g. `Xenova/whisper-base`) on the **Local models** page, then either use the mic in the agent composer (the transcript is sent to the agent automatically) or open the **Automatic speech recognition** page to record and copy a transcript. Audio is captured at 16 kHz mono and transcribed locally; language is auto-detected.
 
 ## Master brain (agent)
 
-The default `nyx` command is an agent whose **brain is a remote model** (bring your own API key) and whose tools are local coding tools (`read_file`, `grep`, `glob`, `write_file`, `edit_file`, `bash`). Read-only tools run automatically; writes and shell commands ask for `y/n` approval. Everything runs inside a `--cwd` workspace (default: current directory).
+The **Agent** page is a chat whose **brain is a remote model** (bring your own API key) and whose tools are local coding tools (`read_file`, `grep`, `glob`, `write_file`, `edit_file`, `bash`). Read-only tools run automatically; writes and shell commands wait for approval in the chat. Everything runs inside the workspace picked in the page header (until one is picked, the app's working directory).
 
 The agent loop runs in the local server (`POST /v1/agent`), so API calls go out but files and commands stay on your machine. Configure the brain in `~/.nyx/settings.json` — `agent.model` is a `<providerId>/<modelId>` ref into the `agent.provider` map:
 
@@ -86,11 +69,11 @@ The agent loop runs in the local server (`POST /v1/agent`), so API calls go out 
 }
 ```
 
-`npm` selects the AI SDK provider package — `@ai-sdk/openai-compatible` (any OpenAI-compatible endpoint: OpenAI, DeepSeek, OpenRouter, vLLM, Ollama, OpenCode Zen/Go, …) or `@ai-sdk/anthropic`. `options` holds `baseURL`/`apiKey`/`headers`; `limit.output` caps generated tokens. Env overrides: `NYX_AGENT_MODEL` replaces the ref, and `NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS` (a JSON object) override the active provider's options. Some gateways need extra request headers (e.g. OpenCode Zen/Go requires `x-opencode-session`) — add them under the provider's `options.headers`. The desktop app ships the same agent as its default page: pick a workspace folder in the header, chat, and approve tool calls inline. Its **Settings → Agent** page edits the model ref, providers, system prompt, and tool toggles (changes apply to the next message, no restart); the workspace is chosen from the Agent page header. Attach images from the composer (button, paste, or drag-and-drop) to feed local tools: each file is copied into the workspace's session folder (`~/.nyx/sessions/<workspace>/attachments/`) and the brain receives its absolute path, which is what `local_image_to_image` takes as `inputPath` — so deleting the original file never breaks the chat.
+`npm` selects the AI SDK provider package — `@ai-sdk/openai-compatible` (any OpenAI-compatible endpoint: OpenAI, DeepSeek, OpenRouter, vLLM, Ollama, OpenCode Zen/Go, …) or `@ai-sdk/anthropic`. `options` holds `baseURL`/`apiKey`/`headers`; `limit.output` caps generated tokens. Env overrides: `NYX_AGENT_MODEL` replaces the ref, and `NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS` (a JSON object) override the active provider's options. Some gateways need extra request headers (e.g. OpenCode Zen/Go requires `x-opencode-session`) — add them under the provider's `options.headers`. Pick a workspace folder in the Agent header, chat, and approve tool calls inline; **Settings → Agent** edits the model ref, providers, system prompt, and tool toggles (changes apply to the next message, no restart). Attach images from the composer (button, paste, or drag-and-drop) to feed local tools: each file is copied into the workspace's session folder (`~/.nyx/sessions/<workspace>/attachments/`) and the brain receives its absolute path, which is what `local_image_to_image` takes as `inputPath` — so deleting the original file never breaks the chat.
 
 ### Long sessions (context compaction)
 
-Every turn re-sends the whole transcript, so long sessions eventually fill the model's context window. The window comes from the provider's `limit.context` (a token count, or `"128k"`/`"1m"`), or — when that is not set — from the [models.dev](https://models.dev) catalog, looked up by model id and cached under `~/.nyx/cache/models.json` (refreshed in the background; set `NYX_DISABLE_MODELS_FETCH=1` to stay offline, or `NYX_MODELS_URL` to point at a mirror). When a request would come within `compaction.buffer` tokens (default 20000) of the window, the oldest turns are summarized into a checkpoint and only a verbatim tail is kept, so the conversation keeps going instead of erroring out. The checkpoint rides on the assistant message as metadata, so it persists with the session and both the desktop and the CLI get this for free.
+Every turn re-sends the whole transcript, so long sessions eventually fill the model's context window. The window comes from the provider's `limit.context` (a token count, or `"128k"`/`"1m"`), or — when that is not set — from the [models.dev](https://models.dev) catalog, looked up by model id and cached under `~/.nyx/cache/models.json` (refreshed in the background; set `NYX_DISABLE_MODELS_FETCH=1` to stay offline, or `NYX_MODELS_URL` to point at a mirror). When a request would come within `compaction.buffer` tokens (default 20000) of the window, the oldest turns are summarized into a checkpoint and only a verbatim tail is kept, so the conversation keeps going instead of erroring out. The checkpoint rides on the assistant message as metadata, so it persists with the session across restarts.
 
 ```json
 {
@@ -135,15 +118,15 @@ Set `agent.tools.webSearch: false` (or `NYX_AGENT_WEB_SEARCH=0`) to disable both
 
 ## Knowledge base (RAG)
 
-Drop Markdown files anywhere under `~/.nyx/knowledge/` and nyx indexes them locally with the ONNX embedding model (`Xenova/multilingual-e5-base` by default), then answers from your own documents. Chunks are stored in [LanceDB](https://lancedb.com/) with a native full-text index; queries use hybrid (vector + keyword) search fused with reciprocal rank fusion. Everything runs on your machine.
+The **Knowledge** page manages the Markdown under `~/.nyx/knowledge/` and indexes it locally with the ONNX embedding model (`Xenova/multilingual-e5-base` by default), so the agent can answer from your own documents. Import files or a whole folder on the page, or drop them in by hand:
 
 ```bash
-nyx model pull Xenova/multilingual-e5-base --task feature-extraction   # one-time: download the embedding model
-mkdir -p ~/.nyx/knowledge && cp ~/notes/*.md ~/.nyx/knowledge/         # drop in your Markdown
-nyx                                                                    # start the agent (build the index from the Knowledge page)
+cp ~/notes/*.md ~/.nyx/knowledge/     # hand-dropped files show up as "not indexed yet"
 ```
 
-Indexing is incremental (files are skipped by content hash) and lives in `~/.nyx/knowledge/.index/` (override the knowledge dir with `NYX_KNOWLEDGE_DIR`). It never runs on its own — not at startup and not on a query — so opening the app costs nothing: build or refresh it from the desktop's **Knowledge** page (`Update index` / `Rebuild`). If the embedding model isn't downloaded yet, indexing stops with a hint — it is not fetched implicitly. While any Markdown file exists, the agent gets a read-only `search_knowledge` tool so it can ground answers in your documents (set `agent.tools.knowledge: false` in `settings.json` to disable).
+Chunks are stored in [LanceDB](https://lancedb.com/) with a native full-text index; queries use hybrid (vector + keyword) search fused with reciprocal rank fusion. Everything runs on your machine.
+
+Indexing is incremental (files are skipped by content hash) and lives in `~/.nyx/knowledge/.index/` (override the knowledge dir with `NYX_KNOWLEDGE_DIR`). It never runs on its own — not at startup and not on a query — so opening the app costs nothing: build or refresh it from the desktop's **Knowledge** page (`Update index` / `Rebuild`). If the embedding model isn't downloaded yet, indexing stops with a hint — download it once from **Local models** (task `feature-extraction`). While any Markdown file exists, the agent gets a read-only `search_knowledge` tool so it can ground answers in your documents (set `agent.tools.knowledge: false` in `settings.json` to disable).
 
 The desktop's **Knowledge** page manages the same base: documents appear as a file tree with a status dot each (green: in the vector store, amber: being embedded right now, grey: still to build), the selected one renders as Markdown, and you can import files or a whole folder into a target folder inside the knowledge dir — picked from a tree of the existing folders (root by default), an existing path is only replaced after you confirm, delete a document (right-click), run **Update index** to embed what changed, or **Rebuild** to drop the index and embed everything again — for example after changing `knowledge.embeddingModel`. A retrieval box at the bottom runs the same hybrid search the agent's tool uses. Files dropped into `~/.nyx/knowledge/` by hand show up as "not indexed yet" and are only picked up when you press **Update index**.
 

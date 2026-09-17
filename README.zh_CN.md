@@ -10,7 +10,7 @@ nyx 是一个编码 agent。主脑是你自带 API key 的远程模型；工具�
 - **文生语音**：语音合成（如 MMS-TTS），输出 WAV
 - **主脑（agent）**：远程模型（自带 API key），负责编排本地编码工具；agent 循环运行在本地 server 中，文件与命令都不出本机
 - **知识库（RAG）**：把 Markdown 放进 `~/.nyx/knowledge/`，agent 用本地嵌入模型从你的资料中检索回答
-- **CLI 与桌面端**：终端 CLI 与 Electron 桌面应用共享同一份本地模型缓存
+- **桌面应用**：Electron 应用 + 本地 `nyx-server` 子进程，推理、agent 循环、会话与知识库都在本机
 
 ## 架构
 
@@ -18,53 +18,36 @@ Bun monorepo：
 
 - `packages/config` — `~/.nyx` 路径、模型注册表（`~/.nyx/models.json`）与用户设置（`~/.nyx/settings.json`）
 - `packages/llm` — 模型运行时 + 任务（`runtime.ts` 共享加载器、`tasks/*`），基于 onnxruntime-node / transformers.js
-- `packages/agent` — agent 本体：`agent.ts` 是 provider 无关的主脑循环（Vercel AI SDK），`provider.ts` 是 `Provider` 层（主脑模型解析 + 本地 ONNX provider 缓存，以 `@nyx/agent/provider` 暴露），包根补充具体能力（编码 / 模型 / 知识 / 网络工具、工作区沙箱、model/knowledge/task 服务）
+- `packages/agent` — agent 本体：`agent.ts` 是 provider 无关的主脑循环（Vercel AI SDK），`provider.ts` 是 `Provider` 层（主脑模型解析 + 本地 ONNX provider 缓存），包根补充具体能力（编码 / 模型 / 知识 / 网络工具、工作区沙箱、model/knowledge/task 服务）
 - `packages/knowledge` — 本地知识库（RAG）：Markdown 切分、LanceDB 混合检索、本地 ONNX 嵌入
-- `packages/server` — `/v1` 下的 Hono HTTP 传输层（models / tasks / agent），构建在 `@nyx/agent` 之上，编译为自包含的 Bun 可执行文件（`nyx-server`），桌面端与 CLI 都以子进程方式启动它；并 re-export 线协议 schema
-- `packages/tui` — 终端 agent 界面（`@ai-sdk/tui`）：会话传输与子进程服务器生命周期
-- `apps/coding-agent` — 终端 CLI（yargs）：`nyx`（agent TUI）、`nyx image-to-image`、`nyx text-to-speech`、`nyx model ...`
-- `apps/desktop` — Electron 桌面应用（forge + vite + React）
+- `packages/server` — `/v1` 下的 Hono HTTP 传输层（models / tasks / agent / knowledge），构建在 `@nyx/agent` 之上，编译为自包含的 Bun 可执行文件（`nyx-server`），由桌面端以子进程方式启动；并 re-export 线协议 schema
+- `apps/desktop` — Electron 桌面应用（forge + vite + React）：唯一的前端，通过带 token 的 HTTP 与子进程 server 通信
 
 ## 快速开始
 
 ```bash
 bun install
-bun run dev -- --help       # 运行 CLI（默认命令启动 agent TUI，见「主脑」）
-bun run --cwd apps/coding-agent src/index.ts --help
+bun run --cwd packages/server build   # 产出 packages/server/dist/nyx-server（桌面端会 spawn 它）
+bun run dev                           # 启动桌面应用
 ```
+
+首次对话前先在 **Settings → Agent** 配好主脑；本地 ONNX 模型在 **Local models** 页面按需拉取。
 
 ### 本地模型
 
-模型缓存在 `~/.nyx/models/`，首次使用时自动从 Hugging Face 下载。可用 `nyx model pull` 预下载。如需通过镜像下载（例如网络受限环境），设置 `HF_ENDPOINT`（如 `https://hf-mirror.com`），或在 **Settings → Hugging Face** 选择镜像地址。该区块还提供离线开关（`allowRemoteModels: false`）：只用本地缓存，不再访问 hub。
+模型缓存在 `~/.nyx/models/`，首次使用时自动从 Hugging Face 下载。可在 **Local models** 页面预下载。如需通过镜像下载（例如网络受限环境），设置 `HF_ENDPOINT`（如 `https://hf-mirror.com`），或在 **Settings → Hugging Face** 选择镜像地址。该区块还提供离线开关（`allowRemoteModels: false`）：只用本地缓存，不再访问 hub。
 
-## 命令
+## 页面
 
-`nyx`（无子命令）是主脑 agent，需要先配置远程模型（见下）。本地任务命令需显式指定 `--model <id>`（任意 transformers.js 兼容的 ONNX 模型）；`model` 子命令以位置参数传入模型 id。
+侧栏就是前端的目录：**Agent**（对话、工作区选择、内联工具审批、上下文用量表）、**Chats**（该工作区的历史会话）、**Knowledge base**、**Image to image**、**Text to speech**、**Automatic speech recognition**、**Local models**，以及 **Settings**（providers、agent、Hugging Face、通用）。
 
-```bash
-nyx                                                              # 主脑 agent TUI（远程模型 + 本地编码工具）
-nyx --cwd ./project                                              # ...指定工作区目录
-nyx --resume                                                     # 选择本工作区的一个已保存会话并继续
+### 语音输入
 
-nyx model pull <model> --task <image-to-image|text-to-speech|automatic-speech-recognition|feature-extraction>   # 预下载模型
-nyx model list                                                   # 列出本地已缓存模型（别名：ls）
-nyx model remove <model> [--yes]                                 # 删除已缓存模型
-
-nyx image-to-image <input> --model "<id>" [-o out.png]           # 图生图变换
-nyx text-to-speech "<文本>" --model "<id>" [-o out.wav]          # 文生语音合成
-```
-
-agent TUI（由 `@ai-sdk/tui` 提供界面）：输入消息回车发送，内联工具审批用 `y`/`n` 回答，`Esc`（或 Ctrl+C）退出。回复以 markdown 流式显示，工具卡片与推理内容内联展示。
-
-会话按工作区保存在 `~/.nyx/sessions/<workspace>/`，与桌面端共用。`nyx --resume` 会列出当前工作区的会话，把选中的历史作为上下文喂给模型（终端界面无法回放历史，只显示新回复）。
-
-### 语音输入（桌面端）
-
-在 **Manage models** 里拉取一个自动语音识别模型（如 `Xenova/whisper-base`），然后在 agent 输入框点麦克风（转录文本会自动发给 agent），或打开 **Automatic speech recognition** 页面录音并复制转录文本。音频以 16 kHz 单声道在本地转录，语言自动检测。
+在 **Local models** 页面拉取自动语音识别模型（如 `Xenova/whisper-base`），然后在 agent 输入框点麦克风（转录文本会自动发给 agent），或打开 **Automatic speech recognition** 页面录音并复制转录文本。音频以 16 kHz 单声道在本地转录，语言自动检测。
 
 ## 主脑（agent）
 
-默认的 `nyx` 命令是一个 agent：**主脑是远程模型**（自带 API key），工具是本地编码工具（`read_file`、`grep`、`glob`、`write_file`、`edit_file`、`bash`）。只读工具自动执行；写文件与 shell 命令需要 `y/n` 审批。所有操作限制在 `--cwd` 工作区内（默认当前目录）。
+**Agent** 页面是一个对话：**主脑是远程模型**（自带 API key），工具是本地编码工具（`read_file`、`grep`、`glob`、`write_file`、`edit_file`、`bash`）。只读工具自动执行；写文件与 shell 命令在对话里等待审批。所有操作限制在页面顶部选择的工作区内（未选择时用应用的工作目录）。
 
 agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型请求，文件与命令都不出本机。在 `~/.nyx/settings.json` 中配置主脑 —— `agent.model` 是指向 `agent.provider` 的 `<providerId>/<modelId>` 引用：
 
@@ -86,11 +69,11 @@ agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型
 }
 ```
 
-`npm` 选择 AI SDK 的 provider 包 —— `@ai-sdk/openai-compatible`（任意 OpenAI 兼容端点：OpenAI、DeepSeek、OpenRouter、vLLM、Ollama、OpenCode Zen/Go 等）或 `@ai-sdk/anthropic`。`options` 承载 `baseURL`/`apiKey`/`headers`；`limit.output` 限制生成 token 数。环境变量覆盖：`NYX_AGENT_MODEL` 替换引用，`NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS`（JSON 对象）覆盖当前 provider 的 options。部分网关需要额外的请求头（例如 OpenCode Zen/Go 需要 `x-opencode-session`），配置在对应 provider 的 `options.headers` 下。桌面端内置同一个 agent，并作为默认页面：在顶部选择工作区目录、对话、在内联卡片里审批工具调用。**Settings → Agent** 页面可编辑模型引用、providers、系统提示与工具开关（下一条消息即生效，无需重启）；工作区在 Agent 页头部选择。在输入框可以附件形式添加图片（按钮、粘贴或拖拽）：每个文件会被复制到该工作区的会话目录（`~/.nyx/sessions/<workspace>/attachments/`），主脑拿到的是它的绝对路径，也就是 `local_image_to_image` 所需的 `inputPath` —— 因此删掉原始文件也不会让对话失效。
+`npm` 选择 AI SDK 的 provider 包 —— `@ai-sdk/openai-compatible`（任意 OpenAI 兼容端点：OpenAI、DeepSeek、OpenRouter、vLLM、Ollama、OpenCode Zen/Go 等）或 `@ai-sdk/anthropic`。`options` 承载 `baseURL`/`apiKey`/`headers`；`limit.output` 限制生成 token 数。环境变量覆盖：`NYX_AGENT_MODEL` 替换引用，`NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS`（JSON 对象）覆盖当前 provider 的 options。部分网关需要额外的请求头（例如 OpenCode Zen/Go 需要 `x-opencode-session`），配置在对应 provider 的 `options.headers` 下。在 Agent 页顶部选择工作区目录、对话、在内联卡片里审批工具调用；**Settings → Agent** 页面可编辑模型引用、providers、系统提示与工具开关（下一条消息即生效，无需重启）。在输入框可以附件形式添加图片（按钮、粘贴或拖拽）：每个文件会被复制到该工作区的会话目录（`~/.nyx/sessions/<workspace>/attachments/`），主脑拿到的是它的绝对路径，也就是 `local_image_to_image` 所需的 `inputPath` —— 因此删掉原始文件也不会让对话失效。
 
 ### 长会话（上下文压缩）
 
-每一轮都会把整份 transcript 重新发给模型，所以长会话最终会占满模型的上下文窗口。窗口大小取自 provider 的 `limit.context`（token 数，或 `"128k"`/`"1m"`）；没配时回退到 [models.dev](https://models.dev) 目录，按模型 id 查找并缓存到 `~/.nyx/cache/models.json`（后台刷新；设 `NYX_DISABLE_MODELS_FETCH=1` 可离线，`NYX_MODELS_URL` 可指向镜像）。当一次请求距离窗口只剩 `compaction.buffer`（默认 20000）token 时，最旧的若干轮会被总结成一个 checkpoint，只保留一段原文的尾部，于是对话能继续而不是直接报错。checkpoint 挂在 assistant 消息的 metadata 上，因此随会话持久化，桌面端和 CLI 都自动受益。
+每一轮都会把整份 transcript 重新发给模型，所以长会话最终会占满模型的上下文窗口。窗口大小取自 provider 的 `limit.context`（token 数，或 `"128k"`/`"1m"`）；没配时回退到 [models.dev](https://models.dev) 目录，按模型 id 查找并缓存到 `~/.nyx/cache/models.json`（后台刷新；设 `NYX_DISABLE_MODELS_FETCH=1` 可离线，`NYX_MODELS_URL` 可指向镜像）。当一次请求距离窗口只剩 `compaction.buffer`（默认 20000）token 时，最旧的若干轮会被总结成一个 checkpoint，只保留一段原文的尾部，于是对话能继续而不是直接报错。checkpoint 挂在 assistant 消息的 metadata 上，因此随会话持久化，重启应用依然有效。
 
 ```json
 {
@@ -135,15 +118,15 @@ agent 默认还会拿到两个只读网页工具：`web_search`（联网搜索�
 
 ## 知识库（RAG）
 
-把 Markdown 文件放进 `~/.nyx/knowledge/` 下的任意位置，nyx 就用本地 ONNX 嵌入模型（默认 `Xenova/multilingual-e5-base`）在本地建索引，然后基于你自己的文档回答。片段存在 [LanceDB](https://lancedb.com/) 中并建立原生全文索引；查询使用向量 + 关键词的混合检索，并以 RRF 融合排序。全程在本机运行。
+**Knowledge** 页面管理 `~/.nyx/knowledge/` 下的 Markdown，并用本地 ONNX 嵌入模型（默认 `Xenova/multilingual-e5-base`）在本机建索引，agent 便能基于你自己的文档回答。可以在页面上导入文件或整个文件夹，也可以直接放进去：
 
 ```bash
-nyx model pull Xenova/multilingual-e5-base --task feature-extraction   # 一次性：下载嵌入模型
-mkdir -p ~/.nyx/knowledge && cp ~/notes/*.md ~/.nyx/knowledge/         # 放入你的 Markdown
-nyx                                                                    # 启动 agent（索引在桌面端 Knowledge 页面里手动建）
+cp ~/notes/*.md ~/.nyx/knowledge/     # 手动放入的文件会显示为「待索引」
 ```
 
-索引是增量的（按内容哈希跳过未变文件），存放在 `~/.nyx/knowledge/.index/`（可用 `NYX_KNOWLEDGE_DIR` 覆盖知识库目录）。它不会自己跑——启动时不会，检索时也不会——所以打开应用没有额外开销：需要时在桌面端 **Knowledge** 页面点 `Update index` / `Rebuild`。若嵌入模型尚未下载，索引会停下并给出提示，不会自动下载。只要存在 Markdown 文件，agent 就会获得只读的 `search_knowledge` 工具，从而基于你的文档回答（在 `settings.json` 中设 `agent.tools.knowledge: false` 可关闭）。
+片段存在 [LanceDB](https://lancedb.com/) 中并建立原生全文索引；查询使用向量 + 关键词的混合检索，并以 RRF 融合排序。全程在本机运行。
+
+索引是增量的（按内容哈希跳过未变文件），存放在 `~/.nyx/knowledge/.index/`（可用 `NYX_KNOWLEDGE_DIR` 覆盖知识库目录）。它不会自己跑——启动时不会，检索时也不会——所以打开应用没有额外开销：需要时在桌面端 **Knowledge** 页面点 `Update index` / `Rebuild`。若嵌入模型尚未下载，索引会停下并给出提示，不会自动下载——去 **Local models** 页面用 `feature-extraction` 任务下载一次即可。只要存在 Markdown 文件，agent 就会获得只读的 `search_knowledge` 工具，从而基于你的文档回答（在 `settings.json` 中设 `agent.tools.knowledge: false` 可关闭）。
 
 桌面端的 **Knowledge** 页面管理同一个知识库：文档以文件树展示并带一个状态圆点（绿色：已在向量库；琥珀：正在嵌入；灰色：还没建），选中后直接预览 Markdown；可以把文件或整个文件夹导入到知识库里的指定目录（从已有目录树里选，默认根目录；同名文件只在确认后才覆盖）、右键删除文档、点 **Update index** 只嵌入变更部分，或点 **Rebuild** 丢弃索引并全量重嵌（例如换了 `knowledge.embeddingModel` 之后）。页面底部的检索框跑的就是 agent 那个工具用的同一套混合检索。手动放进 `~/.nyx/knowledge/` 的文件会显示为灰色"待索引"，点 **Update index** 即被收录。
 
