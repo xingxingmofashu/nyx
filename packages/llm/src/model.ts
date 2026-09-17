@@ -1,9 +1,10 @@
 import { existsSync, readdirSync, rmSync, statSync } from "node:fs"
 import { join } from "node:path"
-import { env, pipeline, type DataType } from "@huggingface/transformers"
+import { pipeline, type DataType } from "@huggingface/transformers"
 import { getModelsDir, readModelConfig, writeModelConfig, type ModelInfo } from "@nyx/config"
 import { configureEnv } from "./runtime.ts"
 import type { ProgressInfo } from "./runtime.ts"
+import { createOverallProgress, fetchRepoTree, planPull } from "./pull-progress.ts"
 import type { LLMTask } from "./types.ts"
 
 /** Thrown when a pull is cancelled mid-download. */
@@ -53,22 +54,29 @@ export async function pullModel(
     throw new Error(`Invalid model id: ${modelId}`)
   }
 
-  // When a signal is given, wrapping the progress callback doubles as the abort
-  // lever: transformers.js fires it per read chunk on the streaming download
-  // path, so throwing from it stops the current file write and unwinds the
-  // whole pipeline load. Without a signal we pass onProgress straight through
-  // (transformers takes the arrayBuffer fast path when no callback is given).
-  const progress_callback: ((info: ProgressInfo) => void) | undefined = signal
-    ? (info) => {
-        throwIfAborted(modelId, signal)
-        onProgress?.(info)
-      }
-    : onProgress
-
   configureEnv()
-  // Drop weights whose local size differs from the remote file, so truncated
-  // downloads can't be mistaken for complete. Degrades to a no-op offline.
-  await prune(modelId)
+  // One listing of the repo covers both jobs below: dropping weights left
+  // truncated by an earlier run, and knowing how much this pull will download.
+  // Null (offline, gated) degrades to a no-op and to per-file progress.
+  const tree = await fetchRepoTree(modelId)
+  await prune(modelId, tree)
+
+  const plan = onProgress ? planPull(tree) : null
+  const overall = plan ? createOverallProgress(plan) : null
+
+  // Without a signal and without a listener transformers.js takes the
+  // arrayBuffer fast path, so the wrapper is only installed when someone is
+  // watching. A signal makes it the abort lever: transformers fires it per read
+  // chunk on the streaming download path, so throwing from it stops the current
+  // file write and unwinds the whole pipeline load.
+  const progress_callback: ((info: ProgressInfo) => void) | undefined =
+    signal || onProgress
+      ? (info) => {
+          throwIfAborted(modelId, signal)
+          onProgress?.(overall ? overall(info) : info)
+        }
+      : undefined
+
   // Loading the pipeline downloads config/tokenizer/weights; discard the instance.
   await pipeline(task, modelId, {
     ...(dtype ? { dtype } : {}),
@@ -99,47 +107,27 @@ export function findModel(modelId: string): ModelInfo | undefined {
   return undefined
 }
 
-interface RemoteFile {
-  path: string
-  type?: string
-  size?: number
-}
-
 /**
  * Delete cached weights whose on-disk size differs from the remote file, so a
  * truncated download is never mistaken for complete. Only `onnx/` weights are
  * touched (config/tokenizer are tiny and rarely the truncation casualty).
  * Offline or on error, does nothing — never deletes on uncertainty.
  */
-async function prune(modelId: string): Promise<void> {
+function prune(modelId: string, tree: Map<string, number> | null): void {
   const [org, ...rest] = modelId.split("/")
   const name = rest.join("/")
   if (!org || !name) return
 
   const weightsDir = join(getModelsDir(), org, name, "onnx")
-  if (!existsSync(weightsDir)) return
+  if (!existsSync(weightsDir) || !tree) return
 
-  const host = env.remoteHost.replace(/\/$/, "")
-  const url = `${host}/api/models/${modelId}/tree/main/onnx?recursive=true`
-
-  let remote: RemoteFile[]
-  try {
-    const res = await fetch(url)
-    if (!res.ok) return
-    remote = (await res.json()) as RemoteFile[]
-  } catch {
-    return
-  }
-  if (!Array.isArray(remote) || remote.length === 0) return
-
-  const remoteMap = new Map<string, number | undefined>()
-  for (const f of remote) {
-    if (f.type === "file") remoteMap.set(f.path, f.size)
+  const remote = new Map<string, number>()
+  for (const [path, size] of tree) {
+    if (path.startsWith("onnx/")) remote.set(path, size)
   }
 
   for (const local of readdirSync(weightsDir)) {
-    const rname = `onnx/${local}`
-    if (!remoteMap.has(rname) || remoteMap.get(rname) !== statSyncSafe(join(weightsDir, local))) {
+    if (remote.get(`onnx/${local}`) !== statSyncSafe(join(weightsDir, local))) {
       rmSync(join(weightsDir, local), { force: true })
     }
   }
