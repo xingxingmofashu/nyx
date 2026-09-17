@@ -89,6 +89,19 @@ export class KnowledgeStore {
     return this.table.countRows();
   }
 
+  /**
+   * Every source file the table still holds chunks for. Authoritative for
+   * pruning: an index run interrupted by a cancel (or a crash) can leave chunks
+   * behind that no manifest entry mentions.
+   */
+  async listFiles(): Promise<string[]> {
+    if (!this.table) return [];
+    // Plain scan with a projection: pulling whole rows would materialize every
+    // chunk text and vector just to read the file column.
+    const rows = await this.table.query().select(["file"]).toArray();
+    return [...new Set(rows.map((row) => String(row.file)))];
+  }
+
   async close(): Promise<void> {
     this.table?.close();
     this.db.close();

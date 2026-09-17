@@ -208,7 +208,7 @@ export class KnowledgeBase {
         const fileDim = embeddings[0]!.length;
         if (this.config.dim !== undefined && this.config.dim !== fileDim) {
           throw new Error(
-            `Embedding dimension changed (${this.config.dim} → ${fileDim}); remove the index and re-index after switching models.`,
+            `Embedding dimension changed (${this.config.dim} → ${fileDim}); rebuild the index to embed every document again.`,
           );
         }
         dim = fileDim;
@@ -228,12 +228,14 @@ export class KnowledgeBase {
         filesDone++;
       }
 
-      // Drop files that disappeared from the knowledge directory.
-      for (const file of Object.keys(manifest)) {
-        if (!seen.has(file)) {
-          await store.deleteFile(file);
-          delete manifest[file];
-        }
+      // Drop files that disappeared from the knowledge directory. The store and
+      // the manifest are both consulted: an interrupted run can leave chunks
+      // behind that the manifest never recorded.
+      const stale = new Set([...Object.keys(manifest), ...(await store.listFiles())]);
+      for (const file of stale) {
+        if (seen.has(file)) continue;
+        await store.deleteFile(file);
+        delete manifest[file];
       }
 
       const chunks = await store.countChunks();
