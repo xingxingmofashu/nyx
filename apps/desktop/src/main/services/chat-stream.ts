@@ -1,7 +1,7 @@
 import type { BrowserWindow } from "electron"
 import type { NyxServerProcess } from "../server"
 import { IPC } from "../../shared/ipc"
-import type { ChatSendRequest, ChatStreamEvent } from "../../shared/types"
+import type { ChatCompactRequest, ChatSendRequest, ChatStreamEvent, CompactionResult } from "../../shared/types"
 
 /**
  * Stateless proxy for the master-brain agent chat. Each stream is identified by
@@ -25,6 +25,11 @@ export class ChatStreamService {
   /** Abort one in-flight stream by its renderer-generated id. */
   abort(streamId: string): void {
     this.controllers.get(streamId)?.abort()
+  }
+
+  /** Summarize the transcript now (manual Compact); no stream, one JSON reply. */
+  compact(request: ChatCompactRequest): Promise<CompactionResult> {
+    return this.manager.client.agentCompact({ ...request })
   }
 
   /** Start a stream; chunks are pushed to all attached windows until it ends. */

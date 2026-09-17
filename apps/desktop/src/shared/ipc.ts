@@ -14,6 +14,8 @@ export const IPC = {
   /** Agent chat streaming (AI SDK UI message stream). */
   chat: {
     send: "chat:send",
+    /** Summarize the transcript now (manual Compact). */
+    compact: "chat:compact",
     abort: "chat:abort",
     /** main → renderer: streamed chunks / completion / error, tagged with a stream id. */
     event: "chat:event",
@@ -36,6 +38,8 @@ export const IPC = {
     getEnvironment: "config:getEnvironment",
     /** List a provider's models from its `/models` endpoint (main-process fetch). */
     listModels: "config:listModels",
+    /** Context window for a provider/model, read from the cached models.dev catalog. */
+    modelLimits: "config:modelLimits",
     /** Restart the inference-server child (applies a changed HF endpoint). */
     restartServer: "config:restartServer",
   },

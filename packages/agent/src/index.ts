@@ -13,6 +13,7 @@ export type {
 } from "./types.ts";
 export { Provider } from "./provider.ts";
 export { streamAgent } from "./agent.ts";
+export { ensureModelsCatalog, lookupModelLimit } from "./models-dev.ts";
 
 export { AgentService } from "./services/agent.ts";
 export { KnowledgeService } from "./services/knowledge.ts";

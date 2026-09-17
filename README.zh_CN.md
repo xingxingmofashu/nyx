@@ -88,6 +88,21 @@ agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型
 
 `npm` 选择 AI SDK 的 provider 包 —— `@ai-sdk/openai-compatible`（任意 OpenAI 兼容端点：OpenAI、DeepSeek、OpenRouter、vLLM、Ollama、OpenCode Zen/Go 等）或 `@ai-sdk/anthropic`。`options` 承载 `baseURL`/`apiKey`/`headers`；`limit.output` 限制生成 token 数。环境变量覆盖：`NYX_AGENT_MODEL` 替换引用，`NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS`（JSON 对象）覆盖当前 provider 的 options。部分网关需要额外的请求头（例如 OpenCode Zen/Go 需要 `x-opencode-session`），配置在对应 provider 的 `options.headers` 下。桌面端内置同一个 agent，并作为默认页面：在顶部选择工作区目录、对话、在内联卡片里审批工具调用。**Settings → Agent** 页面可编辑模型引用、providers、系统提示与工具开关（下一条消息即生效，无需重启）；工作区在 Agent 页头部选择。在输入框可以附件形式添加图片（按钮、粘贴或拖拽）：每个文件会被复制到该工作区的会话目录（`~/.nyx/sessions/<workspace>/attachments/`），主脑拿到的是它的绝对路径，也就是 `local_image_to_image` 所需的 `inputPath` —— 因此删掉原始文件也不会让对话失效。
 
+### 长会话（上下文压缩）
+
+每一轮都会把整份 transcript 重新发给模型，所以长会话最终会占满模型的上下文窗口。窗口大小取自 provider 的 `limit.context`（token 数，或 `"128k"`/`"1m"`）；没配时回退到 [models.dev](https://models.dev) 目录，按模型 id 查找并缓存到 `~/.nyx/cache/models.json`（后台刷新；设 `NYX_DISABLE_MODELS_FETCH=1` 可离线，`NYX_MODELS_URL` 可指向镜像）。当一次请求距离窗口只剩 `compaction.buffer`（默认 20000）token 时，最旧的若干轮会被总结成一个 checkpoint，只保留一段原文的尾部，于是对话能继续而不是直接报错。checkpoint 挂在 assistant 消息的 metadata 上，因此随会话持久化，桌面端和 CLI 都自动受益。
+
+```json
+{
+  "agent": {
+    "provider": { "deepseek": { "npm": "@ai-sdk/openai-compatible", "options": { "baseURL": "https://api.deepseek.com/v1" }, "limit": { "context": "128k", "output": 4096 } } },
+    "compaction": { "auto": true, "prune": true, "buffer": 20000, "keep": { "tokens": 8000 } }
+  }
+}
+```
+
+`compaction.auto`（默认开）控制是否自动总结，`keep.tokens` 是保留多少最近的原文（默认：可用窗口的四分之一，钳制在 2k–15k），`buffer` 是触发压缩的余量，`prune`（默认开）在总结前清掉旧工具输出的正文 —— 只影响模型看到的内容，绝不改动已保存的 transcript。如果窗口未知（既没配置也没有目录条目），agent 不会瞎猜：只有当 provider 真的因上下文溢出拒绝请求时，才压缩并重试一次。桌面端在对话里显示上下文用量条，并把 checkpoint 覆盖的历史折叠进压缩卡片，让可见的对话和模型真正收到的内容一致；Agent 页头部的压缩按钮会立即把之前的轮次总结成一个 checkpoint（`POST /v1/agent/compact`），并连同 checkpoint 一起保存会话。
+
 ### 本地模型作为工具
 
 默认情况下，本机已安装的 ONNX 模型就会暴露给主脑：`local_image_to_image` 对工作区内的图片做变换，结果写入该工作区的会话目录（`~/.nyx/sessions/<workspace>/images/`，桌面端会内联展示）；`local_text_to_speech` 合成的 WAV 写入同一会话目录的 `audio/`（同样内联展示）——这样删除会话就会一并删掉生成的文件，工作区本身保持干净。两者都需要审批。只有装了对应任务模型时才会添加相应工具。设 `agent.tools.localModels: false`（或 `NYX_AGENT_LOCAL_MODELS=0`）可关闭。

@@ -88,6 +88,21 @@ The agent loop runs in the local server (`POST /v1/agent`), so API calls go out 
 
 `npm` selects the AI SDK provider package — `@ai-sdk/openai-compatible` (any OpenAI-compatible endpoint: OpenAI, DeepSeek, OpenRouter, vLLM, Ollama, OpenCode Zen/Go, …) or `@ai-sdk/anthropic`. `options` holds `baseURL`/`apiKey`/`headers`; `limit.output` caps generated tokens. Env overrides: `NYX_AGENT_MODEL` replaces the ref, and `NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS` (a JSON object) override the active provider's options. Some gateways need extra request headers (e.g. OpenCode Zen/Go requires `x-opencode-session`) — add them under the provider's `options.headers`. The desktop app ships the same agent as its default page: pick a workspace folder in the header, chat, and approve tool calls inline. Its **Settings → Agent** page edits the model ref, providers, system prompt, and tool toggles (changes apply to the next message, no restart); the workspace is chosen from the Agent page header. Attach images from the composer (button, paste, or drag-and-drop) to feed local tools: each file is copied into the workspace's session folder (`~/.nyx/sessions/<workspace>/attachments/`) and the brain receives its absolute path, which is what `local_image_to_image` takes as `inputPath` — so deleting the original file never breaks the chat.
 
+### Long sessions (context compaction)
+
+Every turn re-sends the whole transcript, so long sessions eventually fill the model's context window. The window comes from the provider's `limit.context` (a token count, or `"128k"`/`"1m"`), or — when that is not set — from the [models.dev](https://models.dev) catalog, looked up by model id and cached under `~/.nyx/cache/models.json` (refreshed in the background; set `NYX_DISABLE_MODELS_FETCH=1` to stay offline, or `NYX_MODELS_URL` to point at a mirror). When a request would come within `compaction.buffer` tokens (default 20000) of the window, the oldest turns are summarized into a checkpoint and only a verbatim tail is kept, so the conversation keeps going instead of erroring out. The checkpoint rides on the assistant message as metadata, so it persists with the session and both the desktop and the CLI get this for free.
+
+```json
+{
+  "agent": {
+    "provider": { "deepseek": { "npm": "@ai-sdk/openai-compatible", "options": { "baseURL": "https://api.deepseek.com/v1" }, "limit": { "context": "128k", "output": 4096 } } },
+    "compaction": { "auto": true, "prune": true, "buffer": 20000, "keep": { "tokens": 8000 } }
+  }
+}
+```
+
+`compaction.auto` (default on) toggles automatic summarization, `keep.tokens` is how much recent conversation stays verbatim (default: a quarter of the usable window, clamped to 2k–15k), `buffer` is the headroom that triggers it, and `prune` (default on) clears old tool-output bodies before summarizing — it only affects what the model sees, never the saved transcript. If the window is unknown (no config and no catalog entry), the agent does not guess: it compacts only after the provider actually rejects a request for context overflow, then retries once. The desktop shows a context-usage meter and folds everything a checkpoint covers into its card, so the visible conversation matches what the model receives; the compact button in the Agent header summarizes the earlier turns right away (`POST /v1/agent/compact`), and the transcript is saved with the checkpoint.
+
 ### Local models as tools
 
 The locally installed ONNX models are exposed to the brain by default: `local_image_to_image` transforms an image from the workspace and writes the result into the workspace's session folder (`~/.nyx/sessions/<workspace>/images/`, shown inline in the desktop chat), and `local_text_to_speech` synthesizes a WAV into the same session folder's `audio/` (also shown inline) — so deleting a session deletes its generated files, and the workspace itself stays untouched. Both require approval. Tools are only added for tasks that have an installed model. Set `agent.tools.localModels: false` (or `NYX_AGENT_LOCAL_MODELS=0`) to disable.

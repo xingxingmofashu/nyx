@@ -24,6 +24,11 @@ export function getSessionsDir(): string {
   return join(getConfigDir(), "sessions");
 }
 
+/** Cached models.dev catalog (`~/.nyx/cache/models.json`), the source of context windows. */
+export function getModelsCatalogPath(): string {
+  return join(getConfigDir(), "cache", "models.json");
+}
+
 /** Normalize a workspace path so the desktop and the server derive the same key. */
 export function canonicalWorkspaceDir(workspaceDir: string): string {
   return workspaceDir ? resolve(workspaceDir) : workspaceDir;

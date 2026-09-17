@@ -1,5 +1,6 @@
 import { clearModelCache, type LLMProvider } from "@nyx/llm"
-import { createAnthropic } from "@ai-sdk/anthropic";
+import { parseContextLimit } from "@nyx/shared";
+import { lookupModelLimit } from "./models-dev.ts";import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
 import type { AgentSettings } from "@nyx/config";
@@ -59,13 +60,23 @@ export class Provider {
     if (provider.npm === OPENAI_COMPATIBLE && !options.baseURL) {
       throw new Error(`agent.provider.${providerId}.options.baseURL is required for ${OPENAI_COMPATIBLE}`);
     }
+    // Limits: the provider's own config wins; otherwise fall back to the
+    // models.dev catalog (by provider id, then by model id anywhere). Unknown
+    // limits stay undefined so the agent never guesses a context window.
+    const catalog = lookupModelLimit(providerId, model);
+    const context =
+      provider.limit?.context !== undefined
+        ? parseContextLimit(provider.limit.context)
+        : (catalog?.context ?? catalog?.input);
+    const output = provider.limit?.output ?? catalog?.output;
     return {
       npm: provider.npm,
       model,
       apiKey: options.apiKey,
       baseURL: options.baseURL,
       headers: options.headers,
-      maxOutputTokens: provider.limit?.output,
+      ...(output === undefined ? {} : { maxOutputTokens: output }),
+      ...(context === undefined ? {} : { contextLimit: context }),
     };
   }
 

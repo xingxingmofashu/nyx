@@ -1,7 +1,7 @@
 import { create } from "zustand"
 import { newId } from "@nyx/shared"
 import { messagesToMarkdown, sessionTitle } from "@nyx/shared/chat"
-import type { ChatSessionMeta, ChatSessionSaveRequest } from "../../../shared/types"
+import type { ChatSessionMeta, ChatSessionSaveRequest, CompactionResult, UIMessage } from "../../../shared/types"
 import { agentChat } from "../lib/chat"
 import { useAgentStore } from "./agent"
 
@@ -12,6 +12,12 @@ interface SessionsState {
   activeId: string | null
   /** True while a turn is streaming; switching sessions is disallowed then. */
   busy: boolean
+  /** True while a manual compaction is in flight. */
+  compacting: boolean
+  /** Post-compaction size estimate, shown until the next turn reports real usage. */
+  contextOverride?: { tokens: number; forId: string }
+  /** One-line result of the last manual compaction (e.g. nothing to summarize). */
+  compactNotice?: string
   load: () => Promise<void>
   /** Open the last session of `workspaceDir` the user had open, if any. */
   restoreLast: (workspaceDir: string) => Promise<void>
@@ -29,12 +35,17 @@ interface SessionsState {
   exportSession: (id: string) => Promise<string | null>
   /** Persist the active transcript (no-op until it has a user message). */
   persist: () => Promise<void>
+  /** Summarize the transcript now, fold it into a checkpoint, and save. */
+  compact: () => Promise<CompactionResult>
 }
 
 export const useSessionsStore = create<SessionsState>((set, get) => ({
   sessions: [],
   activeId: null,
   busy: false,
+  compacting: false,
+  contextOverride: undefined,
+  compactNotice: undefined,
 
   load: async () => {
     // Chats created before a workspace is picked persist to the `_default`
@@ -149,7 +160,78 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
     await window.nyx.sessions.setActive(workspaceDir, id)
     await get().load()
   },
+
+  compact: async () => {
+    const empty: CompactionResult = { compacted: false }
+    if (get().busy || get().compacting) return empty
+    const messages = agentChat.messages
+    if (messages.length === 0) return empty
+
+    set({ compacting: true, compactNotice: undefined })
+    try {
+      const workspaceDir = useAgentStore.getState().workspaceDir
+      const result = await window.nyx.chat.compact({
+        messages,
+        ...(workspaceDir ? { workspaceDir } : {}),
+        sessionId: get().ensureId(),
+      })
+      const last = agentChat.messages[agentChat.messages.length - 1]
+      if (result.compacted && result.checkpoint && last) {
+        // Same spot a live turn puts it: the newest message's metadata, which
+        // drives both the fold below it and the next request's transcript.
+        const patched = {
+          ...last,
+          metadata: { ...((last.metadata as Record<string, unknown> | undefined) ?? {}), compaction: result.checkpoint },
+        }
+        agentChat.messages = [...agentChat.messages.slice(0, -1), patched]
+        const tokens = scaleEstimate(result, messages)
+        set({
+          contextOverride: tokens === undefined ? undefined : { tokens, forId: patched.id },
+          compactNotice: "Context compacted.",
+        })
+        await get().persist()
+      } else {
+        set({
+          contextOverride: undefined,
+          compactNotice:
+            result.skipped === "too-short"
+              ? "Nothing new to compact — everything older is already summarized."
+              : undefined,
+        })
+      }
+      return result
+    } catch (error) {
+      set({ compactNotice: error instanceof Error ? error.message : "Compaction failed." })
+      return empty
+    } finally {
+      set({ compacting: false })
+    }
+  },
 }))
+
+/**
+ * Rescale the server's heuristic post-compaction estimate onto the provider's
+ * own token scale, using the last reported input tokens as the baseline. Without
+ * a baseline (no turn yet) the raw after-estimate is a fine placeholder.
+ */
+function scaleEstimate(result: CompactionResult, before: UIMessage[]): number | undefined {
+  const after = result.estimatedTokens
+  if (after === undefined) return undefined
+  if (result.baselineTokens && result.baselineTokens > 0) {
+    const reported = lastReportedTokens(before)
+    if (reported !== undefined) return Math.max(0, Math.round((reported * after) / result.baselineTokens))
+  }
+  return after
+}
+
+/** Input tokens the provider reported for the most recent turn, if any. */
+function lastReportedTokens(messages: UIMessage[]): number | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const usage = (messages[i]?.metadata as { usage?: { inputTokens?: number } } | undefined)?.usage
+    if (usage?.inputTokens) return usage.inputTokens
+  }
+  return undefined
+}
 
 let persistenceInitialized = false
 

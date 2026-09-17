@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron"
 import { IPC } from "../shared/ipc"
 import type {
+  ChatCompactRequest,
   ChatSendRequest,
   ChatSessionMeta,
   ChatSessionSaveRequest,
@@ -37,6 +38,7 @@ const api: NyxApi = {
   },
   chat: {
     send: (request: ChatSendRequest) => ipcRenderer.invoke(IPC.chat.send, request),
+    compact: (request: ChatCompactRequest) => ipcRenderer.invoke(IPC.chat.compact, request),
     abort: (streamId: string) => ipcRenderer.invoke(IPC.chat.abort, streamId),
     onEvent: (cb) => {
       const listener = (_e: Electron.IpcRendererEvent, event: ChatStreamEvent) => cb(event)
@@ -69,6 +71,8 @@ const api: NyxApi = {
       ipcRenderer.invoke(IPC.config.getEnvironment),
     listModels: (provider) =>
       ipcRenderer.invoke(IPC.config.listModels, provider),
+    modelLimits: (providerId: string, modelId: string) =>
+      ipcRenderer.invoke(IPC.config.modelLimits, providerId, modelId),
     restartServer: (): Promise<void> =>
       ipcRenderer.invoke(IPC.config.restartServer),
   },

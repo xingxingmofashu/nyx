@@ -72,13 +72,16 @@ class IpcChatTransport implements ChatTransport<UIMessage> {
  * answered.
  */
 export const agentChat = new Chat<UIMessage>({
-  transport: new IpcChatTransport(() => ({
-    workspaceDir: useAgentStore.getState().workspaceDir || undefined,
-    // Names generated speech clips so a deleted session takes its audio with it.
-    sessionId: useSessionsStore.getState().ensureId(),
-    // The desktop can render audio inline, so speech tools return it instead of
-    // playing it on the server machine.
-    inlineAudio: true,
-  })),
+  transport: new IpcChatTransport(() => {
+    const agent = useAgentStore.getState()
+    return {
+      workspaceDir: agent.workspaceDir || undefined,
+      // Names generated speech clips so a deleted session takes its audio with it.
+      sessionId: useSessionsStore.getState().ensureId(),
+      // The desktop can render audio inline, so speech tools return it instead of
+      // playing it on the server machine.
+      inlineAudio: true,
+    }
+  }),
   sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
 })

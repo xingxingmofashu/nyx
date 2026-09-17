@@ -2,6 +2,7 @@
 
 import { z } from "zod/v4";
 import { LLM_TASKS } from "@nyx/llm";
+import type { ContextCheckpoint, TokenUsage } from "./types.ts";
 
 /** HTTP image input: base64-encoded image bytes (JSON request body). */
 export const ImageBase64InputSchema = z.object({
@@ -108,6 +109,7 @@ export type ModelIdRequest = z.infer<typeof ModelIdRequestSchema>;
  * is stateless, so the client re-sends the whole transcript each turn.
  */
 export type { UIMessage, UIMessageChunk } from "./types.ts";
+export type { ContextCheckpoint, TokenUsage } from "./types.ts";
 
 /** One file copied into the workspace's session folder, referenced by a chat attachment. */
 export interface SavedAttachment {
@@ -125,6 +127,14 @@ export interface SavedAttachment {
  */
 export interface ChatMessageMetadata {
   attachments?: SavedAttachment[];
+  /** Context-compaction checkpoint, set by the server on the assistant message it produced. */
+  compaction?: ContextCheckpoint;
+  /** Provider-reported token usage, set by the server on each assistant message. */
+  usage?: TokenUsage;
+  /** The context window the server resolved for this turn (config or models.dev). */
+  contextLimit?: number;
+  /** Set when a manual compaction could not run because there was nothing older than the newest turn. */
+  compactionSkipped?: "too-short";
 }
 
 /** Non-transcript options of POST /v1/agent; `messages` is validated by the AI SDK. */
@@ -142,6 +152,11 @@ export const AgentOptionsSchema = z.object({
    * on the server machine instead (for terminal clients).
    */
   inlineAudio: z.boolean().optional(),
+  /**
+   * Compact the transcript before this run even when it fits the context window
+   * (the desktop's manual "Compact" action).
+   */
+  forceCompact: z.boolean().optional(),
 });
 export type AgentOptions = z.infer<typeof AgentOptionsSchema>;
 
@@ -159,6 +174,43 @@ export type AgentRequestInput = z.infer<typeof AgentRequestSchema>;
 /** POST /v1/agent body: one agent run over a full UI-message transcript. */
 export interface AgentRequest extends AgentOptions {
   messages: import("./types.ts").UIMessage[];
+}
+
+/**
+ * POST /v1/agent/compact body: summarize the transcript now, without running a
+ * turn (the desktop's "Compact" action). `workspaceDir` is only needed so the
+ * estimate counts the same tools the next turn will send.
+ */
+export const CompactRequestSchema = z.object({
+  messages: z.array(z.unknown()).min(1),
+  workspaceDir: z.string().optional(),
+  sessionId: z.string().optional(),
+});
+export type CompactRequestInput = z.infer<typeof CompactRequestSchema>;
+
+/** POST /v1/agent/compact body after the AI SDK validates the messages. */
+export interface CompactRequest {
+  messages: import("./types.ts").UIMessage[];
+  workspaceDir?: string;
+  sessionId?: string;
+}
+
+/** Result of a manual compaction: the checkpoint to persist, plus its size. */
+export interface CompactResponse {
+  /** Checkpoint produced by this call, to attach to the newest message; absent on a no-op. */
+  checkpoint?: ContextCheckpoint;
+  /** True when a new summary was produced. */
+  compacted: boolean;
+  /** Set when there was nothing older than the newest turn to summarize. */
+  skipped?: "too-short";
+  /**
+   * Heuristic size of the model-facing transcript afterwards, and the same
+   * estimate taken before compacting. The client scales these against the
+   * provider's last reported usage, so the meter stays on the provider's scale
+   * (the raw heuristic over-counts tool schemas).
+   */
+  estimatedTokens?: number;
+  baselineTokens?: number;
 }
 
 /** One retrieved passage from the local knowledge base. */

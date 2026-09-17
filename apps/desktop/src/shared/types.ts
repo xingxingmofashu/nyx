@@ -8,10 +8,12 @@ import type {
   AudioResult,
   AudioSamples,
   ChatMessageMetadata,
+  ContextCheckpoint,
   ImageBytes,
   ImageResult,
   SavedAttachment,
   TextToSpeechInput,
+  TokenUsage,
   TranscriptResult,
   UIMessage,
   UIMessageChunk,
@@ -25,10 +27,12 @@ export type {
   AudioSamples,
   ChatMessageMetadata,
   ChatSessionMeta,
+  ContextCheckpoint,
   ImageBytes,
   ImageResult,
   SavedAttachment,
   TextToSpeechInput,
+  TokenUsage,
   TranscriptResult,
   UIMessage,
   UIMessageChunk,
@@ -41,6 +45,25 @@ export type {
 export interface ChatSendRequest {
   streamId: string
   body: Record<string, unknown>
+}
+
+/** Summarize the transcript now (manual Compact); mirrors POST /v1/agent/compact. */
+export interface ChatCompactRequest {
+  messages: UIMessage[]
+  workspaceDir?: string
+  sessionId?: string
+}
+
+/** What one manual compaction produced. */
+export interface CompactionResult {
+  /** Attach to the newest transcript message so folding + the next turn pick it up. */
+  checkpoint?: ContextCheckpoint
+  compacted: boolean
+  /** There was nothing older than the newest turn to summarize. */
+  skipped?: "too-short"
+  /** Heuristic size of the compacted transcript, and the same estimate beforehand. */
+  estimatedTokens?: number
+  baselineTokens?: number
 }
 
 /** Events pushed main → renderer for a chat stream (AI SDK UI message chunks). */
@@ -100,6 +123,13 @@ export interface ProviderModels {
   error?: string
 }
 
+/** Provider-reported limits for one model (models.dev), for the context meter. */
+export interface ModelLimits {
+  context?: number
+  input?: number
+  output?: number
+}
+
 export interface ModelPullProgress {
   modelId: string
   /** Task being pulled; set on the initial kickoff, kept on later events. */
@@ -131,6 +161,8 @@ export interface NyxApi {
   }
   chat: {
     send: (request: ChatSendRequest) => Promise<void>
+    /** Summarize the transcript now; resolves with the checkpoint to persist. */
+    compact: (request: ChatCompactRequest) => Promise<CompactionResult>
     abort: (streamId: string) => Promise<void>
     /** Subscribe to chat stream events; returns an unsubscribe fn. */
     onEvent: (cb: (e: ChatStreamEvent) => void) => () => void
@@ -153,6 +185,8 @@ export interface NyxApi {
     getEnvironment: () => Promise<AppEnvironment>
     /** List a provider's models via the main process (no CORS). */
     listModels: (provider: AgentProviderEntry) => Promise<ProviderModels>
+    /** Context window etc. from the cached models.dev catalog; null when unknown. */
+    modelLimits: (providerId: string, modelId: string) => Promise<ModelLimits | null>
     /** Restart the inference server (needed after changing the HF endpoint). */
     restartServer: () => Promise<void>
   }

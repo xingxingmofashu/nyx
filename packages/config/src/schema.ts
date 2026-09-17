@@ -19,7 +19,7 @@ export const AgentProviderOptionsSchema = z
 
 export const AgentProviderLimitSchema = z
   .object({
-    /** Context window (stored as metadata only). */
+    /** Context window: a token count or a `"128k"`/`"1m"` string. Drives compaction. */
     context: z.union([z.number(), z.string()]).optional(),
     /** Max output tokens, forwarded to the model. */
     output: z.number().optional(),
@@ -53,6 +53,25 @@ export const AgentToolsSettingsSchema = z
   })
   .loose();
 
+/** Context-compaction policy for long agent sessions. */
+export const AgentCompactionSchema = z
+  .object({
+    /** Summarize old turns automatically when the context window fills up (default true). */
+    auto: z.boolean().optional(),
+    /** Clear old tool output bodies before summarizing (default true; never touches the saved transcript). */
+    prune: z.boolean().optional(),
+    /** Tokens kept verbatim at the tail (default: a quarter of the usable window, 2k–15k). */
+    keep: z
+      .object({
+        tokens: z.number().optional(),
+      })
+      .loose()
+      .optional(),
+    /** Free-token headroom that triggers compaction, above the output reserve (default 20000). */
+    buffer: z.number().optional(),
+  })
+  .loose();
+
 /** Local knowledge-base (RAG) configuration. */
 export const KnowledgeSettingsSchema = z
   .object({
@@ -70,6 +89,8 @@ export const AgentSettingsSchema = z
     provider: z.record(z.string(), AgentProviderEntrySchema).optional(),
     /** Per-tool toggles for the agent. */
     tools: AgentToolsSettingsSchema.optional(),
+    /** Context-compaction policy for long sessions. */
+    compaction: AgentCompactionSchema.optional(),
     /** Directory the agent's coding tools are confined to (default: process cwd). */
     workspaceDir: z.string().optional(),
     systemPrompt: z.string().optional(),
@@ -116,6 +137,7 @@ export const ModelConfigSchema = z
 export type Settings = z.infer<typeof SettingsSchema>;
 export type AgentSettings = z.infer<typeof AgentSettingsSchema>;
 export type AgentToolsSettings = z.infer<typeof AgentToolsSettingsSchema>;
+export type AgentCompactionSettings = z.infer<typeof AgentCompactionSchema>;
 export type KnowledgeSettings = z.infer<typeof KnowledgeSettingsSchema>;
 export type AgentProviderEntry = z.infer<typeof AgentProviderEntrySchema>;
 export type AgentProviderOptions = z.infer<typeof AgentProviderOptionsSchema>;

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Bot, FolderOpen, RotateCcw, Settings2 } from "lucide-react"
+import { Bot, FolderOpen, Minimize2, RotateCcw, Settings2 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useChat } from "@ai-sdk/react"
 import { getToolName, isReasoningUIPart, isToolUIPart } from "ai"
@@ -45,6 +45,9 @@ import { ToolCallCard, type ToolPartState } from "../components/agent/ToolCallCa
 import { SpeechCard } from "../components/agent/SpeechCard"
 import { ImageCard } from "../components/agent/ImageCard"
 import { ApprovalCard } from "../components/agent/ApprovalCard"
+import { CompactionCard, FoldedMessages } from "../components/agent/CompactionCard"
+import { ContextMeter } from "../components/chat/ContextMeter"
+import { Spinner } from "../components/ui/spinner"
 
 /** How many images one message may carry (keeps the composer tidy). */
 const MAX_ATTACHMENTS = 5
@@ -55,12 +58,17 @@ export function AgentPage() {
   const brainLabel = useAgentStore((s) => s.brainLabel)
   const configured = useAgentStore((s) => s.configured)
   const workspaceDir = useAgentStore((s) => s.workspaceDir)
+  const contextLimit = useAgentStore((s) => s.contextLimit)
   const init = useAgentStore((s) => s.init)
   const setWorkspace = useAgentStore((s) => s.setWorkspace)
   const voiceModel = useModelsStore((s) => s.selected["automatic-speech-recognition"])
   const activeId = useSessionsStore((s) => s.activeId)
   const sessions = useSessionsStore((s) => s.sessions)
   const createSession = useSessionsStore((s) => s.create)
+  const compact = useSessionsStore((s) => s.compact)
+  const compacting = useSessionsStore((s) => s.compacting)
+  const compactNotice = useSessionsStore((s) => s.compactNotice)
+  const contextOverride = useSessionsStore((s) => s.contextOverride)
   const [input, setInput] = useState("")
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
   const [attachError, setAttachError] = useState<string | null>(null)
@@ -83,6 +91,38 @@ export function AgentPage() {
   const title = (activeId ? sessions.find((s) => s.id === activeId)?.title : undefined) ?? "New chat"
 
   const busy = status === "submitted" || status === "streaming"
+
+  /** Input tokens + resolved window from the most recent turn (provider-reported). */
+  const usage = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const meta = messages[i]?.metadata as ChatMessageMetadata | undefined
+      if (meta?.usage?.inputTokens) return meta
+    }
+    return undefined
+  })()
+  const contextUsed = usage?.usage?.inputTokens ?? 0
+  const contextWindow = usage?.contextLimit ?? contextLimit
+  // Right after a manual compaction the last turn's usage is stale, so show the
+  // server's estimate until the next turn reports real numbers.
+  const estimated =
+    contextOverride && contextOverride.forId === messages[messages.length - 1]?.id ? contextOverride.tokens : undefined
+
+  /**
+   * The newest checkpoint folds every message it covers into its card: those
+   * messages are summarized away for the model, so the UI shows the same thing.
+   * Later messages stay verbatim below the card (which sits on the assistant
+   * reply that produced the checkpoint).
+   */
+  const folded = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const checkpoint = (messages[i]?.metadata as ChatMessageMetadata | undefined)?.compaction
+      if (!checkpoint) continue
+      const end = messages.findIndex((message) => message.id === checkpoint.coveredThroughId)
+      if (end < 0 || end >= i) continue
+      return { index: i, end, checkpoint }
+    }
+    return undefined
+  })()
 
   /** Keep object URLs alive until send/remove so unmount never leaks them. */
   const attachmentsRef = useRef(attachments)
@@ -193,6 +233,22 @@ export function AgentPage() {
               {configured ? brainLabel : "No master brain configured"}
             </CardDescription>
             <CardAction className="flex items-center gap-2">
+              <ContextMeter
+                used={estimated ?? contextUsed}
+                limit={contextWindow}
+                estimated={estimated !== undefined}
+                className="me-1"
+              />
+              <Button
+                variant={compacting ? "secondary" : "ghost"}
+                size="icon-sm"
+                onClick={() => void compact()}
+                aria-label="Compact context"
+                title="Summarize the earlier conversation now to free up context"
+                disabled={busy || compacting || messages.length === 0}
+              >
+                {compacting ? <Spinner /> : <Minimize2 />}
+              </Button>
               <Button variant="outline" size="sm" onClick={() => void pickWorkspace()} disabled={busy}>
                 <FolderOpen data-icon="inline-start" />
                 {workspaceDir ? baseName(workspaceDir) : "Choose workspace"}
@@ -234,6 +290,8 @@ export function AgentPage() {
                 <MessageScrollerViewport>
                   <MessageScrollerContent className="p-4">
                     {messages.map((message, messageIndex) => {
+                      // Covered by the newest checkpoint: rendered inside its card.
+                      if (folded && messageIndex <= folded.end) return null
                       const animating =
                         status === "streaming" &&
                         messageIndex === messages.length - 1 &&
@@ -249,6 +307,13 @@ export function AgentPage() {
                         >
                           <Message align={message.role === "user" ? "end" : "start"}>
                             <MessageContent>
+                              {meta?.compaction && (
+                                <CompactionCard checkpoint={meta.compaction}>
+                                  {folded ? (
+                                    <FoldedMessages messages={messages.slice(0, folded.end + 1)} />
+                                  ) : undefined}
+                                </CompactionCard>
+                              )}
                               {userAttachments.length > 0 && (
                                 <AttachmentStrip attachments={userAttachments} />
                               )}
@@ -360,6 +425,12 @@ export function AgentPage() {
               </MessageScroller>
             )}
           </CardContent>
+          {compacting ? (
+            <p className="border-t px-4 py-2 text-xs text-muted-foreground">Summarizing the earlier context…</p>
+          ) : null}
+          {!compacting && compactNotice && !busy && (
+            <p className="border-t px-4 py-2 text-xs text-muted-foreground">{compactNotice}</p>
+          )}
           {(error || attachError) && (
             <p className="border-t px-4 py-2 text-xs text-destructive">
               {attachError ?? error?.message}

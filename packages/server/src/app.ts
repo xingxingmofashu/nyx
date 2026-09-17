@@ -3,6 +3,7 @@ import type { MiddlewareHandler } from "hono"
 import {
   AgentService,
   AutomaticSpeechRecognitionService,
+  ensureModelsCatalog,
   ImageToImageService,
   KnowledgeService,
   ModelsService,
@@ -59,6 +60,10 @@ export function createApp(options: { token?: string; services?: ServerServices; 
   // and the spawned desktop binary go through here). No-op when the dir has no
   // Markdown files, or the embedding model isn't downloaded.
   if (!options.services) void services.knowledge.ensureIndexed().catch(() => {})
+
+  // Model limits (context window) for the agent's context compaction: cached in
+  // ~/.nyx/cache, refreshed in the background. No-op when it is already fresh.
+  if (!options.services) void ensureModelsCatalog().catch(() => {})
 
   const handle = options.token ? auth(options.token) : noopAuth
 

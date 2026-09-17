@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { parseContextLimit } from "@nyx/shared"
 
 interface AgentSettingsState {
   /** Current master brain, e.g. "OpenCode Go · opencode/mimo-v2.5". */
@@ -7,6 +8,8 @@ interface AgentSettingsState {
   configured: boolean
   /** Workspace the agent's coding tools are confined to. */
   workspaceDir: string
+  /** Context window from the provider config, when set (the server also resolves it from models.dev). */
+  contextLimit?: number
   initialized: boolean
   init: () => Promise<void>
   /** Re-read settings (after the Settings page saves); no one-shot guard. */
@@ -19,6 +22,7 @@ export const useAgentStore = create<AgentSettingsState>((set, get) => ({
   brainLabel: "",
   configured: false,
   workspaceDir: "",
+  contextLimit: undefined,
   initialized: false,
 
   init: async () => {
@@ -39,17 +43,27 @@ export const useAgentStore = create<AgentSettingsState>((set, get) => ({
 
 /** Derive the display state from the persisted settings. */
 async function readAgentState(): Promise<
-  Pick<AgentSettingsState, "brainLabel" | "configured" | "workspaceDir">
+  Pick<AgentSettingsState, "brainLabel" | "configured" | "workspaceDir" | "contextLimit">
 > {
   const settings = await window.nyx.config.getSettings()
   const agent = settings.agent
   const ref = agent?.model
   let brainLabel = ""
+  let contextLimit: number | undefined
   if (ref) {
     const slash = ref.indexOf("/")
     const providerId = slash > 0 ? ref.slice(0, slash) : ""
-    const name = providerId ? agent?.provider?.[providerId]?.name : undefined
+    const modelId = slash > 0 ? ref.slice(slash + 1) : ""
+    const provider = providerId ? agent?.provider?.[providerId] : undefined
+    const name = provider?.name
     brainLabel = name ? `${name} · ${ref}` : ref
+    contextLimit = parseContextLimit(provider?.limit?.context)
+    // No configured window: fall back to the cached models.dev catalog, the same
+    // source the server resolves it from, so the meter has a scale from the start.
+    if (contextLimit === undefined && providerId && modelId) {
+      const limits = await window.nyx.config.modelLimits(providerId, modelId).catch(() => null)
+      contextLimit = parseContextLimit(limits?.context ?? limits?.input)
+    }
   }
-  return { brainLabel, configured: Boolean(ref), workspaceDir: agent?.workspaceDir ?? "" }
+  return { brainLabel, configured: Boolean(ref), workspaceDir: agent?.workspaceDir ?? "", contextLimit }
 }

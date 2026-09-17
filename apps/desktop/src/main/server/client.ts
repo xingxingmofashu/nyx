@@ -1,6 +1,6 @@
 import type { LLMTask } from "@nyx/llm"
 import type { ModelInfo } from "@nyx/config"
-import type { AgentRequestInput } from "@nyx/server/schema"
+import type { AgentRequestInput, CompactRequestInput } from "@nyx/server/schema"
 import type { AppType } from "@nyx/server/api"
 import { parseJsonEventStream, uiMessageChunkSchema } from "ai"
 import { createParser } from "eventsource-parser"
@@ -8,6 +8,7 @@ import { hc } from "hono/client"
 import type {
   AudioResult,
   AudioSamples,
+  CompactionResult,
   ImageBytes,
   ImageResult,
   ModelPullProgress,
@@ -130,6 +131,13 @@ export class NyxServerClient {
     } finally {
       reader.releaseLock()
     }
+  }
+
+  /** Summarize the transcript now (manual Compact); resolves with the checkpoint. */
+  async agentCompact(body: Record<string, unknown>): Promise<CompactionResult> {
+    const res = await this.client.v1.agent.compact.$post({ json: body as CompactRequestInput })
+    if (!res.ok) throw new Error(await errorMessage(res, "compact"))
+    return (await res.json()) as CompactionResult
   }
 
   async imageToImage(modelId: string, input: ImageBytes): Promise<ImageResult> {

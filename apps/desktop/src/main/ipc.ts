@@ -18,12 +18,14 @@ import {
 import { IPC } from "../shared/ipc"
 import { saveAttachment } from "./attachment"
 import { readGeneratedFileDataUrl } from "./generated-file"
+import { readCatalogLimit } from "./model-limit"
 import { listProviderModels } from "./provider-models"
 import type {
   AgentProviderEntry,
   AttachmentInput,
   AudioSamples,
   AppEnvironment,
+  ChatCompactRequest,
   ChatSendRequest,
   ChatSessionSaveRequest,
   ConfirmDialogRequest,
@@ -100,6 +102,7 @@ export function registerIpc(services: Services): void {
     chat.send(request),
   )
   ipcMain.handle(IPC.chat.abort, (_e, streamId: string) => chat.abort(streamId))
+  ipcMain.handle(IPC.chat.compact, (_e, request: ChatCompactRequest) => chat.compact(request))
 
   // --- Models ---
   ipcMain.handle(IPC.models.list, () => models.list())
@@ -126,6 +129,9 @@ export function registerIpc(services: Services): void {
   }))
   ipcMain.handle(IPC.config.listModels, (_e, provider: AgentProviderEntry) =>
     listProviderModels(provider),
+  )
+  ipcMain.handle(IPC.config.modelLimits, (_e, providerId: string, modelId: string) =>
+    readCatalogLimit(providerId, modelId),
   )
   ipcMain.handle(IPC.config.restartServer, async () => {
     await server.stop()
