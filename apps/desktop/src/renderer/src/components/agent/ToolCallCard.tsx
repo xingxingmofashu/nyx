@@ -1,8 +1,9 @@
-import type { ReactNode } from "react"
-import { Wrench } from "lucide-react"
+import { useState, type ReactNode } from "react"
+import { ChevronRight, Wrench } from "lucide-react"
 import { Badge } from "../ui/badge"
 import { Spinner } from "../ui/spinner"
 import { formatJson } from "../../lib/format"
+import { cn } from "#lib/utils.ts"
 
 /** AI SDK tool UI part states we render. */
 export type ToolPartState =
@@ -44,19 +45,32 @@ interface ToolCallCardProps {
   errorText?: string
 }
 
-/** Shared tool-call card chrome: tool name, status badge and a body slot. */
+/**
+ * Shared tool-call card chrome: a collapsible header (tool name + status badge)
+ * with a body slot that stays folded away until the header is clicked. Collapsed
+ * by default so long transcripts read as a list of what ran, not a wall of I/O.
+ */
 export function ToolCardShell({ name, state, children }: { name: string; state: ToolPartState; children: ReactNode }) {
+  const [open, setOpen] = useState(false)
   return (
     <div className="w-full rounded-md border bg-muted/30 text-sm">
-      <div className="flex items-center gap-2 border-b px-2.5 py-1.5">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left"
+        aria-expanded={open}
+      >
+        <ChevronRight
+          className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")}
+        />
         <Wrench className="size-3.5 shrink-0 text-muted-foreground" />
         <span className="min-w-0 truncate font-mono text-xs">{name}</span>
         <span className="ms-auto flex items-center gap-1.5">
           {PENDING.includes(state) && <Spinner className="size-3.5 text-muted-foreground" />}
           <Badge variant={STATUS_VARIANT[state]}>{STATUS_LABEL[state]}</Badge>
         </span>
-      </div>
-      <div className="flex flex-col gap-2 p-2.5">{children}</div>
+      </button>
+      {open && <div className="flex flex-col gap-2 border-t p-2.5">{children}</div>}
     </div>
   )
 }
