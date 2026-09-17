@@ -147,6 +147,8 @@ export interface KnowledgeIndexEvent extends KnowledgeIndexProgress {
   done: boolean
   cancelled?: boolean
   error?: string
+  /** Documents already up to date, so not embedded again (success frame). */
+  skipped?: number
 }
 
 export interface ModelPullProgress {

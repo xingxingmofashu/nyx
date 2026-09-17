@@ -150,8 +150,8 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => ({
   },
 
   updateProgress: (event) => {
-    // Keep the run's outcome until it is dismissed (or the next run replaces
-    // it), so a successful "Update index" is not a silent no-op.
+    // The terminal frame stays until the page reports it (as a toast) and
+    // clears it, so a finished run is never a silent no-op.
     set({ indexing: event })
     if (event.done) void get().load()
   },

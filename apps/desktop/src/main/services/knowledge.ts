@@ -62,7 +62,14 @@ export class KnowledgeService {
       const stats = await this.server.client.indexKnowledge(rebuild, (p) => {
         this.broadcast({ ...p, done: false })
       })
-      this.broadcast({ phase: "done", filesDone: stats.files, filesTotal: stats.files, chunks: stats.chunks, done: true })
+      this.broadcast({
+        phase: "done",
+        filesDone: stats.files,
+        filesTotal: stats.files,
+        chunks: stats.chunks,
+        skipped: stats.skipped,
+        done: true,
+      })
     } catch (error) {
       if (error instanceof IndexCancelledError) {
         this.broadcast({ phase: "done", filesDone: 0, filesTotal: 0, chunks: 0, done: true, cancelled: true })

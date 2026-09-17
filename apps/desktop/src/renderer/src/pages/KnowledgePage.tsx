@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { FilePlus, FolderPlus, HardDrive, Library, RefreshCw, Search, Trash2 } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 import { relativeTime } from "@nyx/shared"
 import { useKnowledgeStore } from "../store/knowledge"
-import type { KnowledgeDocument, KnowledgeImportResult } from "../../../shared/types"
+import type { KnowledgeDocument, KnowledgeImportResult, KnowledgeIndexEvent } from "../../../shared/types"
 import { normalizeImportTarget } from "../../../shared/knowledge"
 import { ImportTargetPicker } from "../components/knowledge/ImportTargetPicker"
 import { KnowledgeTree } from "../components/knowledge/KnowledgeTree"
@@ -56,6 +57,7 @@ export function KnowledgePage() {
   } = useKnowledgeStore()
 
   const [query, setQuery] = useState("")
+  const navigate = useNavigate()
 
   useEffect(() => {
     void load()
@@ -78,6 +80,93 @@ export function KnowledgePage() {
       ? [selectedModel, ...installed]
       : installed
   }, [status])
+
+  /**
+   * The embedding model being unset, not downloaded, or different from the one
+   * that built the index blocks indexing/search. Each is a standing condition
+   * rather than the result of one action, so it is announced as a toast once per
+   * condition instead of as a banner the page keeps repeating.
+   */
+  const reminded = useRef<string | null>(null)
+  useEffect(() => {
+    if (status === null) return
+    const key =
+      status.embeddingModel === undefined
+        ? "no-model"
+        : !status.modelDownloaded
+          ? `not-downloaded:${status.embeddingModel}`
+          : modelChanged
+            ? `rebuild:${status.indexedModel ?? ""}`
+            : null
+    if (key === reminded.current) return
+    reminded.current = key
+    // A condition that no longer holds must not linger next to the new one.
+    toast.close("knowledge-embedding-model")
+    toast.close("knowledge-index-model")
+
+    if (status.embeddingModel === undefined) {
+      toast.add({
+        id: "knowledge-embedding-model",
+        type: "warning",
+        title: "No embedding model selected",
+        description: "Pick an installed model in the toolbar, or pull one from Local models.",
+        actionProps: { children: "Local models", onClick: () => void navigate("/models") },
+      })
+    } else if (!status.modelDownloaded) {
+      toast.add({
+        id: "knowledge-embedding-model",
+        type: "warning",
+        title: `Embedding model “${status.embeddingModel}” is not downloaded`,
+        description: "Download it from Local models, with the feature-extraction task.",
+        actionProps: { children: "Local models", onClick: () => void navigate("/models") },
+      })
+    } else if (modelChanged) {
+      toast.add({
+        id: "knowledge-index-model",
+        type: "warning",
+        title: "The index was built with another model",
+        description: `Built with “${status.indexedModel}”. Rebuild to replace it with “${status.embeddingModel}”.`,
+        actionProps: { children: "Rebuild", onClick: () => void updateIndex(true) },
+      })
+    }
+  }, [status, modelChanged, navigate, updateIndex])
+
+  /**
+   * A finished index run is reported as a toast; the card below only carries the
+   * progress of a run in flight. `reported` keeps the terminal frame from being
+   * announced twice, since the store holds it until the page clears it.
+   */
+  const reported = useRef<KnowledgeIndexEvent | null>(null)
+  useEffect(() => {
+    if (indexing === null || !indexing.done || reported.current === indexing) return
+    reported.current = indexing
+    if (indexing.error !== undefined) {
+      toast.add({
+        id: "knowledge-index-run",
+        type: "error",
+        title: "Index build failed",
+        description: indexing.error,
+        // A failure is usually a leftover index from another model, which
+        // Rebuild clears.
+        actionProps: { children: "Rebuild", onClick: () => void updateIndex(true) },
+      })
+    } else if (indexing.cancelled === true) {
+      toast.add({ id: "knowledge-index-run", type: "info", title: "Index build cancelled" })
+    } else {
+      const skipped = indexing.skipped ?? 0
+      const embedded = indexing.filesTotal - skipped
+      toast.add({
+        id: "knowledge-index-run",
+        type: "success",
+        title: `Index up to date — ${indexing.chunks} chunk${indexing.chunks === 1 ? "" : "s"}`,
+        description:
+          skipped === 0
+            ? `${embedded} document${embedded === 1 ? "" : "s"} embedded.`
+            : `${embedded} embedded, ${skipped} unchanged.`,
+      })
+    }
+    dismissNotice()
+  }, [indexing, dismissNotice])
 
   const runImport = async (pick: () => Promise<KnowledgeImportResult | null>) => {
     if (normalizeImportTarget(target) === null) {
@@ -170,18 +259,13 @@ export function KnowledgePage() {
             >
               Rebuild
             </Button>
-            {busy && (
-              <>
-                <Spinner className="text-muted-foreground" />
-                <Button variant="ghost" size="sm" onClick={() => void cancelIndex()}>
-                  Cancel
-                </Button>
-              </>
-            )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="shrink-0 text-xs text-muted-foreground">Embedding model</span>
-            <Select value={status?.embeddingModel} onValueChange={(model) => model !== null && void setEmbeddingModel(model)}>
+            <Select
+              value={status?.embeddingModel ?? null}
+              onValueChange={(model) => model !== null && void setEmbeddingModel(model)}
+            >
               <SelectTrigger size="sm" className="w-72" aria-label="Embedding model">
                 <SelectValue placeholder="Select a local model" />
               </SelectTrigger>
@@ -208,63 +292,25 @@ export function KnowledgePage() {
         </CardContent>
       </Card>
 
-      {indexing !== null && (
+      {busy && indexing !== null && (
         <Card className="shrink-0" size="sm">
           <CardContent className="flex flex-col gap-2">
             <div className="flex items-center gap-2 text-sm">
-              {busy && <Spinner />}
+              <Spinner />
               <span className="min-w-0 flex-1 truncate">
-                {busy
-                  ? `Embedding ${indexing.file ?? "documents"} (${indexing.filesDone}/${indexing.filesTotal})`
-                  : indexing.error !== undefined
-                    ? "Index build failed"
-                    : indexing.cancelled === true
-                      ? "Index build cancelled"
-                      : `Index up to date — ${indexing.chunks} chunks`}
+                Embedding {indexing.file ?? "documents"} ({indexing.filesDone}/{indexing.filesTotal})
               </span>
-              {!busy && (
-                <Button variant="ghost" size="sm" onClick={dismissNotice}>
-                  Dismiss
-                </Button>
-              )}
+              <Button variant="ghost" size="sm" onClick={() => void cancelIndex()}>
+                Cancel
+              </Button>
             </div>
-            {busy && (
-              <Progress
-                value={
-                  indexing.filesTotal === 0
-                    ? null
-                    : Math.round((indexing.filesDone / indexing.filesTotal) * 100)
-                }
-              />
-            )}
-            {indexing.error !== undefined && <p className="text-sm text-destructive">{indexing.error}</p>}
+            <Progress
+              value={
+                indexing.filesTotal === 0 ? null : Math.round((indexing.filesDone / indexing.filesTotal) * 100)
+              }
+            />
           </CardContent>
         </Card>
-      )}
-
-      {modelMissing && status !== null && (
-        <p className="shrink-0 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
-          {status.embeddingModel === undefined ? (
-            <>
-              No embedding model is selected, so indexing and search are unavailable. Pick a local model above, or
-              pull one from <span className="font-medium">Local models</span> with the{" "}
-              <code className="font-mono text-xs">feature-extraction</code> task.
-            </>
-          ) : (
-            <>
-              Embedding model “{status.embeddingModel}” is not downloaded, so indexing and search are unavailable.
-              Download it from <span className="font-medium">Local models</span> with the{" "}
-              <code className="font-mono text-xs">feature-extraction</code> task.
-            </>
-          )}
-        </p>
-      )}
-
-      {modelChanged && status !== null && (
-        <p className="shrink-0 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
-          The index was built with “{status.indexedModel}”. Press <span className="font-medium">Rebuild</span> to
-          replace it with “{status.embeddingModel}”.
-        </p>
       )}
 
       <div className="flex min-h-0 min-w-0 flex-1 gap-4">
