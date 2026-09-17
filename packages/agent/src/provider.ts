@@ -4,7 +4,7 @@ import { lookupModelLimit } from "./models-dev.ts";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import type { LanguageModel } from "ai";
-import type { AgentSettings } from "@nyx/config";
+import type { Global } from "@nyx/global";
 import type { ResolvedAgentModel } from "./types.ts";
 
 const OPENAI_COMPATIBLE = "@ai-sdk/openai-compatible";
@@ -42,7 +42,7 @@ export class Provider {
    * `<providerId>/<modelId>` ref resolved against the `provider` map. Throws with
    * an actionable message when the ref is missing/malformed or unknown.
    */
-  static resolveModelConfig(settings: AgentSettings): ResolvedAgentModel {
+  static resolveModelConfig(settings: Global.AgentSettings): ResolvedAgentModel {
     const ref = settings.model;
     const slash = ref ? ref.indexOf("/") : -1;
     if (!ref || slash <= 0) {
@@ -56,7 +56,7 @@ export class Provider {
     }
     const options = provider.options ?? {};
     if (!options.apiKey) {
-      throw new Error(`agent.provider.${providerId}.options.apiKey is required (or set NYX_AGENT_API_KEY)`);
+      throw new Error(`agent.provider.${providerId}.options.apiKey is required`);
     }
     if (provider.npm === OPENAI_COMPATIBLE && !options.baseURL) {
       throw new Error(`agent.provider.${providerId}.options.baseURL is required for ${OPENAI_COMPATIBLE}`);
@@ -89,7 +89,7 @@ export class Provider {
   static resolveModel(config: ResolvedAgentModel): LanguageModel {
     const { npm, model, apiKey, baseURL, headers } = config;
     if (!apiKey) {
-      throw new Error(`Missing API key for "${npm}" (set provider options.apiKey or NYX_AGENT_API_KEY)`);
+      throw new Error(`Missing API key for "${npm}" (set provider options.apiKey)`);
     }
 
     switch (npm) {
@@ -97,7 +97,7 @@ export class Provider {
         return createAnthropic({ apiKey, baseURL, headers })(model);
       case OPENAI_COMPATIBLE: {
         if (!baseURL) {
-          throw new Error(`Provider "${npm}" needs options.baseURL (set it in agent.provider.<id>.options or NYX_AGENT_BASE_URL)`);
+          throw new Error(`Provider "${npm}" needs options.baseURL (set it in agent.provider.<id>.options)`);
         }
         return createOpenAICompatible({ name: "nyx", baseURL, apiKey, headers })(model);
       }

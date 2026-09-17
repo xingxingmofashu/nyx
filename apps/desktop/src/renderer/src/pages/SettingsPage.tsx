@@ -111,14 +111,6 @@ export function SettingsPage() {
         </Button>
       </div>
 
-      {env && env.envOverrides.length > 0 && (
-        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
-          Environment variables override settings.json:{" "}
-          <code className="rounded bg-muted px-1">{env.envOverrides.join(", ")}</code>. Values here won't
-          take effect for those fields.
-        </p>
-      )}
-
       {!settings ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (

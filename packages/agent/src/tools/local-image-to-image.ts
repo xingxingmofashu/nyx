@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { RawImage } from "@huggingface/transformers";
 import { listModels, OnnxImageToImageProvider } from "@nyx/llm";
-import { workspaceImageDir } from "@nyx/config";
+import { Global } from "@nyx/global";
 import { mimeFor } from "@nyx/shared";
 import { tool, type ToolSet } from "ai";
 import { z } from "zod/v4";
@@ -27,12 +27,10 @@ export interface ImageToImageToolOptions {
 }
 
 /** Build the `local_image_to_image` tool; returns no tools when none are installed. */
-export function createImageToImageTools(options: ImageToImageToolOptions): ToolSet {
+export async function createImageToImageTools(options: ImageToImageToolOptions): Promise<ToolSet> {
   const { cache, workspaceDir, sessionId } = options;
-  // Not realpath-resolved: the session folder is keyed off this exact path
-  // (`workspaceKey`), and the app writes media with the same raw path.
   const root = resolve(workspaceDir);
-  const imageModels = listModels()
+  const imageModels = (await listModels())
     .filter((m) => m.task === "image-to-image")
     .map((m) => m.id);
   if (imageModels.length === 0) return {};
@@ -61,7 +59,7 @@ export function createImageToImageTools(options: ImageToImageToolOptions): ToolS
         throwIfAborted(abortSignal);
 
         const target = uniqueOutputPath(
-          join(workspaceImageDir(workspaceDir), imageFileName(sessionId, model, inputPath)),
+          join(new Global.Workspace(workspaceDir).imageDir, imageFileName(sessionId, model, inputPath)),
         );
         await mkdir(dirname(target), { recursive: true });
         await writeFile(target, await output.toSharp().png().toBuffer());

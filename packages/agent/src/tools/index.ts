@@ -80,8 +80,8 @@ export interface ModelToolsOptions {
  * `agent.tools.localModels` toggle, so callers get them together, and each only
  * appears when a model of its task is installed.
  */
-export function createModelTools(options: ModelToolsOptions): ToolSet {
-  return { ...createImageToImageTools(options), ...createTextToSpeechTools(options) };
+export async function createModelTools(options: ModelToolsOptions): Promise<ToolSet> {
+  return { ...(await createImageToImageTools(options)), ...(await createTextToSpeechTools(options)) };
 }
 
 /**

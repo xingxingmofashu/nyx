@@ -1,5 +1,5 @@
-import { listModels as listInstalledModels, pullModel as pullInstalledModel, type LLMTask, type ProgressInfo } from "@nyx/llm"
-import { removeModel as removeInstalledModel, type ModelInfo } from "@nyx/config"
+import { listModels as listInstalledModels, pullModel as pullInstalledModel, removeModel as removeInstalledModel, type LLMTask, type ProgressInfo } from "@nyx/llm"
+import type { Global } from "@nyx/global"
 import { Provider } from "../provider.ts"
 
 /**
@@ -39,7 +39,7 @@ export class ModelsService {
   }
 
   /** List locally installed models. */
-  listModels(): ModelInfo[] {
+  listModels(): Promise<Global.ModelInfo[]> {
     return listInstalledModels()
   }
 
@@ -54,7 +54,7 @@ export class ModelsService {
   }
 
   /** Remove a model from disk and the provider cache; true when it was cached. */
-  removeModel(modelId: string): boolean {
+  removeModel(modelId: string): Promise<boolean> {
     this.cache.evict(modelId)
     return removeInstalledModel(modelId)
   }

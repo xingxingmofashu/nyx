@@ -19,7 +19,9 @@
     "@hono/node-server": "catalog:",
     "@hono/zod-validator": "catalog:",
     "@nyx/agent": "workspace:*",
+    "@nyx/global": "workspace:*",
     "@nyx/llm": "workspace:*",
+    "@nyx/shared": "workspace:*",
     "ai": "catalog:",
     "hono": "catalog:",
     "zod": "catalog:"

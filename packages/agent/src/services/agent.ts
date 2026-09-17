@@ -4,7 +4,7 @@ import { Provider } from "../provider.ts"
 import { streamAgent } from "../agent.ts"
 import { compactIfNeeded, applyCheckpoint, estimateContext, findCheckpoint } from "../compaction.ts"
 import type { ResolvedAgentModel } from "../types.ts"
-import { getAgentSettings, type AgentSettings } from "@nyx/config"
+import { Global } from "@nyx/global"
 import { withAttachmentNotes } from "../attachment"
 import { createAgentTools, createKnowledgeTools, createModelTools, createWebTools, toolApproval } from "../tools/index.ts"
 import { KnowledgeService } from "./knowledge"
@@ -30,7 +30,7 @@ export class AgentService {
     // provider does not declare them. Awaiting only waits for the on-disk cache,
     // so the window is known from the first turn.
     await ensureModelsCatalog()
-    const settings = getAgentSettings()
+    const settings = (await Global.Settings.read()).agent ?? {}
 
     let model: ResolvedAgentModel
     try {
@@ -40,7 +40,7 @@ export class AgentService {
     }
 
     const workspaceDir = resolve(request.workspaceDir ?? settings.workspaceDir ?? process.cwd())
-    const tools = this.tools(settings, workspaceDir, request.sessionId, request.inlineAudio)
+    const tools = await this.tools(settings, workspaceDir, request.sessionId, request.inlineAudio)
     return streamAgent({
       model,
       tools,
@@ -62,10 +62,10 @@ export class AgentService {
    */
   async compact(request: CompactRequest): Promise<CompactResponse> {
     await ensureModelsCatalog()
-    const settings = getAgentSettings()
+    const settings = (await Global.Settings.read()).agent ?? {}
     const model = Provider.resolveModelConfig(settings)
     const workspaceDir = resolve(request.workspaceDir ?? settings.workspaceDir ?? process.cwd())
-    const tools = this.tools(settings, workspaceDir, request.sessionId)
+    const tools = await this.tools(settings, workspaceDir, request.sessionId)
     const systemPrompt = settings.systemPrompt ?? DEFAULT_SYSTEM_PROMPT
 
     const messages = withAttachmentNotes(request.messages)
@@ -99,17 +99,17 @@ export class AgentService {
   }
 
   /** The tool set one turn (or one compaction estimate) is scoped to. */
-  private tools(
-    settings: AgentSettings,
+  private async tools(
+    settings: Global.AgentSettings,
     workspaceDir: string,
     sessionId?: string,
     inlineAudio?: boolean,
-  ): ToolSet {
+  ): Promise<ToolSet> {
     return {
       ...createAgentTools(workspaceDir),
       ...(settings.tools?.localModels === false
         ? {}
-        : createModelTools({
+        : await createModelTools({
             cache: this.cache,
             workspaceDir,
             sessionId,

@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@ai-sdk/provider": "catalog:",
-    "@nyx/config": "workspace:*",
+    "@nyx/global": "workspace:*",
     "onnxruntime-node": "catalog:",
     "@huggingface/transformers": "catalog:"
   }

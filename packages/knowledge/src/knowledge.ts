@@ -4,7 +4,7 @@ import type { Dirent } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { embed, embedMany } from "ai";
-import { getSettings, getKnowledgeDir } from "@nyx/config";
+import { Global } from "@nyx/global";
 import { createOnnxEmbeddingModel } from "@nyx/llm";
 import { chunkDocument } from "./chunk.ts";
 import { KnowledgeStore, type SearchHit } from "./store.ts";
@@ -70,19 +70,19 @@ export interface ImportResult {
  * There is deliberately no built-in fallback: with nothing selected the
  * knowledge base stays idle instead of embedding with a model of our choosing.
  */
-export function resolveEmbeddingModel(): string | undefined {
-  return getSettings().knowledge?.embeddingModel;
+export async function resolveEmbeddingModel(): Promise<string | undefined> {
+  return (await Global.Settings.read()).knowledge?.embeddingModel;
 }
 
 /** Selected embedding model, refusing to embed when the user picked none. */
-function requireEmbeddingModel(): string {
-  const model = resolveEmbeddingModel();
+async function requireEmbeddingModel(): Promise<string> {
+  const model = await resolveEmbeddingModel();
   if (!model) throw new Error("No embedding model is selected.");
   return model;
 }
 
 function indexDir(): string {
-  return join(getKnowledgeDir(), INDEX_DIR);
+  return join(Global.Path.knowledge, INDEX_DIR);
 }
 
 function configPath(): string {
@@ -133,7 +133,7 @@ function writeManifest(manifest: Manifest): void {
 }
 
 /**
- * The single local knowledge base: every Markdown file under `getKnowledgeDir()`
+ * The single local knowledge base: every Markdown file under `Global.Path.knowledge`
  * (default `~/.nyx/knowledge`, override `NYX_KNOWLEDGE_DIR`). The index lives in
  * the hidden `<knowledge>/.index/` subdir, so the document walk never sees it.
  */
@@ -146,17 +146,17 @@ export class KnowledgeBase {
 
   /** True when the knowledge dir contains at least one Markdown file. */
   hasDocuments(): boolean {
-    return walkDocuments(getKnowledgeDir()).length > 0;
+    return walkDocuments(Global.Path.knowledge).length > 0;
   }
 
   /** Walk the knowledge dir, (re-)embedding changed files; removed files are pruned. */
   async index(
     options: { onProgress?: (progress: IndexProgress) => void; signal?: AbortSignal } = {},
   ): Promise<IndexStats> {
-    const model = requireEmbeddingModel();
+    const model = await requireEmbeddingModel();
     const store = await KnowledgeStore.open(lanceDir());
     try {
-      const sourceDir = getKnowledgeDir();
+      const sourceDir = Global.Path.knowledge;
       const files = walkDocuments(sourceDir);
       const previous = readManifest();
       // Reusing hashes is only safe when the index came from the same model.
@@ -252,7 +252,7 @@ export class KnowledgeBase {
 
   /** Hybrid (vector + keyword) search over the index. */
   async search(query: string, options: { topK?: number } = {}): Promise<SearchHit[]> {
-    const model = requireEmbeddingModel();
+    const model = await requireEmbeddingModel();
     // Query vectors must come from the model that built the index, or the
     // distances are meaningless; the caller rebuilds to switch models.
     const indexed = this.config.indexedModel;
@@ -292,7 +292,7 @@ export class KnowledgeBase {
    * when it was never indexed.
    */
   listDocuments(): KnowledgeDocument[] {
-    const sourceDir = getKnowledgeDir();
+    const sourceDir = Global.Path.knowledge;
     const manifest = readManifest();
     return walkDocuments(sourceDir)
       .map((absolute) => {
@@ -377,8 +377,8 @@ function documentPath(file: string): string {
     isDocumentFile(normalized) &&
     segments.every((segment) => segment !== "" && segment !== ".." && !segment.startsWith("."));
   if (!valid) throw new Error(`Invalid document path: ${file}`);
-  const absolute = resolve(getKnowledgeDir(), normalized);
-  const root = resolve(getKnowledgeDir());
+  const absolute = resolve(Global.Path.knowledge, normalized);
+  const root = resolve(Global.Path.knowledge);
   if (absolute !== join(root, ...segments)) throw new Error(`Invalid document path: ${file}`);
   return absolute;
 }

@@ -23,7 +23,6 @@
     "@ai-sdk/react": "catalog:",
     "ai": "catalog:",
     "@huggingface/transformers": "catalog:",
-    "@nyx/config": "workspace:*",
     "@nyx/llm": "workspace:*",
     "@nyx/server": "workspace:*",
     "@nyx/shared": "workspace:*",

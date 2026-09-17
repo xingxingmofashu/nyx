@@ -22,15 +22,13 @@ export class OnnxTextToSpeechProvider implements SpeechProvider {
   readonly id = "local-onnx";
   readonly task = "text-to-speech" as const;
   readonly model: string;
-  private readonly dtype?: DataType;
+  private dtype?: DataType;
   private readonly cacheDir?: string;
   private readonly allowDownload?: boolean;
 
   constructor(options: OnnxTextToSpeechOptions) {
     this.model = options.model;
-    // Default to the dtype recorded when the model was pulled, so inference
-    // matches what's cached instead of re-downloading another variant.
-    this.dtype = options.dtype ?? findModel(options.model)?.dtype;
+    this.dtype = options.dtype;
     this.cacheDir = options.cacheDir;
     this.allowDownload = options.allowDownload;
   }
@@ -52,6 +50,7 @@ export class OnnxTextToSpeechProvider implements SpeechProvider {
   }
 
   private async load(): Promise<TextToAudioPipeline> {
+    if (this.dtype === undefined) this.dtype = (await findModel(this.model))?.dtype;
     return loadPipeline<TextToAudioPipeline>("text-to-speech", this.model, {
       cacheDir: this.cacheDir,
       allowDownload: this.allowDownload,

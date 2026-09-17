@@ -1,5 +1,5 @@
 {
-  "name": "@nyx/config",
+  "name": "@nyx/global",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,12 +10,11 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "@huggingface/transformers": "catalog:",
     "defu": "6.1.7",
-    "write-file-atomic": "catalog:",
+    "fs-extra": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/write-file-atomic": "catalog:"
+    "@types/fs-extra": "catalog:"
   }
 }

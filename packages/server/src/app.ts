@@ -12,9 +12,14 @@ import {
 import { auth } from "./middleware/auth"
 import { agent } from "./routes/agent"
 import { automaticSpeechRecognition } from "./routes/automatic-speech-recognition"
+import { catalog } from "./routes/catalog"
+import { environment } from "./routes/environment"
+import { files } from "./routes/files"
 import { imageToImage } from "./routes/image-to-image"
 import { knowledge } from "./routes/knowledge"
 import { models } from "./routes/models"
+import { sessions } from "./routes/sessions"
+import { settings } from "./routes/settings"
 import { textToSpeech } from "./routes/text-to-speech"
 
 /** Service dependencies shared by every route, wired once per app instance. */
@@ -65,6 +70,11 @@ export function createApp(options: { token: string; onLog: (message: string) => 
   const v1 = new Hono()
     .use("*", handle)
     .get("/health", (c) => c.json({ ok: true }))
+    .route("/settings", settings())
+    .route("/environment", environment())
+    .route("/catalog", catalog())
+    .route("/sessions", sessions())
+    .route("/files", files())
     .route("/models", models(services.models))
     .route("/tasks/image-to-image", imageToImage(services.imageToImage))
     .route("/tasks/text-to-speech", textToSpeech(services.textToSpeech))

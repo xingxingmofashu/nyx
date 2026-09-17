@@ -1,7 +1,7 @@
 import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { lookupCatalogLimit, type CatalogLimit, type ModelsCatalog } from "@nyx/shared";
-import { getModelsCatalogPath } from "@nyx/config";
+import { Global } from "@nyx/global";
 
 /**
  * The models.dev catalog: model metadata (notably the context window) for
@@ -30,7 +30,7 @@ function sourceUrl(): string {
 }
 
 function cachePath(): string {
-  return getModelsCatalogPath();
+  return Global.Path.modelsCatalog;
 }
 
 /** Read and parse the on-disk cache; undefined when missing or invalid. */

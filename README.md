@@ -16,7 +16,7 @@ nyx is a coding agent. The agent model is a remote model you bring your own key 
 
 Bun monorepo:
 
-- `packages/config` — `~/.nyx` paths, the model registry (`~/.nyx/models.json`), and user settings (`~/.nyx/settings.json`)
+- `packages/global` — the on-disk layout and stores (`~/.nyx` paths, the model registry, and user settings), consumed server-side as a single `Global` namespace (`Bun.file` / `Bun.write` / `fs-extra`); the desktop reaches it only over `/v1`
 - `packages/llm` — model runtime + tasks (`runtime.ts` shared loader, `tasks/*`), built on onnxruntime-node / transformers.js
 - `packages/agent` — the agent: `agent.ts` is the provider-agnostic agent loop (Vercel AI SDK), `provider.ts` is the `Provider` layer (agent model resolution + local ONNX provider cache), and the root entry adds the concrete capabilities (coding / model / knowledge / web tools, workspace sandbox, model/knowledge/task services)
 - `packages/knowledge` — local knowledge base (RAG): Markdown chunking, LanceDB hybrid search, local ONNX embeddings
@@ -69,7 +69,7 @@ The agent loop runs in the local server (`POST /v1/agent`), so API calls go out 
 }
 ```
 
-`npm` selects the AI SDK provider package — `@ai-sdk/openai-compatible` (any OpenAI-compatible endpoint: OpenAI, DeepSeek, OpenRouter, vLLM, Ollama, OpenCode Zen/Go, …) or `@ai-sdk/anthropic`. `options` holds `baseURL`/`apiKey`/`headers`; `limit.output` caps generated tokens. Env overrides: `NYX_AGENT_MODEL` replaces the ref, and `NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS` (a JSON object) override the active provider's options. Some gateways need extra request headers (e.g. OpenCode Zen/Go requires `x-opencode-session`) — add them under the provider's `options.headers`. Pick a workspace folder in the Agent header, chat, and approve tool calls inline; **Settings → Agent** edits the model ref, providers, system prompt, and tool toggles (changes apply to the next message, no restart). Attach images from the composer (button, paste, or drag-and-drop) to feed local tools: each file is copied into the workspace's session folder (`~/.nyx/sessions/<workspace>/attachments/`) and the agent model receives its absolute path, which is what `local_image_to_image` takes as `inputPath` — so deleting the original file never breaks the chat.
+`npm` selects the AI SDK provider package — `@ai-sdk/openai-compatible` (any OpenAI-compatible endpoint: OpenAI, DeepSeek, OpenRouter, vLLM, Ollama, OpenCode Zen/Go, …) or `@ai-sdk/anthropic`. `options` holds `baseURL`/`apiKey`/`headers`; `limit.output` caps generated tokens. Some gateways need extra request headers (e.g. OpenCode Zen/Go requires `x-opencode-session`) — add them under the provider's `options.headers`. Pick a workspace folder in the Agent header, chat, and approve tool calls inline; **Settings → Agent** edits the model ref, providers, system prompt, and tool toggles (changes apply to the next message, no restart). Attach images from the composer (button, paste, or drag-and-drop) to feed local tools: each file is copied into the workspace's session folder (`~/.nyx/sessions/<workspace>/attachments/`) and the agent model receives its absolute path, which is what `local_image_to_image` takes as `inputPath` — so deleting the original file never breaks the chat.
 
 ### Long sessions (context compaction)
 
@@ -88,7 +88,7 @@ Every turn re-sends the whole transcript, so long sessions eventually fill the m
 
 ### Local models as tools
 
-The locally installed ONNX models are exposed to the agent model by default: `local_image_to_image` transforms an image from the workspace and writes the result into the workspace's session folder (`~/.nyx/sessions/<workspace>/images/`, shown inline in the desktop chat), and `local_text_to_speech` synthesizes a WAV into the same session folder's `audio/` (also shown inline) — so deleting a session deletes its generated files, and the workspace itself stays untouched. Both require approval. Tools are only added for tasks that have an installed model. Set `agent.tools.localModels: false` (or `NYX_AGENT_LOCAL_MODELS=0`) to disable.
+The locally installed ONNX models are exposed to the agent model by default: `local_image_to_image` transforms an image from the workspace and writes the result into the workspace's session folder (`~/.nyx/sessions/<workspace>/images/`, shown inline in the desktop chat), and `local_text_to_speech` synthesizes a WAV into the same session folder's `audio/` (also shown inline) — so deleting a session deletes its generated files, and the workspace itself stays untouched. Both require approval. Tools are only added for tasks that have an installed model. Set `agent.tools.localModels: false` to disable.
 
 ```json
 {
@@ -114,7 +114,7 @@ The agent also gets two read-only web tools by default: `web_search` (search the
 }
 ```
 
-Set `agent.tools.webSearch: false` (or `NYX_AGENT_WEB_SEARCH=0`) to disable both tools. Optional env overrides: `NYX_WEB_SEARCH_PROVIDER=exa|parallel` selects the backend (default `exa`), `NYX_WEB_SEARCH_API_KEY` is the Exa key (sent as `exaApiKey`), and `NYX_PARALLEL_API_KEY` is a Parallel bearer token. With no keys set, both backends use their keyless free tier.
+Set `agent.tools.webSearch: false` to disable both tools. Optional env overrides: `NYX_WEB_SEARCH_PROVIDER=exa|parallel` selects the backend (default `exa`), `NYX_WEB_SEARCH_API_KEY` is the Exa key (sent as `exaApiKey`), and `NYX_PARALLEL_API_KEY` is a Parallel bearer token. With no keys set, both backends use their keyless free tier.
 
 ## Knowledge base (RAG)
 

@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@lancedb/lancedb": "catalog:",
-    "@nyx/config": "workspace:*",
+    "@nyx/global": "workspace:*",
     "@nyx/llm": "workspace:*",
     "@nyx/shared": "workspace:*",
     "ai": "catalog:",

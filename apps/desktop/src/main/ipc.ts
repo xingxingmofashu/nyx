@@ -1,31 +1,12 @@
 import { BrowserWindow, dialog, ipcMain, type MessageBoxOptions } from "electron"
 import { writeFile } from "node:fs/promises"
-import {
-  getActiveSessionId,
-  getKnowledgeDir,
-  getModelsDir,
-  getSession,
-  getSettings,
-  listSessions,
-  removeSession,
-  renameSession,
-  saveSession,
-  setActiveSessionId,
-  setSessionPinned,
-  setSettings,
-  writeSettings,
-} from "@nyx/config"
 import { IPC } from "../shared/ipc"
-import { saveAttachment } from "./attachment"
-import { readGeneratedFileDataUrl } from "./generated-file"
 import { readFolderDocuments, readPickedDocuments, type ImportDocument } from "./knowledge-import"
-import { readCatalogLimit } from "./model-limit"
 import { listProviderModels } from "./provider-models"
 import type {
   AgentProviderEntry,
   AttachmentInput,
   AudioSamples,
-  AppEnvironment,
   ChatCompactRequest,
   ChatSendRequest,
   ChatSessionSaveRequest,
@@ -56,20 +37,6 @@ interface Services {
   knowledge: KnowledgeService
   server: NyxServerProcess
 }
-
-/** Env vars the server reads that take precedence over settings.json. */
-const ENV_OVERRIDE_KEYS = [
-  "NYX_AGENT_MODEL",
-  "NYX_AGENT_API_KEY",
-  "NYX_AGENT_BASE_URL",
-  "NYX_AGENT_HEADERS",
-  "NYX_AGENT_LOCAL_MODELS",
-  "NYX_AGENT_WEB_SEARCH",
-  "NYX_WEB_SEARCH_PROVIDER",
-  "NYX_WEB_SEARCH_API_KEY",
-  "NYX_PARALLEL_API_KEY",
-  "HF_ENDPOINT",
-] as const
 
 /** Register all ipcMain handlers. Must run after app is ready. */
 export function registerIpc(services: Services): void {
@@ -152,21 +119,16 @@ export function registerIpc(services: Services): void {
   )
 
   // --- Config ---
-  ipcMain.handle(IPC.config.getModelsDir, () => getModelsDir())
-  ipcMain.handle(IPC.config.getSettings, () => getSettings())
-  ipcMain.handle(IPC.config.setSettings, (_e, patch: Settings) => setSettings(patch))
-  ipcMain.handle(IPC.config.writeSettings, (_e, settings: Settings) => writeSettings(settings))
-  ipcMain.handle(IPC.config.getEnvironment, (): AppEnvironment => ({
-    modelsDir: getModelsDir(),
-    knowledgeDir: getKnowledgeDir(),
-    // The server reads these from its own env, which beats settings.json.
-    envOverrides: ENV_OVERRIDE_KEYS.filter((key) => Boolean(process.env[key])),
-  }))
+  ipcMain.handle(IPC.config.getModelsDir, async () => (await server.client.environment()).modelsDir)
+  ipcMain.handle(IPC.config.getSettings, () => server.client.settings())
+  ipcMain.handle(IPC.config.setSettings, (_e, patch: Settings) => server.client.updateSettings(patch))
+  ipcMain.handle(IPC.config.writeSettings, (_e, settings: Settings) => server.client.replaceSettings(settings))
+  ipcMain.handle(IPC.config.getEnvironment, () => server.client.environment())
   ipcMain.handle(IPC.config.listModels, (_e, provider: AgentProviderEntry) =>
     listProviderModels(provider),
   )
   ipcMain.handle(IPC.config.modelLimits, (_e, providerId: string, modelId: string) =>
-    readCatalogLimit(providerId, modelId),
+    server.client.catalogLimit(providerId, modelId),
   )
   ipcMain.handle(IPC.config.restartServer, async () => {
     await server.stop()
@@ -174,26 +136,28 @@ export function registerIpc(services: Services): void {
   })
 
   // --- Sessions ---
-  ipcMain.handle(IPC.sessions.list, (_e, workspaceDir: string) => listSessions(workspaceDir))
+  ipcMain.handle(IPC.sessions.list, (_e, workspaceDir: string) => server.client.listSessions(workspaceDir))
   ipcMain.handle(IPC.sessions.get, (_e, workspaceDir: string, id: string) =>
-    getSession(workspaceDir, id) ?? null,
+    server.client.getSession(workspaceDir, id),
   )
-  ipcMain.handle(IPC.sessions.save, (_e, session: ChatSessionSaveRequest) => saveSession(session))
+  ipcMain.handle(IPC.sessions.save, (_e, session: ChatSessionSaveRequest) =>
+    server.client.saveSession(session),
+  )
   ipcMain.handle(IPC.sessions.rename, (_e, workspaceDir: string, id: string, title: string) =>
-    renameSession(workspaceDir, id, title) ?? null,
+    server.client.renameSession(workspaceDir, id, title),
   )
   ipcMain.handle(IPC.sessions.setPinned, (_e, workspaceDir: string, id: string, pinned: boolean) =>
-    setSessionPinned(workspaceDir, id, pinned) ?? null,
+    server.client.setSessionPinned(workspaceDir, id, pinned),
   )
-  ipcMain.handle(IPC.sessions.remove, (_e, workspaceDir: string, id: string) => {
-    removeSession(workspaceDir, id)
-  })
+  ipcMain.handle(IPC.sessions.remove, (_e, workspaceDir: string, id: string) =>
+    server.client.removeSession(workspaceDir, id),
+  )
   ipcMain.handle(IPC.sessions.getActive, (_e, workspaceDir: string) =>
-    getActiveSessionId(workspaceDir) ?? null,
+    server.client.activeSessionId(workspaceDir),
   )
-  ipcMain.handle(IPC.sessions.setActive, (_e, workspaceDir: string, id: string | null) => {
-    setActiveSessionId(workspaceDir, id)
-  })
+  ipcMain.handle(IPC.sessions.setActive, (_e, workspaceDir: string, id: string | null) =>
+    server.client.setActiveSessionId(workspaceDir, id),
+  )
 
   // --- Dialog ---
   ipcMain.handle(IPC.dialog.selectDirectory, (e) => pickDirectory(e))
@@ -210,10 +174,17 @@ export function registerIpc(services: Services): void {
   ipcMain.handle(IPC.dialog.confirm, (e, request: ConfirmDialogRequest) => confirm(e, request))
 
   // --- Files ---
-  ipcMain.handle(IPC.files.readDataUrl, (_e, path: string) => readGeneratedFileDataUrl(path))
+  ipcMain.handle(IPC.files.readDataUrl, (_e, path: string) => server.client.readGeneratedFileDataUrl(path))
   ipcMain.handle(
     IPC.files.saveAttachment,
-    (_e, input: AttachmentInput & { workspaceDir: string; sessionId: string }) => saveAttachment(input),
+    (_e, input: AttachmentInput & { workspaceDir: string; sessionId: string }) =>
+      server.client.saveAttachment({
+        workspaceDir: input.workspaceDir,
+        sessionId: input.sessionId,
+        name: input.name,
+        mimeType: input.mimeType,
+        data: Buffer.from(input.data).toString("base64"),
+      }),
   )
 
   // --- Window controls (frameless) ---

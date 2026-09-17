@@ -17,8 +17,9 @@ export type { LLMTask } from "./types.ts";
 export { configureEnv, loadPipeline, clearModelCache } from "./runtime.ts";
 export type { ModelRuntimeOptions, ProgressInfo } from "./runtime.ts";
 
-export { listModels, pullModel, findModel } from "./model.ts";
+export { listModels, pullModel, findModel, removeModel } from "./model.ts";
 export { PullAbortedError } from "./model.ts";
+export type { CachedModel } from "./model.ts";
 export { encodeWavPcm16 } from "./wav.ts";
 
 export { OnnxImageToImageProvider } from "./tasks/image-to-image.ts";

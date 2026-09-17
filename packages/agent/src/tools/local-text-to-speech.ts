@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, extname, join } from "node:path";
 import { encodeWavPcm16, listModels, OnnxTextToSpeechProvider } from "@nyx/llm";
-import { workspaceAudioDir } from "@nyx/config";
+import { Global } from "@nyx/global";
 import { tool, type ToolSet } from "ai";
 import { z } from "zod/v4";
 import { Provider } from "../provider.ts";
@@ -26,11 +26,9 @@ export interface TextToSpeechToolOptions {
 }
 
 /** Build the `local_text_to_speech` tool; returns no tools when none are installed. */
-export function createTextToSpeechTools(options: TextToSpeechToolOptions): ToolSet {
+export async function createTextToSpeechTools(options: TextToSpeechToolOptions): Promise<ToolSet> {
   const { cache, workspaceDir, sessionId, inlineAudio = false } = options;
-  // Not realpath-resolved: the session folder is keyed off this exact path
-  // (`workspaceKey`), and the app writes media with the same raw path.
-  const speechModels = listModels()
+  const speechModels = (await listModels())
     .filter((m) => m.task === "text-to-speech")
     .map((m) => m.id);
   if (speechModels.length === 0) return {};
@@ -53,7 +51,7 @@ export function createTextToSpeechTools(options: TextToSpeechToolOptions): ToolS
         throwIfAborted(abortSignal);
 
         const target = uniqueOutputPath(
-          join(workspaceAudioDir(workspaceDir), speechFileName(sessionId, model)),
+          join(new Global.Workspace(workspaceDir).audioDir, speechFileName(sessionId, model)),
         );
         await mkdir(dirname(target), { recursive: true });
         const wav = Buffer.from(encodeWavPcm16(audio.audio, audio.sampling_rate));

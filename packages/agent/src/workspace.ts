@@ -1,6 +1,6 @@
 import { realpathSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
-import { workspaceAttachmentsDir, workspaceAudioDir, workspaceImageDir } from "@nyx/config";
+import { Global } from "@nyx/global";
 import { isWithinPath } from "@nyx/shared/node";
 
 /**
@@ -28,7 +28,8 @@ export function workspacePath(root: string, p: string): string {
  * different, empty session folder.
  */
 export function mediaPath(root: string, p: string): string {
-  const roots = [root, workspaceAttachmentsDir(root), workspaceImageDir(root), workspaceAudioDir(root)];
+  const workspace = new Global.Workspace(root);
+  const roots = [root, workspace.attachmentsDir, workspace.imageDir, workspace.audioDir];
   const resolved = isAbsolute(p) ? resolve(p) : resolve(root, p);
   assertWithinAny(roots, resolved, p);
   assertWithinAny(roots.map(realpathNearest), realpathNearest(resolved), p);

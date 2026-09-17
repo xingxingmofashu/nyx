@@ -3,7 +3,6 @@ import { randomBytes } from "node:crypto"
 import { existsSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { NyxServerClient } from "./client"
-import { getSettings, DEFAULT_HUB_URL } from "@nyx/config"
 
 /** Generous ceiling for first startup (model load can be slow). */
 const READY_TIMEOUT_MS = 15_000
@@ -47,7 +46,6 @@ export class NyxServerProcess {
     this.token = randomBytes(24).toString("hex")
 
     const { script, cwd } = this.resolveBundle()
-    const hub = getSettings().hubBaseUrl?.replace(/\/$/, "")
     const child = spawn(script, [], {
       cwd,
       env: {
@@ -57,8 +55,6 @@ export class NyxServerProcess {
         // The server resolves its external native deps from `cwd`; keep the
         // cwd's node_modules first in the lookup order.
         NODE_PATH: join(cwd, "node_modules"),
-        // Let the inference child (where downloads run) use the configured mirror.
-        ...(hub && hub !== DEFAULT_HUB_URL ? { HF_ENDPOINT: hub } : {}),
       },
       stdio: ["ignore", "pipe", "pipe"],
     })

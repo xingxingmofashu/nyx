@@ -1,12 +1,20 @@
 import type { LLMTask } from "@nyx/llm"
-import type { ModelInfo } from "@nyx/config"
 import type {
   AgentRequestInput,
+  AppEnvironment,
+  AttachmentSaveRequest,
+  ChatSession,
+  ChatSessionMeta,
   CompactRequestInput,
   KnowledgeImportRequestInput,
   KnowledgeIndexRequestInput,
   KnowledgeSearchRequestInput,
+  ModelInfo,
+  SavedAttachment,
+  SessionSaveRequest,
+  Settings,
 } from "@nyx/server/schema"
+import type { CatalogLimit } from "@nyx/shared"
 import type { AppType } from "@nyx/server/api"
 import { parseJsonEventStream, uiMessageChunkSchema } from "ai"
 import { createParser } from "eventsource-parser"
@@ -123,6 +131,98 @@ export class NyxServerClient {
   async removeModel(modelId: string): Promise<void> {
     const res = await this.client.v1.models.$delete({ json: { model: modelId } })
     if (!res.ok) throw new Error(await errorMessage(res, "models"))
+  }
+
+  async environment(): Promise<AppEnvironment> {
+    const res = await this.client.v1.environment.$get()
+    if (!res.ok) throw new Error(await errorMessage(res, "environment"))
+    return (await res.json()) as AppEnvironment
+  }
+
+  async settings(): Promise<Settings> {
+    const res = await this.client.v1.settings.$get()
+    if (!res.ok) throw new Error(await errorMessage(res, "settings"))
+    return (await res.json()) as Settings
+  }
+
+  async updateSettings(patch: Settings): Promise<Settings> {
+    const res = await this.client.v1.settings.$patch({ json: patch })
+    if (!res.ok) throw new Error(await errorMessage(res, "settings"))
+    return (await res.json()) as Settings
+  }
+
+  async replaceSettings(settings: Settings): Promise<Settings> {
+    const res = await this.client.v1.settings.$put({ json: settings })
+    if (!res.ok) throw new Error(await errorMessage(res, "settings"))
+    return (await res.json()) as Settings
+  }
+
+  async catalogLimit(provider: string, model: string): Promise<CatalogLimit | null> {
+    const res = await this.client.v1.catalog.limit.$get({ query: { provider, model } })
+    if (!res.ok) throw new Error(await errorMessage(res, "catalog/limit"))
+    return (await res.json()) as CatalogLimit | null
+  }
+
+  async listSessions(workspaceDir?: string): Promise<ChatSessionMeta[]> {
+    const res = await this.client.v1.sessions.$get({
+      query: workspaceDir === undefined ? {} : { workspaceDir },
+    })
+    if (!res.ok) throw new Error(await errorMessage(res, "sessions"))
+    return (await res.json()) as ChatSessionMeta[]
+  }
+
+  async getSession(workspaceDir: string, id: string): Promise<ChatSession | null> {
+    const res = await this.client.v1.sessions[":id"].$get({ param: { id }, query: { workspaceDir } })
+    if (!res.ok) throw new Error(await errorMessage(res, "sessions"))
+    return (await res.json()) as ChatSession | null
+  }
+
+  async saveSession(session: SessionSaveRequest): Promise<ChatSessionMeta> {
+    const res = await this.client.v1.sessions.$put({ json: session })
+    if (!res.ok) throw new Error(await errorMessage(res, "sessions"))
+    return (await res.json()) as ChatSessionMeta
+  }
+
+  async renameSession(workspaceDir: string, id: string, title: string): Promise<ChatSessionMeta | null> {
+    const res = await this.client.v1.sessions[":id"].$patch({ param: { id }, json: { workspaceDir, title } })
+    if (!res.ok) throw new Error(await errorMessage(res, "sessions"))
+    return (await res.json()) as ChatSessionMeta | null
+  }
+
+  async setSessionPinned(workspaceDir: string, id: string, pinned: boolean): Promise<ChatSessionMeta | null> {
+    const res = await this.client.v1.sessions[":id"].$patch({ param: { id }, json: { workspaceDir, pinned } })
+    if (!res.ok) throw new Error(await errorMessage(res, "sessions"))
+    return (await res.json()) as ChatSessionMeta | null
+  }
+
+  async removeSession(workspaceDir: string, id: string): Promise<void> {
+    const res = await this.client.v1.sessions[":id"].$delete({ param: { id }, query: { workspaceDir } })
+    if (!res.ok) throw new Error(await errorMessage(res, "sessions"))
+  }
+
+  async activeSessionId(workspaceDir: string): Promise<string | null> {
+    const res = await this.client.v1.sessions.active.$get({ query: { workspaceDir } })
+    if (!res.ok) throw new Error(await errorMessage(res, "sessions/active"))
+    return (await res.json()) as string | null
+  }
+
+  async setActiveSessionId(workspaceDir: string, id: string | null): Promise<void> {
+    const res = await this.client.v1.sessions.active.$put({ json: { workspaceDir, id } })
+    if (!res.ok) throw new Error(await errorMessage(res, "sessions/active"))
+  }
+
+  async readGeneratedFileDataUrl(path: string, workspaceDir?: string): Promise<string | null> {
+    const res = await this.client.v1.files["data-url"].$get({
+      query: workspaceDir === undefined ? { path } : { path, workspaceDir },
+    })
+    if (!res.ok) throw new Error(await errorMessage(res, "files/data-url"))
+    return ((await res.json()) as { dataUrl: string | null }).dataUrl
+  }
+
+  async saveAttachment(input: AttachmentSaveRequest): Promise<SavedAttachment> {
+    const res = await this.client.v1.files.attachments.$post({ json: input })
+    if (!res.ok) throw new Error(await errorMessage(res, "files/attachments"))
+    return (await res.json()) as SavedAttachment
   }
 
   async knowledgeStatus(): Promise<KnowledgeStatus> {

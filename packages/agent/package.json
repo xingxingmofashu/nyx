@@ -17,7 +17,7 @@
     "@ai-sdk/anthropic": "catalog:",
     "@ai-sdk/openai-compatible": "catalog:",
     "@huggingface/transformers": "catalog:",
-    "@nyx/config": "workspace:*",
+    "@nyx/global": "workspace:*",
     "@nyx/knowledge": "workspace:*",
     "@nyx/llm": "workspace:*",
     "@nyx/shared": "workspace:*",

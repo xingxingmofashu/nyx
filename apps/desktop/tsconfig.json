@@ -15,7 +15,7 @@
     "verbatimModuleSyntax": true,
     "noUncheckedIndexedAccess": true,
     "allowImportingTsExtensions": true,
-    "types": ["vite/client", "node"]
+    "types": ["vite/client", "node", "bun"]
   },
   "include": ["src", "forge.config.ts", "vite.main.config.ts", "vite.renderer.config.ts", "forge-env.d.ts"]
 }

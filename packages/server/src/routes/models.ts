@@ -9,7 +9,7 @@ import type { ModelsService } from "@nyx/agent"
 /** /v1/models — list, download, cancel, and delete cached models. */
 export function models(store: ModelsService) {
   return new Hono()
-    .get("/", (c) => c.json(store.listModels()))
+    .get("/", async (c) => c.json(await store.listModels()))
 
     /** POST /pull — SSE stream of download progress; ends with done/cancelled/error. */
     .post("/pull", zValidator("json", ModelPullRequestSchema, validationHook), (c) => {
@@ -49,7 +49,7 @@ export function models(store: ModelsService) {
           if (error instanceof PullAbortedError) {
             // The download was cancelled: drop any partial files so a truncated
             // model is never mistaken for a complete one.
-            store.removeModel(model)
+            await store.removeModel(model)
             await stream.writeSSE({ event: "cancelled", data: JSON.stringify({ file: undefined }) })
           } else {
             await stream.writeSSE({
@@ -69,9 +69,9 @@ export function models(store: ModelsService) {
       return c.json({ ok: true, cancelled })
     })
 
-    .delete("/", zValidator("json", ModelIdRequestSchema, validationHook), (c) => {
+    .delete("/", zValidator("json", ModelIdRequestSchema, validationHook), async (c) => {
       const { model } = c.req.valid("json")
-      if (!store.removeModel(model)) {
+      if (!(await store.removeModel(model))) {
         return c.json({ error: `model not cached: ${model}` }, 404)
       }
       return c.json({ ok: true })

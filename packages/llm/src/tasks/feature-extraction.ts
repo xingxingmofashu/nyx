@@ -15,15 +15,13 @@ export class OnnxEmbeddingProvider implements EmbeddingProvider {
   readonly id = "local-onnx";
   readonly task = "feature-extraction" as const;
   readonly model: string;
-  private readonly dtype?: DataType;
+  private dtype?: DataType;
   private readonly cacheDir?: string;
   private readonly allowDownload?: boolean;
 
   constructor(options: OnnxEmbeddingOptions) {
     this.model = options.model;
-    // Default to the dtype recorded when the model was pulled, so inference
-    // matches what's cached instead of re-downloading another variant.
-    this.dtype = options.dtype ?? findModel(options.model)?.dtype;
+    this.dtype = options.dtype;
     this.cacheDir = options.cacheDir;
     this.allowDownload = options.allowDownload;
   }
@@ -47,6 +45,7 @@ export class OnnxEmbeddingProvider implements EmbeddingProvider {
   }
 
   private async load(): Promise<FeatureExtractionPipeline> {
+    if (this.dtype === undefined) this.dtype = (await findModel(this.model))?.dtype;
     return loadPipeline<FeatureExtractionPipeline>("feature-extraction", this.model, {
       cacheDir: this.cacheDir,
       allowDownload: this.allowDownload,

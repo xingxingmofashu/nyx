@@ -2,7 +2,88 @@
 
 import { z } from "zod/v4";
 import { LLM_TASKS } from "@nyx/llm";
+import { Global } from "@nyx/global";
 import type { ContextCheckpoint, TokenUsage } from "./types.ts";
+
+export type Settings = Global.Settings;
+export type AgentSettings = Global.AgentSettings;
+export type AgentToolsSettings = Global.AgentToolsSettings;
+export type AgentCompactionSettings = Global.AgentCompactionSettings;
+export type KnowledgeSettings = Global.KnowledgeSettings;
+export type AgentProviderEntry = Global.AgentProviderEntry;
+export type AgentProviderOptions = Global.AgentProviderOptions;
+export type AgentProviderLimit = Global.AgentProviderLimit;
+export type ModelInfo = Global.ModelInfo;
+export type ChatSession = Global.ChatSession;
+export type ChatSessionMeta = Global.ChatSessionMeta;
+
+export const SessionIdSchema = z.string().regex(/^[A-Za-z0-9_-]+$/);
+
+/** PATCH /v1/settings — deep-merge a settings patch. */
+export const SettingsPatchSchema = Global.SettingsSchema;
+export type SettingsPatch = Global.Settings;
+
+/** PUT /v1/settings — replace the settings file wholesale. */
+export const SettingsReplaceSchema = Global.SettingsSchema;
+export type SettingsReplace = Global.Settings;
+
+export const WorkspaceQuerySchema = z.object({
+  workspaceDir: z.string().optional(),
+});
+
+/** PUT /v1/sessions — upsert one session's metadata and transcript. */
+export const SessionSaveRequestSchema = z.object({
+  workspaceDir: z.string(),
+  id: SessionIdSchema,
+  title: z.string(),
+  messages: z.array(z.unknown()),
+});
+export type SessionSaveRequest = z.infer<typeof SessionSaveRequestSchema>;
+
+/** PATCH /v1/sessions/:id — rename and/or pin a session. */
+export const SessionPatchRequestSchema = z.object({
+  workspaceDir: z.string(),
+  title: z.string().optional(),
+  pinned: z.boolean().optional(),
+});
+export type SessionPatchRequest = z.infer<typeof SessionPatchRequestSchema>;
+
+/** PUT /v1/sessions/active — remember the last opened session (`null` clears it). */
+export const ActiveSessionRequestSchema = z.object({
+  workspaceDir: z.string(),
+  id: SessionIdSchema.nullable(),
+});
+export type ActiveSessionRequest = z.infer<typeof ActiveSessionRequestSchema>;
+
+/** GET /v1/files/data-url — read a generated file as a `data:` URL. */
+export const GeneratedFileQuerySchema = z.object({
+  path: z.string().min(1),
+  workspaceDir: z.string().optional(),
+});
+export type GeneratedFileQuery = z.infer<typeof GeneratedFileQuerySchema>;
+
+/** POST /v1/files/attachments — copy one uploaded attachment into the session folder. */
+export const AttachmentSaveRequestSchema = z.object({
+  workspaceDir: z.string(),
+  sessionId: SessionIdSchema,
+  name: z.string(),
+  mimeType: z.string(),
+  data: z.string(),
+});
+export type AttachmentSaveRequest = z.infer<typeof AttachmentSaveRequestSchema>;
+
+/** GET /v1/catalog/limit — context-window lookup against the cached models.dev catalog. */
+export const CatalogLimitQuerySchema = z.object({
+  provider: z.string().min(1),
+  model: z.string().min(1),
+});
+export type CatalogLimitQuery = z.infer<typeof CatalogLimitQuerySchema>;
+
+/** GET /v1/environment — on-disk locations. */
+export interface AppEnvironment {
+  modelsDir: string;
+  knowledgeDir: string;
+}
 
 /** HTTP image input: base64-encoded image bytes (JSON request body). */
 export const ImageBase64InputSchema = z.object({

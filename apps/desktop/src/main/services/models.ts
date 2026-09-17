@@ -1,5 +1,5 @@
 import type { BrowserWindow } from "electron"
-import type { ModelInfo } from "@nyx/config"
+import type { ModelInfo } from "@nyx/server/schema"
 import type { NyxServerProcess } from "../server"
 import { IPC } from "../../shared/ipc"
 import type { LLMTask, ModelPullProgress } from "../../shared/types"

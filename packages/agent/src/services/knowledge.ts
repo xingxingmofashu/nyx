@@ -1,4 +1,4 @@
-import { getKnowledgeDir } from "@nyx/config"
+import { Global } from "@nyx/global"
 import {
   KnowledgeBase,
   resolveEmbeddingModel,
@@ -54,24 +54,24 @@ export class KnowledgeService {
     if (kb.fileCount() === 0) {
       throw new Error("The knowledge index is empty. Build it from the Knowledge page (Update index).")
     }
-    this.requireModel()
+    await this.requireModel()
     return kb.search(query, { topK })
   }
 
   /** Everything the knowledge management page shows at a glance. */
   async status(): Promise<KnowledgeStatus> {
     const kb = this.kb
-    const embeddingModel = resolveEmbeddingModel()
+    const embeddingModel = await resolveEmbeddingModel()
     const { indexedModel, updatedAt } = kb.config
     // A missing or unreadable index is 0 chunks, not an error: the page then
     // offers to build one.
     const chunks = await kb.countChunks().catch(() => 0)
     return {
-      dir: getKnowledgeDir(),
+      dir: Global.Path.knowledge,
       ...(embeddingModel !== undefined ? { embeddingModel } : {}),
       ...(indexedModel !== undefined ? { indexedModel } : {}),
-      modelDownloaded: embeddingModel !== undefined && findModel(embeddingModel) !== undefined,
-      availableEmbeddingModels: listModels()
+      modelDownloaded: embeddingModel !== undefined && (await findModel(embeddingModel)) !== undefined,
+      availableEmbeddingModels: (await listModels())
         .filter((model) => model.task === "feature-extraction")
         .map((model) => model.id),
       documents: kb.listDocuments().length,
@@ -134,7 +134,7 @@ export class KnowledgeService {
   async index(
     options: { rebuild?: boolean; onProgress?: (progress: IndexProgress) => void; signal?: AbortSignal } = {},
   ): Promise<IndexStats> {
-    this.requireModel()
+    await this.requireModel()
     const kb = this.kb
     const stats = options.rebuild === true ? await kb.rebuild(options) : await kb.index(options)
     this.log(
@@ -144,14 +144,14 @@ export class KnowledgeService {
   }
 
   /** Refuse to embed without a selected embedding model that is downloaded. */
-  private requireModel(): string {
-    const model = resolveEmbeddingModel()
+  private async requireModel(): Promise<string> {
+    const model = await resolveEmbeddingModel()
     if (!model) {
       throw new Error(
         'No embedding model is selected. Download one from the Local models page (task "feature-extraction") and pick it above.',
       )
     }
-    if (!findModel(model)) {
+    if (!(await findModel(model))) {
       throw new Error(
         `Embedding model "${model}" is not downloaded. Download it from the Local models page (task "feature-extraction").`,
       )

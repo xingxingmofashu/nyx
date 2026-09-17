@@ -24,7 +24,13 @@ import type {
   UIMessage,
   UIMessageChunk,
 } from "@nyx/server/schema"
-import type { AgentProviderEntry, AgentSettings, ChatSessionMeta, ModelInfo, Settings } from "@nyx/config"
+import type {
+  AgentProviderEntry,
+  AgentSettings,
+  ChatSessionMeta,
+  ModelInfo,
+  Settings,
+} from "@nyx/server/schema"
 import type { LLMTask } from "@nyx/llm"
 export type {
   AgentProviderEntry,
@@ -125,8 +131,6 @@ export interface AttachmentInput {
 export interface AppEnvironment {
   modelsDir: string
   knowledgeDir: string
-  /** Names of env vars set in the main process that override settings.json. */
-  envOverrides: string[]
 }
 
 /** Model ids available from one provider, or why the list couldn't be fetched. */
