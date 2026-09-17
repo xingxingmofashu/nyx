@@ -113,40 +113,47 @@ export function KnowledgePage() {
                 } · ${status.embeddingModel}`}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap items-center gap-2">
-          <Button onClick={() => void runImport(importFiles)}>
-            <FilePlus data-icon="inline-start" />
-            Import files
-          </Button>
-          <Button variant="outline" onClick={() => void runImport(importFolder)}>
-            <FolderPlus data-icon="inline-start" />
-            Import folder
-          </Button>
-          <Separator orientation="vertical" className="mx-1 h-6" />
-          <Button
-            variant="outline"
-            disabled={busy || modelMissing}
-            title={modelMissing ? "Download the embedding model first" : "Embed changed documents"}
-            onClick={() => void updateIndex(false)}
-          >
-            <RefreshCw data-icon="inline-start" />
-            Update index
-          </Button>
-          <Button
-            variant="outline"
-            disabled={busy || modelMissing}
-            title={modelMissing ? "Download the embedding model first" : "Drop the index and embed everything again"}
-            onClick={() => void runRebuild()}
-          >
-            Rebuild
-          </Button>
-          {busy && (
-            <>
-              <Spinner className="text-muted-foreground" />
-              <Button variant="ghost" size="sm" onClick={() => void cancelIndex()}>
-                Cancel
-              </Button>
-            </>
+        <CardContent className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={() => void runImport(importFiles)}>
+              <FilePlus data-icon="inline-start" />
+              Import files
+            </Button>
+            <Button variant="outline" onClick={() => void runImport(importFolder)}>
+              <FolderPlus data-icon="inline-start" />
+              Import folder
+            </Button>
+            <Separator orientation="vertical" className="mx-1 h-6" />
+            <Button
+              variant="outline"
+              disabled={busy || modelMissing}
+              title={modelMissing ? "Download the embedding model first" : "Embed changed documents"}
+              onClick={() => void updateIndex(false)}
+            >
+              <RefreshCw data-icon="inline-start" />
+              Update index
+            </Button>
+            <Button
+              variant="outline"
+              disabled={busy || modelMissing}
+              title={modelMissing ? "Download the embedding model first" : "Drop the index and embed everything again"}
+              onClick={() => void runRebuild()}
+            >
+              Rebuild
+            </Button>
+            {busy && (
+              <>
+                <Spinner className="text-muted-foreground" />
+                <Button variant="ghost" size="sm" onClick={() => void cancelIndex()}>
+                  Cancel
+                </Button>
+              </>
+            )}
+          </div>
+          {status !== null && (
+            <p className="truncate font-mono text-xs text-muted-foreground" title={status.dir}>
+              {status.dir}
+            </p>
           )}
         </CardContent>
       </Card>
