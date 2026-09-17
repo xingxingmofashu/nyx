@@ -1,6 +1,7 @@
 import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2 } from "lucide-react"
 import { cn } from "#lib/utils.ts"
 import type { KnowledgeDocument, KnowledgeDocumentStatus } from "../../../../shared/types"
+import { buildTree, countDocuments, type TreeFolder } from "./tree"
 import { Button } from "../ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible"
 import {
@@ -9,15 +10,6 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "../ui/context-menu"
-
-interface TreeFolder {
-  /** Folder name as shown; "" for the invisible root. */
-  name: string
-  /** Folder path relative to the knowledge root; "" for the root. */
-  path: string
-  folders: TreeFolder[]
-  files: KnowledgeDocument[]
-}
 
 /** The status dot's tooltip, i.e. what the index says about one document. */
 const STATUS_LABEL: Record<KnowledgeDocumentStatus, string> = {
@@ -211,37 +203,4 @@ function DocumentRow({
       </ContextMenuContent>
     </ContextMenu>
   )
-}
-
-/** Nest flat document paths into folders, sorted folders-first. */
-function buildTree(documents: KnowledgeDocument[]): TreeFolder {
-  const root: TreeFolder = { name: "", path: "", folders: [], files: [] }
-  for (const doc of documents) {
-    const segments = doc.file.split("/")
-    const name = segments.pop()
-    if (name === undefined) continue
-    let folder = root
-    for (const segment of segments) {
-      const path = folder.path === "" ? segment : `${folder.path}/${segment}`
-      let child = folder.folders.find((candidate) => candidate.name === segment)
-      if (child === undefined) {
-        child = { name: segment, path, folders: [], files: [] }
-        folder.folders.push(child)
-      }
-      folder = child
-    }
-    folder.files.push(doc)
-  }
-  const sort = (folder: TreeFolder) => {
-    folder.folders.sort((a, b) => a.name.localeCompare(b.name))
-    folder.files.sort((a, b) => a.file.localeCompare(b.file))
-    folder.folders.forEach(sort)
-  }
-  sort(root)
-  return root
-}
-
-/** Documents under a folder, including its subfolders. */
-function countDocuments(folder: TreeFolder): number {
-  return folder.files.length + folder.folders.reduce((total, child) => total + countDocuments(child), 0)
 }

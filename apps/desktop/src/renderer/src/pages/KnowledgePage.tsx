@@ -2,7 +2,9 @@ import { useEffect, useState } from "react"
 import { FilePlus, FolderPlus, HardDrive, Library, RefreshCw, Search, Trash2 } from "lucide-react"
 import { relativeTime } from "@nyx/shared"
 import { useKnowledgeStore } from "../store/knowledge"
-import type { KnowledgeImportResult } from "../../../shared/types"
+import type { KnowledgeDocument, KnowledgeImportResult } from "../../../shared/types"
+import { normalizeImportTarget } from "../../../shared/knowledge"
+import { ImportTargetPicker } from "../components/knowledge/ImportTargetPicker"
 import { KnowledgeTree } from "../components/knowledge/KnowledgeTree"
 import { MarkdownText } from "../components/chat/MarkdownText"
 import { Badge } from "../components/ui/badge"
@@ -31,6 +33,7 @@ export function KnowledgePage() {
   const indexing = useKnowledgeStore((s) => s.indexing)
   const collapsed = useKnowledgeStore((s) => s.collapsed)
   const filter = useKnowledgeStore((s) => s.filter)
+  const target = useKnowledgeStore((s) => s.target)
   const results = useKnowledgeStore((s) => s.results)
   const searchError = useKnowledgeStore((s) => s.searchError)
   const searching = useKnowledgeStore((s) => s.searching)
@@ -39,6 +42,7 @@ export function KnowledgePage() {
     select,
     toggleFolder,
     setFilter,
+    setTarget,
     importFiles,
     importFolder,
     remove,
@@ -60,6 +64,14 @@ export function KnowledgePage() {
   const current = documents.find((doc) => doc.file === selected)
 
   const runImport = async (pick: () => Promise<KnowledgeImportResult | null>) => {
+    if (normalizeImportTarget(target) === null) {
+      toast.add({
+        title: "Invalid import folder",
+        description: `“${target}” is not a relative folder name inside the knowledge dir.`,
+        type: "error",
+      })
+      return
+    }
     try {
       const result = await pick()
       if (result === null) return
@@ -115,6 +127,7 @@ export function KnowledgePage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
+            <ImportTargetPicker value={target} documents={documents} onChange={setTarget} />
             <Button onClick={() => void runImport(importFiles)}>
               <FilePlus data-icon="inline-start" />
               Import files

@@ -33,7 +33,7 @@ export const IPC = {
     status: "knowledge:status",
     list: "knowledge:list",
     read: "knowledge:read",
-    /** Pick + read + import documents (asks before overwriting; main reads the files). */
+    /** Pick + read + import documents into a target folder ("" = root); asks before overwriting. */
     importFiles: "knowledge:importFiles",
     importFolder: "knowledge:importFolder",
     /** Delete a document after a native confirmation. */

@@ -1,6 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises"
 import { basename, join, relative, sep } from "node:path"
 import type { Dirent } from "node:fs"
+import { normalizeImportTarget } from "../shared/knowledge"
 
 /**
  * Reads documents the user picked (or a whole folder) into import payloads for
@@ -20,21 +21,30 @@ const IGNORED_DIRS = new Set(["node_modules", ".git"])
 /** Per-file cap; a stray huge file should not be shipped over IPC. */
 const MAX_BYTES = 5 * 1024 * 1024
 
-/** Read picked Markdown files; each keeps its own file name in the knowledge root. */
-export async function readPickedDocuments(paths: string[]): Promise<ImportDocument[]> {
+/**
+ * Read picked Markdown files; each keeps its own file name, placed in `target`
+ * (a folder inside the knowledge dir, "" for its root).
+ */
+export async function readPickedDocuments(paths: string[], target = ""): Promise<ImportDocument[]> {
+  const folder = requireTarget(target)
   const documents: ImportDocument[] = []
   for (const path of paths) {
     if (!isMarkdown(path) || !(await isReadableFile(path))) continue
-    documents.push({ path: basename(path), content: await readFile(path, "utf8") })
+    documents.push({
+      path: underTarget(folder, basename(path)),
+      content: await readFile(path, "utf8"),
+    })
   }
   return documents.sort((a, b) => a.path.localeCompare(b.path))
 }
 
 /**
  * Read a folder's Markdown recursively, nested under a folder named after it
- * (`~/notes/a.md` → `notes/a.md`) so importing two trees cannot collide.
+ * (`~/notes/a.md` → `notes/a.md`, or `target/notes/a.md` with a target) so
+ * importing two trees cannot collide.
  */
-export async function readFolderDocuments(dir: string): Promise<ImportDocument[]> {
+export async function readFolderDocuments(dir: string, target = ""): Promise<ImportDocument[]> {
+  const folder = requireTarget(target)
   const root = basename(dir)
   const documents: ImportDocument[] = []
   const walk = async (current: string): Promise<void> => {
@@ -51,7 +61,7 @@ export async function readFolderDocuments(dir: string): Promise<ImportDocument[]
         await walk(full)
       } else if (entry.isFile() && isMarkdown(entry.name) && (await isReadableFile(full))) {
         documents.push({
-          path: toPosix(join(root, relative(dir, full))),
+          path: underTarget(folder, toPosix(join(root, relative(dir, full)))),
           content: await readFile(full, "utf8"),
         })
       }
@@ -74,6 +84,18 @@ async function isReadableFile(path: string): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+/** Validate the import target once per batch; throws when it could escape. */
+function requireTarget(target: string): string {
+  const folder = normalizeImportTarget(target)
+  if (folder === null) throw new Error(`Invalid import target: ${target}`)
+  return folder
+}
+
+/** Place a document path under the target folder ("" is the knowledge root). */
+function underTarget(folder: string, path: string): string {
+  return toPosix(folder === "" ? path : `${folder}/${path}`)
 }
 
 function toPosix(path: string): string {

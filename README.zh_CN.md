@@ -145,7 +145,7 @@ nyx                                                                    # 启动 
 
 索引是增量的（按内容哈希跳过未变文件），存放在 `~/.nyx/knowledge/.index/`（可用 `NYX_KNOWLEDGE_DIR` 覆盖知识库目录）。它不会自己跑——启动时不会，检索时也不会——所以打开应用没有额外开销：需要时在桌面端 **Knowledge** 页面点 `Update index` / `Rebuild`。若嵌入模型尚未下载，索引会停下并给出提示，不会自动下载。只要存在 Markdown 文件，agent 就会获得只读的 `search_knowledge` 工具，从而基于你的文档回答（在 `settings.json` 中设 `agent.tools.knowledge: false` 可关闭）。
 
-桌面端的 **Knowledge** 页面管理同一个知识库：文档以文件树展示并带一个状态圆点（绿色：已在向量库；琥珀：正在嵌入；灰色：还没建），选中后直接预览 Markdown；可以导入文件或整个文件夹（同名文件只在确认后才覆盖）、右键删除文档、点 **Update index** 只嵌入变更部分，或点 **Rebuild** 丢弃索引并全量重嵌（例如换了 `knowledge.embeddingModel` 之后）。页面底部的检索框跑的就是 agent 那个工具用的同一套混合检索。手动放进 `~/.nyx/knowledge/` 的文件会显示为灰色"待索引"，点 **Update index** 即被收录。
+桌面端的 **Knowledge** 页面管理同一个知识库：文档以文件树展示并带一个状态圆点（绿色：已在向量库；琥珀：正在嵌入；灰色：还没建），选中后直接预览 Markdown；可以把文件或整个文件夹导入到知识库里的指定目录（从已有目录树里选或直接输入，默认根目录，不存在时导入时创建；同名文件只在确认后才覆盖）、右键删除文档、点 **Update index** 只嵌入变更部分，或点 **Rebuild** 丢弃索引并全量重嵌（例如换了 `knowledge.embeddingModel` 之后）。页面底部的检索框跑的就是 agent 那个工具用的同一套混合检索。手动放进 `~/.nyx/knowledge/` 的文件会显示为灰色"待索引"，点 **Update index** 即被收录。
 
 ## 桌面应用
 

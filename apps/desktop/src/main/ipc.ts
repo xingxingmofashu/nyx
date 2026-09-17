@@ -125,15 +125,15 @@ export function registerIpc(services: Services): void {
   ipcMain.handle(IPC.knowledge.status, () => knowledge.status())
   ipcMain.handle(IPC.knowledge.list, () => knowledge.list())
   ipcMain.handle(IPC.knowledge.read, (_e, path: string) => knowledge.read(path))
-  ipcMain.handle(IPC.knowledge.importFiles, async (e) => {
+  ipcMain.handle(IPC.knowledge.importFiles, async (e, target: string) => {
     const paths = await pickFiles(e)
     if (paths === null) return null
-    return await importDocuments(e, knowledge, await readPickedDocuments(paths))
+    return await importDocuments(e, knowledge, await readPickedDocuments(paths, target))
   })
-  ipcMain.handle(IPC.knowledge.importFolder, async (e) => {
+  ipcMain.handle(IPC.knowledge.importFolder, async (e, target: string) => {
     const dir = await pickDirectory(e)
     if (dir === null) return null
-    return await importDocuments(e, knowledge, await readFolderDocuments(dir))
+    return await importDocuments(e, knowledge, await readFolderDocuments(dir, target))
   })
   ipcMain.handle(IPC.knowledge.remove, async (e, path: string) => {
     const confirmed = await confirm(e, {

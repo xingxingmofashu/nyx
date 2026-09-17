@@ -69,10 +69,10 @@ const api: NyxApi = {
     status: (): Promise<KnowledgeStatus> => ipcRenderer.invoke(IPC.knowledge.status),
     list: (): Promise<KnowledgeDocument[]> => ipcRenderer.invoke(IPC.knowledge.list),
     read: (path: string): Promise<string> => ipcRenderer.invoke(IPC.knowledge.read, path),
-    importFiles: (): Promise<KnowledgeImportResult | null> =>
-      ipcRenderer.invoke(IPC.knowledge.importFiles),
-    importFolder: (): Promise<KnowledgeImportResult | null> =>
-      ipcRenderer.invoke(IPC.knowledge.importFolder),
+    importFiles: (target: string): Promise<KnowledgeImportResult | null> =>
+      ipcRenderer.invoke(IPC.knowledge.importFiles, target),
+    importFolder: (target: string): Promise<KnowledgeImportResult | null> =>
+      ipcRenderer.invoke(IPC.knowledge.importFolder, target),
     remove: (path: string): Promise<boolean> =>
       ipcRenderer.invoke(IPC.knowledge.remove, path),
     index: (rebuild: boolean): Promise<void> =>

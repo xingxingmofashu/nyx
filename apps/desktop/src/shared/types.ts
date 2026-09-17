@@ -203,13 +203,13 @@ export interface NyxApi {
     /** One document's Markdown source. */
     read: (path: string) => Promise<string>
     /**
-     * Pick Markdown files and copy them into the knowledge base. Existing paths
-     * are only replaced after the user confirms; resolves null when the picker
-     * was cancelled.
+     * Pick Markdown files and copy them into `target`, a folder inside the
+     * knowledge dir ("" for its root). Existing paths are only replaced after
+     * the user confirms; resolves null when the picker was cancelled.
      */
-    importFiles: () => Promise<KnowledgeImportResult | null>
+    importFiles: (target: string) => Promise<KnowledgeImportResult | null>
     /** Import a folder's Markdown, nested under a folder named after it. */
-    importFolder: () => Promise<KnowledgeImportResult | null>
+    importFolder: (target: string) => Promise<KnowledgeImportResult | null>
     /** Delete a document after confirmation; false when the user declined. */
     remove: (path: string) => Promise<boolean>
     /** Update the index (or rebuild it from scratch); progress arrives via `onProgress`. */

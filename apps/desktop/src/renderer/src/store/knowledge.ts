@@ -21,6 +21,8 @@ interface KnowledgeState {
   collapsed: Record<string, boolean>
   /** Tree filter: matches document paths. */
   filter: string
+  /** Folder inside the knowledge dir that imports land in ("" = its root). */
+  target: string
   results: KnowledgeSearchHit[] | null
   searchError: string | null
   searching: boolean
@@ -29,6 +31,7 @@ interface KnowledgeState {
   select: (path: string | null) => Promise<void>
   toggleFolder: (path: string) => void
   setFilter: (filter: string) => void
+  setTarget: (target: string) => void
   importFiles: () => Promise<KnowledgeImportResult | null>
   importFolder: () => Promise<KnowledgeImportResult | null>
   /** Delete a document; false when the user declined the confirmation. */
@@ -51,6 +54,7 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => ({
   indexing: null,
   collapsed: {},
   filter: "",
+  target: "",
   results: null,
   searchError: null,
   searching: false,
@@ -88,8 +92,10 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => ({
 
   setFilter: (filter) => set({ filter }),
 
+  setTarget: (target) => set({ target }),
+
   importFiles: async () => {
-    const result = await window.nyx.knowledge.importFiles()
+    const result = await window.nyx.knowledge.importFiles(get().target)
     if (result === null) return null
     await get().load()
     if (result.written.length + result.overwritten.length > 0) await get().updateIndex(false)
@@ -97,7 +103,7 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => ({
   },
 
   importFolder: async () => {
-    const result = await window.nyx.knowledge.importFolder()
+    const result = await window.nyx.knowledge.importFolder(get().target)
     if (result === null) return null
     await get().load()
     if (result.written.length + result.overwritten.length > 0) await get().updateIndex(false)
