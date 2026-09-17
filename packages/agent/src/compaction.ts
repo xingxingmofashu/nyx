@@ -346,7 +346,6 @@ export async function compactIfNeeded(options: CompactOptions): Promise<CompactR
 
   const tailStart = selectTailStart(pruned, keepTokens);
   let coveredIndex = tailStart - 1;
-  let tail = pruned.slice(tailStart);
   if (tailStart <= 0) {
     // The whole transcript fits the tail budget. Only an explicit request
     // compacts it anyway, by summarizing every turn before the newest one; an
@@ -355,7 +354,6 @@ export async function compactIfNeeded(options: CompactOptions): Promise<CompactR
     const newestUser = lastUserIndex(pruned);
     if (newestUser <= 0) return { messages: modelFacing, checkpoint, compacted: false, skipped: "too-short" };
     coveredIndex = newestUser - 1;
-    tail = pruned.slice(newestUser);
   }
 
   const head = pruned.slice(0, coveredIndex + 1).map(serializeMessage).filter(Boolean);
@@ -392,7 +390,9 @@ export async function compactIfNeeded(options: CompactOptions): Promise<CompactR
     reason: force ? "manual" : "auto",
   };
   return {
-    messages: [checkpointMessage(next), ...pruned.slice(tailStart)],
+    // The tail is everything the summary does not cover (already includes the
+    // newest turn when the whole transcript fit the budget).
+    messages: [checkpointMessage(next), ...pruned.slice(coveredIndex + 1)],
     checkpoint: next,
     compacted: true,
   };

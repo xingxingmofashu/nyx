@@ -245,7 +245,11 @@ export function initSessionPersistence(): void {
   persistenceInitialized = true
   agentChat["~registerStatusCallback"](() => {
     const status = agentChat.status
-    useSessionsStore.setState({ busy: status === "submitted" || status === "streaming" })
+    useSessionsStore.setState({
+      busy: status === "submitted" || status === "streaming",
+      // The last compaction's notice belongs to the turn it happened in.
+      ...(status === "submitted" ? { compactNotice: undefined } : {}),
+    })
     if (status === "ready" || status === "error") {
       void useSessionsStore.getState().persist()
     }

@@ -27,9 +27,9 @@ export class AgentService {
   /** Run one agent turn over `request.messages`, returning the UI message stream. */
   async run(request: AgentRequest, signal?: AbortSignal): Promise<Response> {
     // Model limits (the context window) come from the models.dev catalog when a
-    // provider does not declare them; load it in the background so this turn
-    // still works if it has not landed yet.
-    void ensureModelsCatalog()
+    // provider does not declare them. Awaiting only waits for the on-disk cache,
+    // so the window is known from the first turn.
+    await ensureModelsCatalog()
     const settings = getAgentSettings()
 
     let model: ResolvedAgentModel
@@ -61,7 +61,7 @@ export class AgentService {
    * estimated size of the model-facing transcript afterwards.
    */
   async compact(request: CompactRequest): Promise<CompactResponse> {
-    void ensureModelsCatalog()
+    await ensureModelsCatalog()
     const settings = getAgentSettings()
     const model = Provider.resolveModelConfig(settings)
     const workspaceDir = resolve(request.workspaceDir ?? settings.workspaceDir ?? process.cwd())

@@ -22,7 +22,8 @@ const FETCH_TIMEOUT_MS = 10_000;
 
 let catalog: ModelsCatalog | undefined;
 let loadedAt = 0;
-let loading: Promise<void> | undefined;
+let loadedFromDisk: Promise<void> | undefined;
+let refreshing: Promise<void> | undefined;
 
 function sourceUrl(): string {
   return process.env.NYX_MODELS_URL ?? DEFAULT_URL;
@@ -70,35 +71,43 @@ async function persistCatalog(text: string): Promise<void> {
 }
 
 /**
- * Load the catalog into memory (disk first, then a background refresh when the
- * cache is stale). Idempotent and safe to call on every agent run.
+ * Load the catalog into memory. The on-disk cache is read before this resolves
+ * (so a caller can await it and still look a model up right away); the network
+ * refresh runs in the background unless `force` is set. A failed refresh backs
+ * off for one TTL instead of retrying on every turn, and concurrent refreshes
+ * are shared.
  */
-export function ensureModelsCatalog(force = false): Promise<void> {
-  if (loading) return loading;
-  const fresh = catalog !== undefined && !force && Date.now() - loadedAt < TTL_MS;
-  if (fresh) return Promise.resolve();
-
-  loading = (async () => {
-    if (catalog === undefined) {
+export async function ensureModelsCatalog(force = false): Promise<void> {
+  if (loadedFromDisk === undefined) {
+    loadedFromDisk = (async () => {
       const cached = await readCache();
       if (cached) {
         catalog = cached.catalog;
         loadedAt = cached.mtime;
       }
-    }
-    const stale = loadedAt === 0 || Date.now() - loadedAt >= TTL_MS;
-    if (process.env.NYX_DISABLE_MODELS_FETCH !== "1" && (force || stale)) {
-      const fetched = await fetchCatalog();
-      if (fetched) {
-        catalog = fetched.catalog;
-        loadedAt = Date.now();
-        await persistCatalog(fetched.text).catch(() => undefined);
-      }
-    }
-  })().finally(() => {
-    loading = undefined;
-  });
-  return loading;
+    })();
+  }
+  await loadedFromDisk;
+
+  const stale = loadedAt === 0 || Date.now() - loadedAt >= TTL_MS;
+  if (!stale && !force) return;
+  if (process.env.NYX_DISABLE_MODELS_FETCH === "1") return;
+  if (refreshing === undefined) {
+    refreshing = refresh().finally(() => {
+      refreshing = undefined;
+    });
+  }
+  if (force) await refreshing;
+}
+
+/** Fetch the catalog and persist it; advances `loadedAt` either way so a failure backs off. */
+async function refresh(): Promise<void> {
+  const fetched = await fetchCatalog();
+  if (fetched) {
+    catalog = fetched.catalog;
+    await persistCatalog(fetched.text).catch(() => undefined);
+  }
+  loadedAt = Date.now();
 }
 
 /** Look up a model's limits in the loaded catalog (see `lookupCatalogLimit`). */

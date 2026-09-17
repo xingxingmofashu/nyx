@@ -92,7 +92,11 @@ export async function streamAgent(options: AgentRunOptions): Promise<Response> {
       onError: errorMessage,
       generateMessageId: () => `msg_${crypto.randomUUID()}`,
       messageMetadata: ({ part }) => {
-        if (part.type === "start") return prepared.checkpoint ? { compaction: prepared.checkpoint } : undefined;
+        // Only the turn that produced the checkpoint carries it; later turns find
+        // it in the transcript instead of re-stamping (and duplicating) it.
+        if (part.type === "start") {
+          return prepared.compacted && prepared.checkpoint ? { compaction: prepared.checkpoint } : undefined;
+        }
         if (part.type === "finish") {
           return {
             usage: pickUsage(part.totalUsage),
