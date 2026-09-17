@@ -3,7 +3,7 @@ import { nanoid } from "nanoid";
 import { basename } from "pathe";
 
 /**
- * Browser-safe helpers shared across the CLI, server, and desktop renderer.
+ * Browser-safe helpers shared across the server and the desktop renderer.
  * Keep this entry free of the AI SDK and Node built-ins; AI-SDK-aware helpers
  * live in `@nyx/shared/chat`, and Node-only helpers in `@nyx/shared/node`.
  */
@@ -59,7 +59,7 @@ export function parseContextLimit(value: number | string | undefined): number | 
 /**
  * Rough token estimate from character count (~4 chars/token). Deliberately
  * heuristic: it drives context-budget decisions without a tokenizer dependency,
- * so it stays usable from the browser, the CLI, and the server alike.
+ * so it stays usable from the browser and the server alike.
  */
 export function estimateTokens(text: string): number {
   return Math.max(0, Math.round(text.length / 4));

@@ -20,8 +20,8 @@ import DEFAULT_SYSTEM_PROMPT from "../system-prompt.txt"
  */
 export class AgentService {
   constructor(
-    private readonly cache: Provider = new Provider(),
-    private readonly knowledge: KnowledgeService = new KnowledgeService(),
+    private readonly cache: Provider,
+    private readonly knowledge: KnowledgeService,
   ) {}
 
   /** Run one agent turn over `request.messages`, returning the UI message stream. */

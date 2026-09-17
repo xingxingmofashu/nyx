@@ -1,5 +1,5 @@
 import { serve } from "@hono/node-server"
-import { createApp, type ServerServices } from "./app"
+import { createApp } from "./app"
 
 export interface NyxServerHandle {
   url: string
@@ -8,8 +8,13 @@ export interface NyxServerHandle {
 }
 
 /** Start the inference server; resolves once listening. */
-export function start(options: { token?: string; port?: number; host?: string; services?: ServerServices; onLog?: (message: string) => void } = {}): Promise<NyxServerHandle> {
-  const app = createApp({ token: options.token, services: options.services, ...(options.onLog ? { onLog: options.onLog } : {}) })
+export function start(options: {
+  token: string
+  onLog: (message: string) => void
+  port?: number
+  host?: string
+}): Promise<NyxServerHandle> {
+  const app = createApp({ token: options.token, onLog: options.onLog })
   const port = options.port ?? 0 // 0 = OS-assigned ephemeral port
   const host = options.host ?? "127.0.0.1"
 

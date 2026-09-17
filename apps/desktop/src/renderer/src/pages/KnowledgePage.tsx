@@ -207,10 +207,9 @@ export function KnowledgePage() {
 
       {modelMissing && status !== null && (
         <p className="shrink-0 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
-          Embedding model “{status.embeddingModel}” is not downloaded, so indexing and search are unavailable. Run:{" "}
-          <code className="font-mono text-xs">
-            nyx model pull {status.embeddingModel} --task feature-extraction
-          </code>
+          Embedding model “{status.embeddingModel}” is not downloaded, so indexing and search are
+          unavailable. Download it from <span className="font-medium">Local models</span> with the{" "}
+          <code className="font-mono text-xs">feature-extraction</code> task.
         </p>
       )}
 

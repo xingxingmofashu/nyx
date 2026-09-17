@@ -21,8 +21,8 @@ export function AutomaticSpeechRecognitionPage() {
   }, [error])
 
   useEffect(() => {
-    // Models can be pulled from the CLI while the app is running; refresh so a
-    // freshly installed model becomes selectable without a restart.
+    // A model pulled on the Local models page since launch should be selectable
+    // here without a restart.
     void useModelsStore.getState().load()
   }, [])
 

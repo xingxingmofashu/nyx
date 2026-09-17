@@ -94,7 +94,7 @@ export function loadPipeline<T>(
   return pending;
 }
 
-/** Convenience: re-export ProgressInfo for CLI progress rendering. */
+/** Re-exported so callers can type pull-progress callbacks. */
 export type { ProgressInfo };
 
 export function clearModelCache(): void {

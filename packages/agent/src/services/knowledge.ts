@@ -20,15 +20,14 @@ import type { KnowledgeSearchHit, KnowledgeStatus } from "../schema"
  * one run at a time, cancellable between files, with progress streamed to the
  * caller. Importing and deleting documents never index on their own either.
  *
- * Logging is injected and defaults to silent: the CLI runs this server
- * in-process while a TUI owns the terminal, so writing to stdout/stderr there
- * would corrupt the render. The standalone binary passes a stderr logger.
+ * Logging is injected: the server binary passes a stderr logger, which the
+ * desktop captures behind the app.
  */
 export class KnowledgeService {
   private kb = KnowledgeBase.open()
   private controller?: AbortController
 
-  constructor(private readonly log: (message: string) => void = () => {}) {}
+  constructor(private readonly log: (message: string) => void) {}
 
   /** True when the knowledge dir holds at least one `.md` file. */
   hasDocuments(): boolean {
@@ -133,7 +132,7 @@ export class KnowledgeService {
     const model = resolveEmbeddingModel()
     if (!findModel(model)) {
       throw new Error(
-        `Embedding model "${model}" is not downloaded. Download it from the Models page (task "feature-extraction").`,
+        `Embedding model "${model}" is not downloaded. Download it from the Local models page (task "feature-extraction").`,
       )
     }
     return model

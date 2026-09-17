@@ -149,7 +149,7 @@ export const AgentOptionsSchema = z.object({
   /**
    * When true, local speech tools inline the generated audio in their result so
    * the client can play it (e.g. the desktop chat). Omitted, they play it aloud
-   * on the server machine instead (for terminal clients).
+   * on the server machine instead (for clients that cannot play it inline).
    */
   inlineAudio: z.boolean().optional(),
   /**

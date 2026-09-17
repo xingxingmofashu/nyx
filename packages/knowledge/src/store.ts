@@ -67,7 +67,7 @@ export class KnowledgeStore {
     const reranker = await lancedb.rerankers.RRFReranker.create();
     // No `.select(...)`: restricting output columns makes LanceDB emit a
     // deprecation warning about `_score`/`_distance` auto-projection from native
-    // code straight to stderr, which corrupts the CLI TUI. Project in JS instead.
+    // code straight to stderr. Project in JS instead.
     const rows = await this.table
       .query()
       .nearestTo(queryVector)

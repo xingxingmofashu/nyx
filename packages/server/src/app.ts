@@ -1,5 +1,4 @@
 import { Hono } from "hono"
-import type { MiddlewareHandler } from "hono"
 import {
   AgentService,
   AutomaticSpeechRecognitionService,
@@ -34,21 +33,16 @@ export interface ServerServices {
   agent: AgentService
 }
 
-/** No-op used when the server is started without a token (CLI in-process). */
-const noopAuth: MiddlewareHandler = async (_c, next) => {
-  await next()
-}
-
 /**
  * Assemble a fully-wired app: mount services under `/v1`. The return type is
  * intentionally inferred so `@nyx/server/api` can expose it to the Hono RPC client.
  */
-export function createApp(options: { token?: string; services?: ServerServices; onLog?: (message: string) => void } = {}) {
+export function createApp(options: { token: string; onLog: (message: string) => void }) {
   // Share one provider cache between the task services and the model service so
   // removing a model also evicts its loaded weights.
   const cache = new Provider()
   const knowledgeService = new KnowledgeService(options.onLog)
-  const services: ServerServices = options.services ?? {
+  const services: ServerServices = {
     models: new ModelsService(cache),
     imageToImage: new ImageToImageService(cache),
     textToSpeech: new TextToSpeechService(cache),
@@ -64,9 +58,9 @@ export function createApp(options: { token?: string; services?: ServerServices; 
 
   // Model limits (context window) for the agent's context compaction: cached in
   // ~/.nyx/cache, refreshed in the background. No-op when it is already fresh.
-  if (!options.services) void ensureModelsCatalog().catch(() => {})
+  void ensureModelsCatalog().catch(() => {})
 
-  const handle = options.token ? auth(options.token) : noopAuth
+  const handle = auth(options.token)
 
   const v1 = new Hono()
     .use("*", handle)
