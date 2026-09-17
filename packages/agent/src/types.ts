@@ -11,7 +11,7 @@ import type {
  * the caller injects a model config, a set of tools, and the full transcript.
  */
 
-/** Resolved remote-brain model: built from settings by Provider.resolveModelConfig. */
+/** Resolved remote agent model: built from settings by Provider.resolveModelConfig. */
 export interface ResolvedAgentModel {
   /** AI SDK provider package, e.g. "@ai-sdk/openai-compatible" or "@ai-sdk/anthropic". */
   npm: string;

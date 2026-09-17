@@ -4,7 +4,7 @@ import { IPC } from "../../shared/ipc"
 import type { ChatCompactRequest, ChatSendRequest, ChatStreamEvent, CompactionResult } from "../../shared/types"
 
 /**
- * Stateless proxy for the master-brain agent chat. Each stream is identified by
+ * Stateless proxy for the agent chat. Each stream is identified by
  * a renderer-generated id so chunks can be routed back to the right `useChat`
  * transport and aborted individually.
  */

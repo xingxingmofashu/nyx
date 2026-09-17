@@ -123,7 +123,7 @@ export interface SavedAttachment {
 /**
  * Metadata a client may put on a user UI message. Descriptors only — never the
  * bytes — so a persisted transcript stays small; the server turns each entry
- * into a workspace-path hint for the brain.
+ * into a workspace-path hint for the agent model.
  */
 export interface ChatMessageMetadata {
   attachments?: SavedAttachment[];

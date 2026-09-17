@@ -4,7 +4,7 @@ import { formatTokens } from "../../lib/format"
 interface ContextMeterProps {
   /** Input tokens reported for the last assistant turn (0 before the first turn). */
   used?: number
-  /** The active brain's context window, in tokens; omitted when unknown. */
+  /** The active agent model's context window, in tokens; omitted when unknown. */
   limit?: number
   /** True when `used` is the post-compaction estimate, not provider-reported usage. */
   estimated?: boolean

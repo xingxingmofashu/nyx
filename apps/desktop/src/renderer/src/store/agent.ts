@@ -2,8 +2,8 @@ import { create } from "zustand"
 import { parseContextLimit } from "@nyx/shared"
 
 interface AgentSettingsState {
-  /** Current master brain, e.g. "OpenCode Go · opencode/mimo-v2.5". */
-  brainLabel: string
+  /** Current agent model, e.g. "OpenCode Go · opencode/mimo-v2.5". */
+  modelLabel: string
   /** True when agent.model is configured in settings.json. */
   configured: boolean
   /** Workspace the agent's coding tools are confined to. */
@@ -19,7 +19,7 @@ interface AgentSettingsState {
 
 /** Agent settings shown read-only in the UI; the transcript lives in `agentChat`. */
 export const useAgentStore = create<AgentSettingsState>((set, get) => ({
-  brainLabel: "",
+  modelLabel: "",
   configured: false,
   workspaceDir: "",
   contextLimit: undefined,
@@ -43,12 +43,12 @@ export const useAgentStore = create<AgentSettingsState>((set, get) => ({
 
 /** Derive the display state from the persisted settings. */
 async function readAgentState(): Promise<
-  Pick<AgentSettingsState, "brainLabel" | "configured" | "workspaceDir" | "contextLimit">
+  Pick<AgentSettingsState, "modelLabel" | "configured" | "workspaceDir" | "contextLimit">
 > {
   const settings = await window.nyx.config.getSettings()
   const agent = settings.agent
   const ref = agent?.model
-  let brainLabel = ""
+  let modelLabel = ""
   let contextLimit: number | undefined
   if (ref) {
     const slash = ref.indexOf("/")
@@ -56,7 +56,7 @@ async function readAgentState(): Promise<
     const modelId = slash > 0 ? ref.slice(slash + 1) : ""
     const provider = providerId ? agent?.provider?.[providerId] : undefined
     const name = provider?.name
-    brainLabel = name ? `${name} · ${ref}` : ref
+    modelLabel = name ? `${name} · ${ref}` : ref
     contextLimit = parseContextLimit(provider?.limit?.context)
     // No configured window: fall back to the cached models.dev catalog, the same
     // source the server resolves it from, so the meter has a scale from the start.
@@ -65,5 +65,5 @@ async function readAgentState(): Promise<
       contextLimit = parseContextLimit(limits?.context ?? limits?.input)
     }
   }
-  return { brainLabel, configured: Boolean(ref), workspaceDir: agent?.workspaceDir ?? "", contextLimit }
+  return { modelLabel, configured: Boolean(ref), workspaceDir: agent?.workspaceDir ?? "", contextLimit }
 }

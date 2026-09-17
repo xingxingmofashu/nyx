@@ -65,7 +65,7 @@ When combining:
 const SYSTEM = "You anchor a coding agent's memory. You compress conversation into a terse, factual summary that another agent can resume from, and you never invent details.";
 
 export interface CompactOptions {
-  /** The resolved brain model, reused for the summary. */
+  /** The resolved agent model, reused for the summary. */
   model: LanguageModel;
   /** Full caller-owned transcript (including any earlier checkpoint metadata). */
   messages: UIMessage[];
@@ -127,7 +127,7 @@ export function findCheckpoint(messages: UIMessage[]): { checkpoint: ContextChec
   return undefined;
 }
 
-/** Render the checkpoint as the user message the brain actually sees. */
+/** Render the checkpoint as the user message the agent model actually sees. */
 export function checkpointMessage(checkpoint: ContextCheckpoint): UIMessage {
   return {
     id: `checkpoint-${checkpoint.coveredThroughId}`,

@@ -2,7 +2,7 @@ import type { UIMessage } from "./types.ts";
 import type { ChatMessageMetadata } from "./schema";
 
 /**
- * Attachments live in the workspace's session folder as real files; the brain
+ * Attachments live in the workspace's session folder as real files; the agent model
  * only learns their paths. Each user message carrying attachment metadata gets
  * an extra text part describing those paths, so tools like
  * `local_image_to_image` can be pointed at them. The bytes are never sent to

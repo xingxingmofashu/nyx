@@ -13,7 +13,7 @@ import type { AgentRequest, CompactRequest, CompactResponse } from "../schema"
 import DEFAULT_SYSTEM_PROMPT from "../system-prompt.txt"
 
 /**
- * Runs the remote "master brain" agent loop. The brain is a cloud model
+ * Runs the agent loop against a remote model. The agent model is a cloud model
  * (resolved from settings), the tools are local coding tools confined to
  * `workspaceDir`. Stateless: each run carries the full transcript, so an
  * approval is answered by re-sending it.

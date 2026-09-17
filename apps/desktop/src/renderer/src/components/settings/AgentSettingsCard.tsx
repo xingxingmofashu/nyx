@@ -129,7 +129,7 @@ export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
       <CardHeader>
         <CardTitle>Agent</CardTitle>
         <CardDescription>
-          The master brain that drives the local tools. Changes apply to the next message; no restart
+          The agent model that drives the local tools. Changes apply to the next message; no restart
           needed.
         </CardDescription>
       </CardHeader>

@@ -1,14 +1,14 @@
 # nyx
 
-An agent that can call local models: its master brain is a remote model you bring your own key for, and its tools include ONNX inference — images, speech, and embeddings — running on your machine.
+An agent that can call local models: its agent model is a remote model you bring your own key for, and its tools include ONNX inference — images, speech, and embeddings — running on your machine.
 
 ## What it is
 
-nyx is a coding agent. The master brain is a remote model you bring your own key for; the tools run locally and include both coding tools (read/write/edit/bash) and ONNX models. Inference for images, speech, and embeddings happens on your machine, files and shell commands stay local, and only the agent's model calls go out:
+nyx is a coding agent. The agent model is a remote model you bring your own key for; the tools run locally and include both coding tools (read/write/edit/bash) and ONNX models. Inference for images, speech, and embeddings happens on your machine, files and shell commands stay local, and only the agent's model calls go out:
 
 - **Image-to-image** — super-resolution and other image transforms (e.g. 4x_APISR_GRL_GAN)
 - **Text-to-speech** — speech synthesis (e.g. MMS-TTS), WAV output
-- **Master brain (agent)** — a remote model (bring your own API key) that orchestrates local coding tools; the agent loop runs in the local server, files/bash stay on your machine
+- **Agent model** — a remote model (bring your own API key) that orchestrates local coding tools; the agent loop runs in the local server, files/bash stay on your machine
 - **Knowledge base (RAG)** — drop Markdown into `~/.nyx/knowledge/` and the agent retrieves from it with local embeddings
 - **Desktop app** — an Electron app over a local `nyx-server` child process that owns inference, the agent loop, sessions, and the knowledge base
 
@@ -18,7 +18,7 @@ Bun monorepo:
 
 - `packages/config` — `~/.nyx` paths, the model registry (`~/.nyx/models.json`), and user settings (`~/.nyx/settings.json`)
 - `packages/llm` — model runtime + tasks (`runtime.ts` shared loader, `tasks/*`), built on onnxruntime-node / transformers.js
-- `packages/agent` — the agent: `agent.ts` is the provider-agnostic master loop (Vercel AI SDK), `provider.ts` is the `Provider` layer (brain model resolution + local ONNX provider cache), and the root entry adds the concrete capabilities (coding / model / knowledge / web tools, workspace sandbox, model/knowledge/task services)
+- `packages/agent` — the agent: `agent.ts` is the provider-agnostic agent loop (Vercel AI SDK), `provider.ts` is the `Provider` layer (agent model resolution + local ONNX provider cache), and the root entry adds the concrete capabilities (coding / model / knowledge / web tools, workspace sandbox, model/knowledge/task services)
 - `packages/knowledge` — local knowledge base (RAG): Markdown chunking, LanceDB hybrid search, local ONNX embeddings
 - `packages/server` — Hono HTTP transport under `/v1` (models / tasks / agent / knowledge) over `@nyx/agent`, compiled to a self-contained Bun binary (`nyx-server`) that the desktop spawns as a child process; re-exports the wire schema
 - `apps/desktop` — Electron desktop app (forge + vite + React): the front end, talking to the spawned server over authenticated HTTP
@@ -31,7 +31,7 @@ bun run --cwd packages/server build   # emit packages/server/dist/nyx-server (th
 bun run dev                           # start the desktop app
 ```
 
-Configure the brain in **Settings → Agent** before the first chat; local ONNX models are pulled on demand from **Local models**.
+Configure the agent model in **Settings → Agent** before the first chat; local ONNX models are pulled on demand from **Local models**.
 
 ### Local models
 
@@ -45,11 +45,11 @@ The sidebar is the map of the front end: **Agent** (chat, workspace picker, inli
 
 Pull an automatic-speech-recognition model (e.g. `Xenova/whisper-base`) on the **Local models** page, then either use the mic in the agent composer (the transcript is sent to the agent automatically) or open the **Automatic speech recognition** page to record and copy a transcript. Audio is captured at 16 kHz mono and transcribed locally; language is auto-detected.
 
-## Master brain (agent)
+## Agent model
 
-The **Agent** page is a chat whose **brain is a remote model** (bring your own API key) and whose tools are local coding tools (`read_file`, `grep`, `glob`, `write_file`, `edit_file`, `bash`). Read-only tools run automatically; writes and shell commands wait for approval in the chat. Everything runs inside the workspace picked in the page header (until one is picked, the app's working directory).
+The **Agent** page is a chat whose **agent model is a remote model** (bring your own API key) and whose tools are local coding tools (`read_file`, `grep`, `glob`, `write_file`, `edit_file`, `bash`). Read-only tools run automatically; writes and shell commands wait for approval in the chat. Everything runs inside the workspace picked in the page header (until one is picked, the app's working directory).
 
-The agent loop runs in the local server (`POST /v1/agent`), so API calls go out but files and commands stay on your machine. Configure the brain in `~/.nyx/settings.json` — `agent.model` is a `<providerId>/<modelId>` ref into the `agent.provider` map:
+The agent loop runs in the local server (`POST /v1/agent`), so API calls go out but files and commands stay on your machine. Configure the agent model in `~/.nyx/settings.json` — `agent.model` is a `<providerId>/<modelId>` ref into the `agent.provider` map:
 
 ```json
 {
@@ -69,7 +69,7 @@ The agent loop runs in the local server (`POST /v1/agent`), so API calls go out 
 }
 ```
 
-`npm` selects the AI SDK provider package — `@ai-sdk/openai-compatible` (any OpenAI-compatible endpoint: OpenAI, DeepSeek, OpenRouter, vLLM, Ollama, OpenCode Zen/Go, …) or `@ai-sdk/anthropic`. `options` holds `baseURL`/`apiKey`/`headers`; `limit.output` caps generated tokens. Env overrides: `NYX_AGENT_MODEL` replaces the ref, and `NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS` (a JSON object) override the active provider's options. Some gateways need extra request headers (e.g. OpenCode Zen/Go requires `x-opencode-session`) — add them under the provider's `options.headers`. Pick a workspace folder in the Agent header, chat, and approve tool calls inline; **Settings → Agent** edits the model ref, providers, system prompt, and tool toggles (changes apply to the next message, no restart). Attach images from the composer (button, paste, or drag-and-drop) to feed local tools: each file is copied into the workspace's session folder (`~/.nyx/sessions/<workspace>/attachments/`) and the brain receives its absolute path, which is what `local_image_to_image` takes as `inputPath` — so deleting the original file never breaks the chat.
+`npm` selects the AI SDK provider package — `@ai-sdk/openai-compatible` (any OpenAI-compatible endpoint: OpenAI, DeepSeek, OpenRouter, vLLM, Ollama, OpenCode Zen/Go, …) or `@ai-sdk/anthropic`. `options` holds `baseURL`/`apiKey`/`headers`; `limit.output` caps generated tokens. Env overrides: `NYX_AGENT_MODEL` replaces the ref, and `NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS` (a JSON object) override the active provider's options. Some gateways need extra request headers (e.g. OpenCode Zen/Go requires `x-opencode-session`) — add them under the provider's `options.headers`. Pick a workspace folder in the Agent header, chat, and approve tool calls inline; **Settings → Agent** edits the model ref, providers, system prompt, and tool toggles (changes apply to the next message, no restart). Attach images from the composer (button, paste, or drag-and-drop) to feed local tools: each file is copied into the workspace's session folder (`~/.nyx/sessions/<workspace>/attachments/`) and the agent model receives its absolute path, which is what `local_image_to_image` takes as `inputPath` — so deleting the original file never breaks the chat.
 
 ### Long sessions (context compaction)
 
@@ -88,7 +88,7 @@ Every turn re-sends the whole transcript, so long sessions eventually fill the m
 
 ### Local models as tools
 
-The locally installed ONNX models are exposed to the brain by default: `local_image_to_image` transforms an image from the workspace and writes the result into the workspace's session folder (`~/.nyx/sessions/<workspace>/images/`, shown inline in the desktop chat), and `local_text_to_speech` synthesizes a WAV into the same session folder's `audio/` (also shown inline) — so deleting a session deletes its generated files, and the workspace itself stays untouched. Both require approval. Tools are only added for tasks that have an installed model. Set `agent.tools.localModels: false` (or `NYX_AGENT_LOCAL_MODELS=0`) to disable.
+The locally installed ONNX models are exposed to the agent model by default: `local_image_to_image` transforms an image from the workspace and writes the result into the workspace's session folder (`~/.nyx/sessions/<workspace>/images/`, shown inline in the desktop chat), and `local_text_to_speech` synthesizes a WAV into the same session folder's `audio/` (also shown inline) — so deleting a session deletes its generated files, and the workspace itself stays untouched. Both require approval. Tools are only added for tasks that have an installed model. Set `agent.tools.localModels: false` (or `NYX_AGENT_LOCAL_MODELS=0`) to disable.
 
 ```json
 {
@@ -100,7 +100,7 @@ The locally installed ONNX models are exposed to the brain by default: `local_im
 }
 ```
 
-Local inference runs in-process and is not streamed — the agent's reply pauses until the tool finishes — and the tool result (the output file path) is sent to the remote brain like any other tool output.
+Local inference runs in-process and is not streamed — the agent's reply pauses until the tool finishes — and the tool result (the output file path) is sent to the remote agent model like any other tool output.
 
 ### Web search
 

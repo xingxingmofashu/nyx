@@ -1,14 +1,14 @@
 # nyx
 
-一个可以调用本地模型的 agent：主脑是你自带 API key 的远程模型，工具里包含在本机运行的 ONNX 推理（图像、语音、嵌入）。
+一个可以调用本地模型的 agent：agent 模型是你自带 API key 的远程模型，工具里包含在本机运行的 ONNX 推理（图像、语音、嵌入）。
 
 ## 定位
 
-nyx 是一个编码 agent。主脑是你自带 API key 的远程模型；工具在本地运行，既有编码工具（read/write/edit/bash），也有 ONNX 模型。图像、语音、文本嵌入的推理在本机完成，文件与 shell 命令留在本地，只有 agent 的模型请求会发往外部：
+nyx 是一个编码 agent。agent 模型是你自带 API key 的远程模型；工具在本地运行，既有编码工具（read/write/edit/bash），也有 ONNX 模型。图像、语音、文本嵌入的推理在本机完成，文件与 shell 命令留在本地，只有 agent 的模型请求会发往外部：
 
 - **图生图**：超分等图像变换（如 4x_APISR_GRL_GAN）
 - **文生语音**：语音合成（如 MMS-TTS），输出 WAV
-- **主脑（agent）**：远程模型（自带 API key），负责编排本地编码工具；agent 循环运行在本地 server 中，文件与命令都不出本机
+- **agent 模型**：远程模型（自带 API key），负责编排本地编码工具；agent 循环运行在本地 server 中，文件与命令都不出本机
 - **知识库（RAG）**：把 Markdown 放进 `~/.nyx/knowledge/`，agent 用本地嵌入模型从你的资料中检索回答
 - **桌面应用**：Electron 应用 + 本地 `nyx-server` 子进程，推理、agent 循环、会话与知识库都在本机
 
@@ -18,7 +18,7 @@ Bun monorepo：
 
 - `packages/config` — `~/.nyx` 路径、模型注册表（`~/.nyx/models.json`）与用户设置（`~/.nyx/settings.json`）
 - `packages/llm` — 模型运行时 + 任务（`runtime.ts` 共享加载器、`tasks/*`），基于 onnxruntime-node / transformers.js
-- `packages/agent` — agent 本体：`agent.ts` 是 provider 无关的主脑循环（Vercel AI SDK），`provider.ts` 是 `Provider` 层（主脑模型解析 + 本地 ONNX provider 缓存），包根补充具体能力（编码 / 模型 / 知识 / 网络工具、工作区沙箱、model/knowledge/task 服务）
+- `packages/agent` — agent 本体：`agent.ts` 是 provider 无关的 agent 循环（Vercel AI SDK），`provider.ts` 是 `Provider` 层（agent 模型解析 + 本地 ONNX provider 缓存），包根补充具体能力（编码 / 模型 / 知识 / 网络工具、工作区沙箱、model/knowledge/task 服务）
 - `packages/knowledge` — 本地知识库（RAG）：Markdown 切分、LanceDB 混合检索、本地 ONNX 嵌入
 - `packages/server` — `/v1` 下的 Hono HTTP 传输层（models / tasks / agent / knowledge），构建在 `@nyx/agent` 之上，编译为自包含的 Bun 可执行文件（`nyx-server`），由桌面端以子进程方式启动；并 re-export 线协议 schema
 - `apps/desktop` — Electron 桌面应用（forge + vite + React）：唯一的前端，通过带 token 的 HTTP 与子进程 server 通信
@@ -31,7 +31,7 @@ bun run --cwd packages/server build   # 产出 packages/server/dist/nyx-server�
 bun run dev                           # 启动桌面应用
 ```
 
-首次对话前先在 **Settings → Agent** 配好主脑；本地 ONNX 模型在 **Local models** 页面按需拉取。
+首次对话前先在 **Settings → Agent** 配好 agent 模型；本地 ONNX 模型在 **Local models** 页面按需拉取。
 
 ### 本地模型
 
@@ -45,11 +45,11 @@ bun run dev                           # 启动桌面应用
 
 在 **Local models** 页面拉取自动语音识别模型（如 `Xenova/whisper-base`），然后在 agent 输入框点麦克风（转录文本会自动发给 agent），或打开 **Automatic speech recognition** 页面录音并复制转录文本。音频以 16 kHz 单声道在本地转录，语言自动检测。
 
-## 主脑（agent）
+## agent 模型
 
-**Agent** 页面是一个对话：**主脑是远程模型**（自带 API key），工具是本地编码工具（`read_file`、`grep`、`glob`、`write_file`、`edit_file`、`bash`）。只读工具自动执行；写文件与 shell 命令在对话里等待审批。所有操作限制在页面顶部选择的工作区内（未选择时用应用的工作目录）。
+**Agent** 页面是一个对话：**agent 模型是远程模型**（自带 API key），工具是本地编码工具（`read_file`、`grep`、`glob`、`write_file`、`edit_file`、`bash`）。只读工具自动执行；写文件与 shell 命令在对话里等待审批。所有操作限制在页面顶部选择的工作区内（未选择时用应用的工作目录）。
 
-agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型请求，文件与命令都不出本机。在 `~/.nyx/settings.json` 中配置主脑 —— `agent.model` 是指向 `agent.provider` 的 `<providerId>/<modelId>` 引用：
+agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型请求，文件与命令都不出本机。在 `~/.nyx/settings.json` 中配置 agent 模型 —— `agent.model` 是指向 `agent.provider` 的 `<providerId>/<modelId>` 引用：
 
 ```json
 {
@@ -69,7 +69,7 @@ agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型
 }
 ```
 
-`npm` 选择 AI SDK 的 provider 包 —— `@ai-sdk/openai-compatible`（任意 OpenAI 兼容端点：OpenAI、DeepSeek、OpenRouter、vLLM、Ollama、OpenCode Zen/Go 等）或 `@ai-sdk/anthropic`。`options` 承载 `baseURL`/`apiKey`/`headers`；`limit.output` 限制生成 token 数。环境变量覆盖：`NYX_AGENT_MODEL` 替换引用，`NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS`（JSON 对象）覆盖当前 provider 的 options。部分网关需要额外的请求头（例如 OpenCode Zen/Go 需要 `x-opencode-session`），配置在对应 provider 的 `options.headers` 下。在 Agent 页顶部选择工作区目录、对话、在内联卡片里审批工具调用；**Settings → Agent** 页面可编辑模型引用、providers、系统提示与工具开关（下一条消息即生效，无需重启）。在输入框可以附件形式添加图片（按钮、粘贴或拖拽）：每个文件会被复制到该工作区的会话目录（`~/.nyx/sessions/<workspace>/attachments/`），主脑拿到的是它的绝对路径，也就是 `local_image_to_image` 所需的 `inputPath` —— 因此删掉原始文件也不会让对话失效。
+`npm` 选择 AI SDK 的 provider 包 —— `@ai-sdk/openai-compatible`（任意 OpenAI 兼容端点：OpenAI、DeepSeek、OpenRouter、vLLM、Ollama、OpenCode Zen/Go 等）或 `@ai-sdk/anthropic`。`options` 承载 `baseURL`/`apiKey`/`headers`；`limit.output` 限制生成 token 数。环境变量覆盖：`NYX_AGENT_MODEL` 替换引用，`NYX_AGENT_BASE_URL`/`NYX_AGENT_API_KEY`/`NYX_AGENT_HEADERS`（JSON 对象）覆盖当前 provider 的 options。部分网关需要额外的请求头（例如 OpenCode Zen/Go 需要 `x-opencode-session`），配置在对应 provider 的 `options.headers` 下。在 Agent 页顶部选择工作区目录、对话、在内联卡片里审批工具调用；**Settings → Agent** 页面可编辑模型引用、providers、系统提示与工具开关（下一条消息即生效，无需重启）。在输入框可以附件形式添加图片（按钮、粘贴或拖拽）：每个文件会被复制到该工作区的会话目录（`~/.nyx/sessions/<workspace>/attachments/`），agent 模型拿到的是它的绝对路径，也就是 `local_image_to_image` 所需的 `inputPath` —— 因此删掉原始文件也不会让对话失效。
 
 ### 长会话（上下文压缩）
 
@@ -88,7 +88,7 @@ agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型
 
 ### 本地模型作为工具
 
-默认情况下，本机已安装的 ONNX 模型就会暴露给主脑：`local_image_to_image` 对工作区内的图片做变换，结果写入该工作区的会话目录（`~/.nyx/sessions/<workspace>/images/`，桌面端会内联展示）；`local_text_to_speech` 合成的 WAV 写入同一会话目录的 `audio/`（同样内联展示）——这样删除会话就会一并删掉生成的文件，工作区本身保持干净。两者都需要审批。只有装了对应任务模型时才会添加相应工具。设 `agent.tools.localModels: false`（或 `NYX_AGENT_LOCAL_MODELS=0`）可关闭。
+默认情况下，本机已安装的 ONNX 模型就会暴露给 agent 模型：`local_image_to_image` 对工作区内的图片做变换，结果写入该工作区的会话目录（`~/.nyx/sessions/<workspace>/images/`，桌面端会内联展示）；`local_text_to_speech` 合成的 WAV 写入同一会话目录的 `audio/`（同样内联展示）——这样删除会话就会一并删掉生成的文件，工作区本身保持干净。两者都需要审批。只有装了对应任务模型时才会添加相应工具。设 `agent.tools.localModels: false`（或 `NYX_AGENT_LOCAL_MODELS=0`）可关闭。
 
 ```json
 {
@@ -100,7 +100,7 @@ agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型
 }
 ```
 
-本地推理在进程内执行、不做流式 —— 工具跑完前 agent 回复会停顿 —— 工具结果（输出文件路径）会像其他工具输出一样发送给远程主脑。
+本地推理在进程内执行、不做流式 —— 工具跑完前 agent 回复会停顿 —— 工具结果（输出文件路径）会像其他工具输出一样发送给远程 agent 模型。
 
 ### 联网搜索
 

@@ -55,7 +55,7 @@ const MAX_ATTACHMENTS = 5
 export function AgentPage() {
   const { messages, sendMessage, status, stop, error, clearError, addToolApprovalResponse } =
     useChat({ chat: agentChat })
-  const brainLabel = useAgentStore((s) => s.brainLabel)
+  const modelLabel = useAgentStore((s) => s.modelLabel)
   const configured = useAgentStore((s) => s.configured)
   const workspaceDir = useAgentStore((s) => s.workspaceDir)
   const contextLimit = useAgentStore((s) => s.contextLimit)
@@ -168,7 +168,7 @@ export function AgentPage() {
 
     void (async () => {
       // Copy attachments into the workspace first: the agent's tools read files
-      // by workspace-relative path, and the brain only needs that path.
+      // by workspace-relative path, and the agent model only needs that path.
       let saved: SavedAttachment[] = []
       if (pending.length > 0) {
         setUploading(true)
@@ -218,7 +218,7 @@ export function AgentPage() {
   }
 
   const placeholder = !configured
-    ? "Configure the master brain in Settings"
+    ? "Configure the agent model in Settings"
     : busy
       ? "Working…"
       : "Message the agent… (Enter to send)"
@@ -230,7 +230,7 @@ export function AgentPage() {
           <CardHeader className="gap-1 border-b">
             <CardTitle className="truncate">{title}</CardTitle>
             <CardDescription>
-              {configured ? brainLabel : "No master brain configured"}
+              {configured ? modelLabel : "No agent model configured"}
             </CardDescription>
             <CardAction className="flex items-center gap-2">
               <ContextMeter
@@ -271,7 +271,7 @@ export function AgentPage() {
                   <EmptyMedia variant="icon">
                     <Bot />
                   </EmptyMedia>
-                  <EmptyTitle>{configured ? "Ready when you are" : "No master brain configured"}</EmptyTitle>
+                  <EmptyTitle>{configured ? "Ready when you are" : "No agent model configured"}</EmptyTitle>
                 <EmptyDescription>
                   {configured
                     ? "Ask the agent to read or edit files, run commands, or use local models in the workspace."

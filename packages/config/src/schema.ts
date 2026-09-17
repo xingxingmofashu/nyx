@@ -44,7 +44,7 @@ export const AgentProviderEntrySchema = z
 
 export const AgentToolsSettingsSchema = z
   .object({
-    /** Expose locally installed ONNX models as tools the brain may call (default true; only added when models exist). */
+    /** Expose locally installed ONNX models as tools the agent model may call (default true; only added when models exist). */
     localModels: z.boolean().optional(),
     /** Expose `search_knowledge` over indexed knowledge bases (default true when any exist). */
     knowledge: z.boolean().optional(),
@@ -80,7 +80,7 @@ export const KnowledgeSettingsSchema = z
   })
   .loose();
 
-/** Remote brain configuration; every field can be overridden by an env var. */
+/** Remote agent model configuration; every field can be overridden by an env var. */
 export const AgentSettingsSchema = z
   .object({
     /** Active model as `<providerId>/<modelId>`, e.g. "opencode/mimo-v2.5". */
@@ -105,7 +105,7 @@ export const SettingsSchema = z
     hubBaseUrl: z.string().optional(),
     /** Whether models may be fetched from the hub (default true; false = offline, local cache only). */
     allowRemoteModels: z.boolean().optional(),
-    /** Remote "master brain" used by the agent; env vars override each field. */
+    /** Remote model used by the agent; env vars override each field. */
     agent: AgentSettingsSchema.optional(),
     /** Local knowledge-base (RAG) settings. */
     knowledge: KnowledgeSettingsSchema.optional(),

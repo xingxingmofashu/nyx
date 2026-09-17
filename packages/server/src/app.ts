@@ -29,7 +29,7 @@ export interface ServerServices {
   automaticSpeechRecognition: AutomaticSpeechRecognitionService
   /** Manages and searches the local knowledge base (RAG). */
   knowledge: KnowledgeService
-  /** Runs the remote master-brain agent loop. */
+  /** Runs the agent loop against the remote model. */
   agent: AgentService
 }
 

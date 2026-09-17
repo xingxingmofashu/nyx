@@ -1,5 +1,5 @@
 /**
- * Agent tools the brain may call. Each module builds one tool: the local coding
+ * Tools the agent model may call. Each module builds one tool: the local coding
  * tools (`read`, `write`, `edit`, `bash`, `grep`, `glob`), locally installed
  * ONNX models (`local-image-to-image`, `local-text-to-speech`), knowledge-base
  * search (`search-knowledge`), web search (`websearch`), and web fetch

@@ -38,7 +38,7 @@ function normalizeSettings(settings: Settings): string {
   return JSON.stringify(normalized)
 }
 
-/** App settings: theme, the agent (master brain), and Hugging Face downloads. */
+/** App settings: theme, the agent model, and Hugging Face downloads. */
 export function SettingsPage() {
   const [theme, setThemeState] = useState<Theme>(getTheme)
   const [settings, setSettings] = useState<Settings | null>(null)

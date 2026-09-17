@@ -12,7 +12,7 @@ const ANTHROPIC = "@ai-sdk/anthropic";
 
 /**
  * The agent's provider layer, in one place:
- * - builds the resolved brain config from settings and turns it into an AI SDK
+ * - builds the resolved agent model config from settings and turns it into an AI SDK
  *   model (the remote provider registry);
  * - caches loaded local ONNX model providers, keyed by model id, so expensive
  *   weights are created once and reused across every inference task.
@@ -82,7 +82,7 @@ export class Provider {
   }
 
   /**
-   * Resolve a remote brain model. The provider is selected by its AI SDK npm
+   * Resolve the agent's remote model. The provider is selected by its AI SDK npm
    * package; new providers are added here (one case) — the agent stays
    * provider-agnostic.
    */
