@@ -259,7 +259,7 @@ export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
             id="agent-system-prompt"
             value={agent.systemPrompt ?? ""}
             onChange={(e) => onChange({ ...agent, systemPrompt: e.target.value || undefined })}
-            placeholder="Extra instructions prepended to the agent's system prompt."
+            placeholder="Replaces the agent's built-in system prompt when set."
             rows={3}
           />
         </Field>
