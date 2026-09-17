@@ -22,7 +22,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/image-to-image": "Image to image",
   "/text-to-speech": "Text to speech",
   "/automatic-speech-recognition": "Automatic speech recognition",
-  "/models": "Models",
+  "/models": "Local models",
   "/settings": "Settings",
 }
 
