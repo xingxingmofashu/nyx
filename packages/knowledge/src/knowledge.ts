@@ -3,9 +3,8 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, wri
 import type { Dirent } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
-import { embed, embedMany } from "ai";
 import { Global } from "@nyx/global";
-import { createOnnxEmbeddingModel } from "@nyx/llm";
+import { LLM } from "@nyx/llm";
 import { chunkDocument } from "./chunk.ts";
 import { KnowledgeStore, type SearchHit } from "./store.ts";
 
@@ -154,6 +153,7 @@ export class KnowledgeBase {
     options: { onProgress?: (progress: IndexProgress) => void; signal?: AbortSignal } = {},
   ): Promise<IndexStats> {
     const model = await requireEmbeddingModel();
+    const embeddingProvider = new LLM.OnnxFeatureExtractionProvider({ model });
     const store = await KnowledgeStore.open(lanceDir());
     try {
       const sourceDir = Global.Path.knowledge;
@@ -197,11 +197,10 @@ export class KnowledgeBase {
           continue;
         }
 
-        const { embeddings } = await embedMany({
-          model: createOnnxEmbeddingModel({ model, type: "passage" }),
-          values: parts.map((part) => part.text),
-          ...(options.signal ? { abortSignal: options.signal } : {}),
-        });
+        const embeddings = await embeddingProvider.embed(
+          parts.map((part) => part.text),
+          { type: "passage", ...(options.signal ? { signal: options.signal } : {}) },
+        );
         if (embeddings.length !== parts.length) {
           throw new Error(`Embedding count mismatch for ${file}`);
         }
@@ -221,7 +220,7 @@ export class KnowledgeBase {
             heading: part.heading,
             ordinal: part.ordinal,
             text: part.text,
-            vector: Float32Array.from(embeddings[index]!),
+            vector: embeddings[index]!,
           })),
         );
         manifest[file] = hash;
@@ -259,13 +258,11 @@ export class KnowledgeBase {
     if (indexed !== undefined && indexed !== model) {
       throw new Error(`The index was built with "${indexed}", but "${model}" is selected; rebuild the index first.`);
     }
+    const embeddingProvider = new LLM.OnnxFeatureExtractionProvider({ model });
     const store = await KnowledgeStore.open(lanceDir());
     try {
-      const { embedding } = await embed({
-        model: createOnnxEmbeddingModel({ model, type: "query" }),
-        value: query,
-      });
-      return await store.search(Float32Array.from(embedding), query, options.topK ?? 6);
+      const [embedding] = await embeddingProvider.embed([query], { type: "query" });
+      return await store.search(embedding!, query, options.topK ?? 6);
     } finally {
       await store.close();
     }

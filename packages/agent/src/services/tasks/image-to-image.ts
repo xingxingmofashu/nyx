@@ -1,5 +1,5 @@
 import { RawImage } from "@huggingface/transformers"
-import { OnnxImageToImageProvider } from "@nyx/llm"
+import { LLM } from "@nyx/llm"
 import type { ImageBase64Input } from "../../schema"
 import { Provider } from "../../provider.ts"
 
@@ -18,7 +18,7 @@ export class ImageToImageService {
 
   /** Transform a single image with an image-to-image model. */
   async generate(modelId: string, input: ImageBase64Input): Promise<GeneratedImage> {
-    const provider = this.cache.get(modelId, () => new OnnxImageToImageProvider({ model: modelId }))
+    const provider = this.cache.get(modelId, () => new LLM.OnnxImageToImageProvider({ model: modelId }))
     const bytes = Buffer.from(input.data, "base64")
     const source = await RawImage.fromBlob(new Blob([bytes], { type: input.mimeType }))
     const output = await provider.generate(source)

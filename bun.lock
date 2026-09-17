@@ -100,7 +100,6 @@
         "@nyx/global": "workspace:*",
         "@nyx/llm": "workspace:*",
         "@nyx/shared": "workspace:*",
-        "ai": "catalog:",
         "apache-arrow": "catalog:",
       },
     },
@@ -108,10 +107,13 @@
       "name": "@nyx/llm",
       "version": "0.1.0",
       "dependencies": {
-        "@ai-sdk/provider": "catalog:",
         "@huggingface/transformers": "catalog:",
         "@nyx/global": "workspace:*",
+        "fs-extra": "catalog:",
         "onnxruntime-node": "catalog:",
+      },
+      "devDependencies": {
+        "@types/fs-extra": "catalog:",
       },
     },
     "packages/server": {
@@ -147,7 +149,6 @@
   "catalog": {
     "@ai-sdk/anthropic": "4.0.53",
     "@ai-sdk/openai-compatible": "3.0.48",
-    "@ai-sdk/provider": "4.0.14",
     "@ai-sdk/react": "4.0.102",
     "@hono/node-server": "2.1.1",
     "@hono/zod-validator": "0.9.1",

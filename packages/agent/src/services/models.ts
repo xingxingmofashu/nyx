@@ -1,4 +1,4 @@
-import { listModels as listInstalledModels, pullModel as pullInstalledModel, removeModel as removeInstalledModel, type LLMTask, type ProgressInfo } from "@nyx/llm"
+import { LLM } from "@nyx/llm"
 import type { Global } from "@nyx/global"
 import { Provider } from "../provider.ts"
 
@@ -40,22 +40,22 @@ export class ModelsService {
 
   /** List locally installed models. */
   listModels(): Promise<Global.ModelInfoSchemaType[]> {
-    return listInstalledModels()
+    return LLM.Model.list()
   }
 
   /** Download a model into the local cache, streaming progress when a callback is given. */
   async pullModel(
     modelId: string,
-    task: LLMTask,
-    onProgress?: (info: ProgressInfo) => void,
+    task: LLM.LLMTask,
+    onProgress?: (info: LLM.ProgressInfo) => void,
     signal?: AbortSignal,
   ): Promise<void> {
-    await pullInstalledModel(modelId, task, onProgress, undefined, signal)
+    await LLM.Model.pull(modelId, task, onProgress, undefined, signal)
   }
 
   /** Remove a model from disk and the provider cache; true when it was cached. */
   removeModel(modelId: string): Promise<boolean> {
     this.cache.evict(modelId)
-    return removeInstalledModel(modelId)
+    return LLM.Model.remove(modelId)
   }
 }

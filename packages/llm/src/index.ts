@@ -1,34 +1,39 @@
-// Public surface of @nyx/llm; everything else in the package is internal.
+import * as automaticSpeechRecognitionModule from "./tasks/automatic-speech-recognition.ts"
+import * as featureExtractionModule from "./tasks/feature-extraction.ts"
+import * as imageToImageModule from "./tasks/image-to-image.ts"
+import * as modelModule from "./model.ts"
+import * as runtimeModule from "./runtime.ts"
+import * as textToSpeechModule from "./tasks/text-to-speech.ts"
+import * as wavModule from "./wav.ts"
 
-export type {
-  LLMProvider,
-  ImageProvider,
-  ImageSource,
-  TextToSpeechOptions,
-  SpeechProvider,
-  AutomaticSpeechRecognitionOptions,
-  TranscriptionProvider,
-  EmbeddingOptions,
-  EmbeddingProvider,
-} from "./types.ts";
-export { LLM_TASKS } from "./types.ts";
-export type { LLMTask } from "./types.ts";
+export namespace LLM {
+  export import LLM_TASKS = modelModule.LLM_TASKS
+  export import Model = modelModule.Model
+  export import PullAbortedError = modelModule.PullAbortedError
+  export import Runtime = runtimeModule.Runtime
+  export import Wav = wavModule.Wav
+  export import OnnxImageToImageProvider = imageToImageModule.OnnxImageToImageProvider
+  export import OnnxTextToSpeechProvider = textToSpeechModule.OnnxTextToSpeechProvider
+  export import OnnxAutomaticSpeechRecognitionProvider =
+    automaticSpeechRecognitionModule.OnnxAutomaticSpeechRecognitionProvider
+  export import OnnxFeatureExtractionProvider = featureExtractionModule.OnnxFeatureExtractionProvider
 
-export { configureEnv, loadPipeline, clearModelCache } from "./runtime.ts";
-export type { ModelRuntimeOptions, ProgressInfo } from "./runtime.ts";
-
-export { listModels, pullModel, findModel, removeModel } from "./model.ts";
-export { PullAbortedError } from "./model.ts";
-export type { CachedModel } from "./model.ts";
-export { encodeWavPcm16 } from "./wav.ts";
-
-export { OnnxImageToImageProvider } from "./tasks/image-to-image.ts";
-export type { OnnxImageToImageOptions } from "./tasks/image-to-image.ts";
-export { OnnxTextToSpeechProvider } from "./tasks/text-to-speech.ts";
-export type { OnnxTextToSpeechOptions } from "./tasks/text-to-speech.ts";
-export { OnnxAutomaticSpeechRecognitionProvider } from "./tasks/automatic-speech-recognition.ts";
-export type { OnnxAutomaticSpeechRecognitionOptions } from "./tasks/automatic-speech-recognition.ts";
-export { OnnxEmbeddingProvider } from "./tasks/feature-extraction.ts";
-export type { OnnxEmbeddingOptions } from "./tasks/feature-extraction.ts";
-export { createOnnxEmbeddingModel } from "./embedding.ts";
-export type { OnnxEmbeddingModelOptions } from "./embedding.ts";
+  export type LLMTask = modelModule.LLMTask
+  export type LLMProvider = modelModule.LLMProvider
+  export type CachedModel = modelModule.CachedModel
+  export type RuntimeOptions = runtimeModule.RuntimeOptions
+  export type ProgressInfo = runtimeModule.ProgressInfo
+  export type ImageProvider = imageToImageModule.ImageProvider
+  export type ImageSource = imageToImageModule.ImageSource
+  export type OnnxImageToImageOptions = imageToImageModule.OnnxImageToImageOptions
+  export type SpeechProvider = textToSpeechModule.SpeechProvider
+  export type TextToSpeechOptions = textToSpeechModule.TextToSpeechOptions
+  export type OnnxTextToSpeechOptions = textToSpeechModule.OnnxTextToSpeechOptions
+  export type TranscriptionProvider = automaticSpeechRecognitionModule.TranscriptionProvider
+  export type AutomaticSpeechRecognitionOptions = automaticSpeechRecognitionModule.AutomaticSpeechRecognitionOptions
+  export type OnnxAutomaticSpeechRecognitionOptions =
+    automaticSpeechRecognitionModule.OnnxAutomaticSpeechRecognitionOptions
+  export type EmbeddingProvider = featureExtractionModule.EmbeddingProvider
+  export type EmbeddingOptions = featureExtractionModule.EmbeddingOptions
+  export type OnnxFeatureExtractionOptions = featureExtractionModule.OnnxFeatureExtractionOptions
+}

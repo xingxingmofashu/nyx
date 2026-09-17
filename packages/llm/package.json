@@ -10,9 +10,12 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/provider": "catalog:",
     "@nyx/global": "workspace:*",
+    "fs-extra": "catalog:",
     "onnxruntime-node": "catalog:",
     "@huggingface/transformers": "catalog:"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "catalog:"
   }
 }

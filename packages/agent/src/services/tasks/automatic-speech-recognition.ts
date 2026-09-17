@@ -1,5 +1,4 @@
-import { OnnxAutomaticSpeechRecognitionProvider } from "@nyx/llm"
-import type { AutomaticSpeechRecognitionOptions } from "@nyx/llm"
+import { LLM } from "@nyx/llm"
 import { Provider } from "../../provider.ts"
 
 /** Runs automatic-speech-recognition inference against cached model providers. */
@@ -15,12 +14,12 @@ export class AutomaticSpeechRecognitionService {
     modelId: string,
     samples: Float32Array,
     samplingRate: number,
-    options: AutomaticSpeechRecognitionOptions = {},
+    options: LLM.AutomaticSpeechRecognitionOptions = {},
   ): Promise<string> {
     if (samplingRate !== 16000) {
       throw new Error(`automatic-speech-recognition expects 16 kHz audio, got ${samplingRate} Hz`)
     }
-    const provider = this.cache.get(modelId, () => new OnnxAutomaticSpeechRecognitionProvider({ model: modelId }))
+    const provider = this.cache.get(modelId, () => new LLM.OnnxAutomaticSpeechRecognitionProvider({ model: modelId }))
     return provider.transcribe(samples, options)
   }
 }

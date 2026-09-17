@@ -8,7 +8,7 @@ import {
   type IndexStats,
   type KnowledgeDocument,
 } from "@nyx/knowledge"
-import { findModel, listModels } from "@nyx/llm"
+import { LLM } from "@nyx/llm"
 import type { KnowledgeSearchHit, KnowledgeStatus } from "../schema"
 
 /**
@@ -70,8 +70,8 @@ export class KnowledgeService {
       dir: Global.Path.knowledge,
       ...(embeddingModel !== undefined ? { embeddingModel } : {}),
       ...(indexedModel !== undefined ? { indexedModel } : {}),
-      modelDownloaded: embeddingModel !== undefined && (await findModel(embeddingModel)) !== undefined,
-      availableEmbeddingModels: (await listModels())
+      modelDownloaded: embeddingModel !== undefined && (await LLM.Model.find(embeddingModel)) !== undefined,
+      availableEmbeddingModels: (await LLM.Model.list())
         .filter((model) => model.task === "feature-extraction")
         .map((model) => model.id),
       documents: kb.listDocuments().length,
@@ -151,7 +151,7 @@ export class KnowledgeService {
         'No embedding model is selected. Download one from the Local models page (task "feature-extraction") and pick it above.',
       )
     }
-    if (!(await findModel(model))) {
+    if (!(await LLM.Model.find(model))) {
       throw new Error(
         `Embedding model "${model}" is not downloaded. Download it from the Local models page (task "feature-extraction").`,
       )

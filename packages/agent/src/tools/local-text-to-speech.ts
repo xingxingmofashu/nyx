@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, extname, join } from "node:path";
-import { encodeWavPcm16, listModels, OnnxTextToSpeechProvider } from "@nyx/llm";
+import { LLM } from "@nyx/llm";
 import { Global } from "@nyx/global";
 import { tool, type ToolSet } from "ai";
 import { z } from "zod/v4";
@@ -28,7 +28,7 @@ export interface TextToSpeechToolOptions {
 /** Build the `local_text_to_speech` tool; returns no tools when none are installed. */
 export async function createTextToSpeechTools(options: TextToSpeechToolOptions): Promise<ToolSet> {
   const { cache, workspaceDir, sessionId, inlineAudio = false } = options;
-  const speechModels = (await listModels())
+  const speechModels = (await LLM.Model.list())
     .filter((m) => m.task === "text-to-speech")
     .map((m) => m.id);
   if (speechModels.length === 0) return {};
@@ -46,7 +46,7 @@ export async function createTextToSpeechTools(options: TextToSpeechToolOptions):
         value: typeof output === "string" ? output : `Wrote ${output.path} (${output.seconds}s @ ${output.samplingRate} Hz)`,
       }),
       execute: async ({ model, text, speaker }, { abortSignal }) => {
-        const provider = cache.get(model, () => new OnnxTextToSpeechProvider({ model }));
+        const provider = cache.get(model, () => new LLM.OnnxTextToSpeechProvider({ model }));
         const audio = await provider.generate(text, speaker ? { speaker } : {});
         throwIfAborted(abortSignal);
 
@@ -54,7 +54,7 @@ export async function createTextToSpeechTools(options: TextToSpeechToolOptions):
           join(new Global.Workspace(workspaceDir).audioDir, speechFileName(sessionId, model)),
         );
         await mkdir(dirname(target), { recursive: true });
-        const wav = Buffer.from(encodeWavPcm16(audio.audio, audio.sampling_rate));
+        const wav = Buffer.from(LLM.Wav.encodePcm16(audio.audio, audio.sampling_rate));
         await writeFile(target, wav);
         const seconds = Number((audio.audio.length / audio.sampling_rate).toFixed(1));
         if (inlineAudio) {

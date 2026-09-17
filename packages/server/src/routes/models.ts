@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import { streamSSE } from "hono/streaming"
 import { zValidator } from "@hono/zod-validator"
-import { PullAbortedError, type ProgressInfo } from "@nyx/llm"
+import { LLM } from "@nyx/llm"
 import { ModelIdRequestSchema, ModelPullRequestSchema } from "@nyx/agent/schema"
 import { validationHook } from "../validation"
 import type { ModelsService } from "@nyx/agent"
@@ -26,7 +26,7 @@ export function models(store: ModelsService) {
 
         const controller = store.beginPull(model)
 
-        const onProgress = (info: ProgressInfo) => {
+        const onProgress = (info: LLM.ProgressInfo) => {
           if (info.status === "progress" && info.total > 0) {
             void stream.writeSSE({
               event: "progress",
@@ -46,7 +46,7 @@ export function models(store: ModelsService) {
           await store.pullModel(model, task, onProgress, controller.signal)
           await stream.writeSSE({ event: "done", data: JSON.stringify({ file: undefined }) })
         } catch (error) {
-          if (error instanceof PullAbortedError) {
+          if (error instanceof LLM.PullAbortedError) {
             // The download was cancelled: drop any partial files so a truncated
             // model is never mistaken for a complete one.
             await store.removeModel(model)

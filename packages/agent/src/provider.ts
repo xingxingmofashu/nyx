@@ -1,4 +1,4 @@
-import { clearModelCache, type LLMProvider } from "@nyx/llm"
+import { LLM } from "@nyx/llm"
 import { parseContextLimit } from "@nyx/shared";
 import { lookupModelLimit } from "./models-dev.ts";
 import { createAnthropic } from "@ai-sdk/anthropic";
@@ -18,10 +18,10 @@ const ANTHROPIC = "@ai-sdk/anthropic";
  *   weights are created once and reused across every inference task.
  */
 export class Provider {
-  private readonly cache = new Map<string, LLMProvider>()
+  private readonly cache = new Map<string, LLM.LLMProvider>()
 
   /** Get a cached provider or create (and cache) it via `create`. */
-  get<T extends LLMProvider>(modelId: string, create: () => T): T {
+  get<T extends LLM.LLMProvider>(modelId: string, create: () => T): T {
     let provider = this.cache.get(modelId) as T | undefined
     if (!provider) {
       provider = create()
@@ -33,7 +33,7 @@ export class Provider {
   /** Evict a model's provider (and the underlying pipeline); true when loaded. */
   evict(modelId: string): boolean {
     if (!this.cache.delete(modelId)) return false
-    clearModelCache()
+    LLM.Runtime.clear()
     return true
   }
 

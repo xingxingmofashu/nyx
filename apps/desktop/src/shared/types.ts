@@ -31,7 +31,8 @@ import type {
   ModelInfo,
   Settings,
 } from "@nyx/server/schema"
-import type { LLMTask } from "@nyx/llm"
+import type { LLM } from "@nyx/llm"
+type LLMTask = LLM.LLMTask
 export type {
   AgentProviderEntry,
   AgentSettings,

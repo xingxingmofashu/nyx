@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { RawImage } from "@huggingface/transformers";
-import { listModels, OnnxImageToImageProvider } from "@nyx/llm";
+import { LLM } from "@nyx/llm";
 import { Global } from "@nyx/global";
 import { mimeFor } from "@nyx/shared";
 import { tool, type ToolSet } from "ai";
@@ -30,7 +30,7 @@ export interface ImageToImageToolOptions {
 export async function createImageToImageTools(options: ImageToImageToolOptions): Promise<ToolSet> {
   const { cache, workspaceDir, sessionId } = options;
   const root = resolve(workspaceDir);
-  const imageModels = (await listModels())
+  const imageModels = (await LLM.Model.list())
     .filter((m) => m.task === "image-to-image")
     .map((m) => m.id);
   if (imageModels.length === 0) return {};
@@ -54,7 +54,7 @@ export async function createImageToImageTools(options: ImageToImageToolOptions):
         const image = await RawImage.fromBlob(new Blob([bytes], { type: mimeFor(source, "image/png") }));
         throwIfAborted(abortSignal);
 
-        const provider = cache.get(model, () => new OnnxImageToImageProvider({ model }));
+        const provider = cache.get(model, () => new LLM.OnnxImageToImageProvider({ model }));
         const output = await provider.generate(image);
         throwIfAborted(abortSignal);
 

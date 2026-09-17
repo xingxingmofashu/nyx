@@ -1,7 +1,7 @@
 /** Wire types for the nyx inference server HTTP API (shared server/client). */
 
 import { z } from "zod/v4";
-import { LLM_TASKS } from "@nyx/llm";
+import { LLM } from "@nyx/llm";
 import { Global } from "@nyx/global";
 import type { ContextCheckpoint, TokenUsage } from "./types.ts";
 
@@ -176,7 +176,7 @@ export interface TranscriptResult {
 /** Body of POST /v1/models/pull. */
 export const ModelPullRequestSchema = z.object({
   model: z.string().min(1),
-  task: z.enum(LLM_TASKS),
+  task: z.enum(LLM.LLM_TASKS),
 });
 export type ModelPullRequest = z.infer<typeof ModelPullRequestSchema>;
 

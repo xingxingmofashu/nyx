@@ -1,4 +1,4 @@
-import type { LLMTask } from "@nyx/llm"
+import type { LLM } from "@nyx/llm"
 import type {
   AgentRequestInput,
   AppEnvironment,
@@ -85,7 +85,7 @@ export class NyxServerClient {
   /** Pull a model; download progress events are delivered via `onProgress`. */
   async pullModel(
     modelId: string,
-    task: LLMTask,
+    task: LLM.LLMTask,
     onProgress?: (p: Omit<ModelPullProgress, "modelId" | "done">) => void,
   ): Promise<void> {
     const res = await this.client.v1.models.pull.$post({ json: { model: modelId, task } })

@@ -1,5 +1,4 @@
-import { encodeWavPcm16, OnnxTextToSpeechProvider } from "@nyx/llm"
-import type { TextToSpeechOptions } from "@nyx/llm"
+import { LLM } from "@nyx/llm"
 import { Provider } from "../../provider.ts"
 
 /** One synthesized clip: WAV bytes plus the waveform's sample rate. */
@@ -14,12 +13,12 @@ export class TextToSpeechService {
   constructor(private readonly cache: Provider = new Provider()) {}
 
   /** Synthesize speech from `text` with a text-to-speech model. */
-  async generate(modelId: string, text: string, options: TextToSpeechOptions = {}): Promise<GeneratedAudio> {
-    const provider = this.cache.get(modelId, () => new OnnxTextToSpeechProvider({ model: modelId }))
+  async generate(modelId: string, text: string, options: LLM.TextToSpeechOptions = {}): Promise<GeneratedAudio> {
+    const provider = this.cache.get(modelId, () => new LLM.OnnxTextToSpeechProvider({ model: modelId }))
     const audio = await provider.generate(text, options)
 
     return {
-      data: Buffer.from(encodeWavPcm16(audio.audio, audio.sampling_rate)),
+      data: Buffer.from(LLM.Wav.encodePcm16(audio.audio, audio.sampling_rate)),
       mimeType: "audio/wav",
       samplingRate: audio.sampling_rate,
     }
