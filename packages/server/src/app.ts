@@ -14,6 +14,7 @@ import { auth } from "./middleware/auth"
 import { agent } from "./routes/agent"
 import { automaticSpeechRecognition } from "./routes/automatic-speech-recognition"
 import { imageToImage } from "./routes/image-to-image"
+import { knowledge } from "./routes/knowledge"
 import { models } from "./routes/models"
 import { textToSpeech } from "./routes/text-to-speech"
 
@@ -56,10 +57,10 @@ export function createApp(options: { token?: string; services?: ServerServices; 
     agent: new AgentService(cache, knowledgeService),
   }
 
-  // Index the knowledge dir in the background on startup (both the CLI `start()`
-  // and the spawned desktop binary go through here). No-op when the dir has no
-  // Markdown files, or the embedding model isn't downloaded.
-  if (!options.services) void services.knowledge.ensureIndexed().catch(() => {})
+  // The knowledge index is not built here on purpose: opening the app should
+  // not start an embedding pass. Only the desktop's Knowledge page starts one
+  // (Update index / Rebuild); `search_knowledge` reports an empty index instead
+  // of filling it.
 
   // Model limits (context window) for the agent's context compaction: cached in
   // ~/.nyx/cache, refreshed in the background. No-op when it is already fresh.
@@ -78,6 +79,7 @@ export function createApp(options: { token?: string; services?: ServerServices; 
       automaticSpeechRecognition(services.automaticSpeechRecognition),
     )
     .route("/agent", agent(services.agent))
+    .route("/knowledge", knowledge(services.knowledge))
 
   return new Hono().route("/v1", v1)
 }

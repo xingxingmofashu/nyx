@@ -223,3 +223,97 @@ export interface KnowledgeSearchHit {
   /** Reciprocal-rank-fusion score (higher is better). */
   score: number;
 }
+
+/** How far one document is from being searchable. */
+export type KnowledgeDocumentStatus = "indexed" | "stale" | "new";
+
+/** One Markdown document in the knowledge dir (GET /v1/knowledge/documents). */
+export interface KnowledgeDocument {
+  /** Path relative to the knowledge dir, POSIX separators. */
+  file: string;
+  size: number;
+  /** ISO timestamp of the last write. */
+  modifiedAt: string;
+  status: KnowledgeDocumentStatus;
+}
+
+/** GET /v1/knowledge — everything the management page needs at a glance. */
+export interface KnowledgeStatus {
+  /** Knowledge dir on the server's machine (documents live here). */
+  dir: string;
+  /** Embedding model the index is built with. */
+  embeddingModel: string;
+  /** Model that produced the current index; differs after a settings change. */
+  indexedModel?: string;
+  /** False when the embedding model is not downloaded (indexing/search unavailable). */
+  modelDownloaded: boolean;
+  /** Markdown files on disk. */
+  documents: number;
+  /** Files recorded in the index manifest. */
+  indexed: number;
+  /** Chunks in the vector store. */
+  chunks: number;
+  /** When the index was last written. */
+  updatedAt?: string;
+  /** True while an index run is in flight. */
+  indexing: boolean;
+}
+
+/** One imported document: Markdown source plus where it should land. */
+export const KnowledgeDocumentInputSchema = z.object({
+  /** Knowledge-dir-relative path, e.g. "notes/agent.md". */
+  path: z.string().min(1),
+  content: z.string(),
+});
+export type KnowledgeDocumentInput = z.infer<typeof KnowledgeDocumentInputSchema>;
+
+/** POST /v1/knowledge/documents — import documents; existing paths are skipped unless `overwrite`. */
+export const KnowledgeImportRequestSchema = z.object({
+  documents: z.array(KnowledgeDocumentInputSchema).min(1),
+  overwrite: z.boolean().optional(),
+});
+export type KnowledgeImportRequestInput = z.infer<typeof KnowledgeImportRequestSchema>;
+
+/** What an import did, by document path. */
+export interface KnowledgeImportResult {
+  written: string[];
+  overwritten: string[];
+  skipped: string[];
+}
+
+/** DELETE /v1/knowledge/documents — remove one document (file + index entries). */
+export const KnowledgeDeleteRequestSchema = z.object({
+  path: z.string().min(1),
+});
+export type KnowledgeDeleteRequestInput = z.infer<typeof KnowledgeDeleteRequestSchema>;
+
+/** GET /v1/knowledge/document — one document's Markdown source. */
+export const KnowledgeReadQuerySchema = z.object({
+  path: z.string().min(1),
+});
+export type KnowledgeReadQueryInput = z.infer<typeof KnowledgeReadQuerySchema>;
+
+/** POST /v1/knowledge/index — incremental update, or a full rebuild. */
+export const KnowledgeIndexRequestSchema = z.object({
+  /** Drop the index (and the manifest) and re-embed every file. */
+  rebuild: z.boolean().optional(),
+});
+export type KnowledgeIndexRequestInput = z.infer<typeof KnowledgeIndexRequestSchema>;
+
+/** POST /v1/knowledge/search — retrieval for the page's search box. */
+export const KnowledgeSearchRequestSchema = z.object({
+  query: z.string().min(1),
+  topK: z.number().int().positive().max(20).optional(),
+});
+export type KnowledgeSearchRequestInput = z.infer<typeof KnowledgeSearchRequestSchema>;
+
+/** One frame of the POST /v1/knowledge/index SSE progress stream. */
+export interface KnowledgeIndexProgress {
+  phase: "embed" | "done";
+  /** File being embedded (phase "embed"). */
+  file?: string;
+  filesDone: number;
+  filesTotal: number;
+  /** Chunks stored after the run (phase "done"). */
+  chunks: number;
+}

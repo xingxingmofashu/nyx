@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import type { Dirent } from "node:fs";
-import { readFile } from "node:fs/promises";
-import { join, relative, sep } from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { embed, embedMany } from "ai";
 import { getSettings, getKnowledgeDir } from "@nyx/config";
 import { createOnnxEmbeddingModel } from "@nyx/llm";
@@ -13,7 +13,7 @@ import { KnowledgeStore, type SearchHit } from "./store.ts";
 export const DEFAULT_EMBEDDING_MODEL = "Xenova/multilingual-e5-base";
 
 /** Only Markdown files are indexed; the walk skips dotted dirs (incl. `.index`). */
-const DOCUMENT_EXTENSION = ".md";
+const DOCUMENT_EXTENSIONS = [".md", ".markdown"];
 const IGNORED_DIRS = new Set(["node_modules", ".git"]);
 
 /** Hidden subdir under the knowledge dir holding the index (and its config). */
@@ -30,7 +30,7 @@ export interface KnowledgeBaseConfig {
 }
 
 export interface IndexProgress {
-  phase: "scan" | "embed" | "done";
+  phase: "embed" | "done";
   file?: string;
   filesDone: number;
   filesTotal: number;
@@ -41,6 +41,32 @@ export interface IndexStats {
   files: number;
   chunks: number;
   skipped: number;
+}
+
+/** How far one document is from being searchable. */
+export type DocumentStatus = "indexed" | "stale" | "new";
+
+/** One Markdown document in the knowledge dir, for the management UI. */
+export interface KnowledgeDocument {
+  /** Path relative to the knowledge dir, POSIX separators. */
+  file: string;
+  size: number;
+  /** ISO timestamp of the last write. */
+  modifiedAt: string;
+  status: DocumentStatus;
+}
+
+/** One document to import; `path` is where it should land under the knowledge dir. */
+export interface DocumentImport {
+  path: string;
+  content: string;
+}
+
+/** What one import did, by document path. */
+export interface ImportResult {
+  written: string[];
+  overwritten: string[];
+  skipped: string[];
 }
 
 /** Embedding model to use, honoring `settings.knowledge.embeddingModel`. */
@@ -71,6 +97,7 @@ function readConfig(): KnowledgeBaseConfig {
       embeddingModel: raw?.embeddingModel ?? resolveEmbeddingModel(),
       ...(raw?.dim !== undefined ? { dim: raw.dim } : {}),
       ...(raw?.indexedModel !== undefined ? { indexedModel: raw.indexedModel } : {}),
+      ...(raw?.updatedAt !== undefined ? { updatedAt: raw.updatedAt } : {}),
     };
   } catch {
     return { embeddingModel: resolveEmbeddingModel() };
@@ -100,12 +127,12 @@ function writeManifest(manifest: Manifest): void {
 }
 
 /**
- * The single local knowledge base: every `.md` file under `getKnowledgeDir()`
+ * The single local knowledge base: every Markdown file under `getKnowledgeDir()`
  * (default `~/.nyx/knowledge`, override `NYX_KNOWLEDGE_DIR`). The index lives in
  * the hidden `<knowledge>/.index/` subdir, so the document walk never sees it.
  */
 export class KnowledgeBase {
-  private constructor(readonly config: KnowledgeBaseConfig) {}
+  private constructor(public config: KnowledgeBaseConfig) {}
 
   static open(): KnowledgeBase {
     return new KnowledgeBase(readConfig());
@@ -231,9 +258,121 @@ export class KnowledgeBase {
   fileCount(): number {
     return Object.keys(readManifest()).length;
   }
+
+  /** Number of chunks in the vector store (0 when there is no index yet). */
+  async countChunks(): Promise<number> {
+    const store = await KnowledgeStore.open(lanceDir());
+    try {
+      return await store.countChunks();
+    } finally {
+      await store.close();
+    }
+  }
+
+  /**
+   * Every document on disk with its index status: `indexed` when its content
+   * still hashes to the manifest entry, `stale` when it changed since, `new`
+   * when it was never indexed.
+   */
+  listDocuments(): KnowledgeDocument[] {
+    const sourceDir = getKnowledgeDir();
+    const manifest = readManifest();
+    return walkDocuments(sourceDir)
+      .map((absolute) => {
+        const file = toPosix(relative(sourceDir, absolute));
+        const content = readFileSync(absolute, "utf8");
+        const stat = statSync(absolute);
+        const hash = manifest[file];
+        return {
+          file,
+          size: stat.size,
+          modifiedAt: stat.mtime.toISOString(),
+          status: hash === undefined ? "new" : hash === hashContent(content) ? "indexed" : "stale",
+        } satisfies KnowledgeDocument;
+      })
+      .sort((a, b) => a.file.localeCompare(b.file));
+  }
+
+  /** One document's Markdown source. */
+  readDocument(file: string): string {
+    return readFileSync(documentPath(file), "utf8");
+  }
+
+  /**
+   * Write imported documents into the knowledge dir. An existing path is only
+   * replaced when `overwrite` is set; otherwise it is reported in `skipped`.
+   * Callers own the decision (the desktop asks the user).
+   */
+  async writeDocuments(entries: DocumentImport[], options: { overwrite?: boolean } = {}): Promise<ImportResult> {
+    const result: ImportResult = { written: [], overwritten: [], skipped: [] };
+    for (const entry of entries) {
+      const file = toPosix(entry.path);
+      const absolute = documentPath(file);
+      const existed = existsSync(absolute);
+      if (existed && options.overwrite !== true) {
+        result.skipped.push(file);
+        continue;
+      }
+      await mkdir(dirname(absolute), { recursive: true });
+      await writeFile(absolute, entry.content, "utf8");
+      (existed ? result.overwritten : result.written).push(file);
+    }
+    return result;
+  }
+
+  /** Delete a document from disk, the index and the manifest. */
+  async deleteDocument(file: string): Promise<void> {
+    const path = toPosix(file);
+    rmSync(documentPath(path), { force: true });
+    const store = await KnowledgeStore.open(lanceDir());
+    try {
+      await store.deleteFile(path);
+    } finally {
+      await store.close();
+    }
+    const manifest = readManifest();
+    delete manifest[path];
+    writeManifest(manifest);
+  }
+
+  /**
+   * Throw the index away and build it again from scratch — the recovery path
+   * for a changed embedding model (or dimension) as well as a way to force a
+   * full re-embed. In-memory config is reset so the new run is not compared
+   * against the old model's dimension.
+   */
+  async rebuild(options: { onProgress?: (progress: IndexProgress) => void; signal?: AbortSignal } = {}): Promise<IndexStats> {
+    rmSync(indexDir(), { recursive: true, force: true });
+    this.config = { embeddingModel: resolveEmbeddingModel() };
+    return await this.index(options);
+  }
 }
 
-/** Recursively collect `.md` files under `dir` (tolerates a missing dir). */
+/**
+ * Resolve a caller-supplied document path against the knowledge dir, refusing
+ * anything that is not a plain Markdown path inside it (escapes, hidden segments
+ * such as `.index`, absolute paths).
+ */
+function documentPath(file: string): string {
+  const normalized = toPosix(file).replace(/^\/+/, "");
+  const segments = normalized.split("/");
+  const valid =
+    isDocumentFile(normalized) &&
+    segments.every((segment) => segment !== "" && segment !== ".." && !segment.startsWith("."));
+  if (!valid) throw new Error(`Invalid document path: ${file}`);
+  const absolute = resolve(getKnowledgeDir(), normalized);
+  const root = resolve(getKnowledgeDir());
+  if (absolute !== join(root, ...segments)) throw new Error(`Invalid document path: ${file}`);
+  return absolute;
+}
+
+/** True for a path the knowledge base accepts: Markdown, by extension. */
+function isDocumentFile(path: string): boolean {
+  const lower = path.toLowerCase();
+  return DOCUMENT_EXTENSIONS.some((extension) => lower.endsWith(extension));
+}
+
+/** Recursively collect Markdown files under `dir` (tolerates a missing dir). */
 function walkDocuments(dir: string): string[] {
   const files: string[] = [];
   const walk = (current: string) => {
@@ -247,16 +386,11 @@ function walkDocuments(dir: string): string[] {
       if (entry.name.startsWith(".") || IGNORED_DIRS.has(entry.name)) continue;
       const full = join(current, entry.name);
       if (entry.isDirectory()) walk(full);
-      else if (entry.isFile() && extname(entry.name) === DOCUMENT_EXTENSION) files.push(full);
+      else if (entry.isFile() && isDocumentFile(entry.name)) files.push(full);
     }
   };
   walk(dir);
   return files;
-}
-
-function extname(name: string): string {
-  const index = name.lastIndexOf(".");
-  return index < 0 ? "" : name.slice(index).toLowerCase();
 }
 
 function hashContent(content: string): string {
