@@ -32,7 +32,7 @@ function HighlightedCommand({ command, escapes }: { command: string; escapes: st
     <>
       {command.split(new RegExp(`(${pattern})`, "g")).map((part, index) =>
         flagged.has(part) ? (
-          <mark key={index} className="rounded-sm bg-destructive/15 px-0.5 text-destructive">
+          <mark key={index} className="rounded-sm bg-amber-500/15 px-0.5 text-amber-700 dark:text-amber-300">
             {part}
           </mark>
         ) : (
@@ -61,7 +61,7 @@ export function ApprovalCard({ name, input, decision, onApprove, onDeny }: Appro
         <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">{name}</span>
       </div>
       {escapes.length > 0 && (
-        <p className="mt-2 rounded bg-destructive/10 px-2 py-1 text-xs text-destructive">
+        <p className="mt-2 rounded bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300">
           References paths outside the workspace: {escapes.join(", ")}
         </p>
       )}
