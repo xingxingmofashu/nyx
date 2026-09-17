@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { ChevronDownIcon, FolderIcon, FolderInputIcon } from "lucide-react"
 import type { KnowledgeDocument } from "../../../../shared/types"
 import { buildTree, type TreeFolder } from "./tree"
@@ -15,12 +16,16 @@ interface ImportTargetPickerProps {
 }
 
 /**
- * Where imports land: a folder inside the knowledge dir, picked from a tree of
- * the ones that already exist or typed (and created on import). The label
- * always shows the current target, so a forgotten choice cannot send files
- * somewhere unseen.
+ * Where imports land: the tree of folders the knowledge base already has, root
+ * at the top, filtered by name. The label always shows the current target, so
+ * a forgotten choice cannot send files somewhere unseen.
  */
 export function ImportTargetPicker({ value, documents, onChange }: ImportTargetPickerProps) {
+  const [filter, setFilter] = useState("")
+  const needle = filter.trim().toLowerCase()
+  const folders = buildTree(documents).folders
+  const visible = needle === "" ? folders : filterFolders(folders, needle)
+
   return (
     <Popover>
       <PopoverTrigger
@@ -39,44 +44,52 @@ export function ImportTargetPicker({ value, documents, onChange }: ImportTargetP
       <PopoverContent align="start" className="w-72">
         <PopoverHeader>
           <PopoverTitle>Import into</PopoverTitle>
-          <PopoverDescription>A folder inside the knowledge dir; created when it is missing.</PopoverDescription>
+          <PopoverDescription>Documents are copied into the folder you pick.</PopoverDescription>
         </PopoverHeader>
         <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="root"
-          aria-label="Import target folder"
-          className="font-mono text-xs"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Search folders"
+          aria-label="Search folders"
         />
-        <div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto">
+        <div className="flex max-h-64 flex-col gap-0.5 overflow-y-auto">
           <TargetRow label="root" selected={value === ""} onSelect={() => onChange("")} />
-          <FolderRows folders={buildTree(documents).folders} value={value} onSelect={onChange} />
+          <div className="flex flex-col gap-0.5 ps-4">
+            {visible.map((folder) => (
+              <FolderNode key={folder.path} folder={folder} value={value} onSelect={onChange} />
+            ))}
+            {needle !== "" && visible.length === 0 && (
+              <p className="px-2 py-1 text-xs text-muted-foreground">No folders match.</p>
+            )}
+          </div>
         </div>
       </PopoverContent>
     </Popover>
   )
 }
 
-/** The folder tree, one indent level per nesting depth. */
-function FolderRows({
-  folders,
+/** One target row and its children, nested one indent level per depth. */
+function FolderNode({
+  folder,
   value,
   onSelect,
 }: {
-  folders: TreeFolder[]
+  folder: TreeFolder
   value: string
   onSelect: (value: string) => void
 }) {
-  return folders.map((folder) => (
-    <div key={folder.path} className="flex flex-col gap-0.5">
+  return (
+    <>
       <TargetRow label={folder.name} selected={value === folder.path} onSelect={() => onSelect(folder.path)} />
       {folder.folders.length > 0 && (
         <div className="flex flex-col gap-0.5 ps-4">
-          <FolderRows folders={folder.folders} value={value} onSelect={onSelect} />
+          {folder.folders.map((child) => (
+            <FolderNode key={child.path} folder={child} value={value} onSelect={onSelect} />
+          ))}
         </div>
       )}
-    </div>
-  ))
+    </>
+  )
 }
 
 function TargetRow({
@@ -99,4 +112,13 @@ function TargetRow({
       <span className="truncate font-mono text-xs">{label}</span>
     </Button>
   )
+}
+
+/** Folders whose path matches the needle, plus the ancestors of any match. */
+function filterFolders(folders: TreeFolder[], needle: string): TreeFolder[] {
+  return folders.flatMap((folder) => {
+    const children = filterFolders(folder.folders, needle)
+    if (children.length > 0) return [{ ...folder, folders: children }]
+    return folder.path.toLowerCase().includes(needle) ? [folder] : []
+  })
 }

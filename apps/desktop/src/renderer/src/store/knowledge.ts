@@ -66,9 +66,14 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => ({
     ])
     const selected = get().selected
     const stillThere = selected !== null && documents.some((doc) => doc.file === selected)
+    // The target can only be a folder that exists, so losing its last document
+    // sends imports back to the root instead of resurrecting the folder.
+    const target = get().target
+    const targetExists = target === "" || documents.some((doc) => doc.file.startsWith(`${target}/`))
     set({
       status,
       documents,
+      ...(targetExists ? {} : { target: "" }),
       ...(stillThere ? {} : { selected: null, content: null }),
     })
   },
