@@ -12,6 +12,11 @@ import type {
   ConfirmDialogRequest,
   ImageBytes,
   ImageResult,
+  KnowledgeDocument,
+  KnowledgeImportResult,
+  KnowledgeIndexEvent,
+  KnowledgeSearchHit,
+  KnowledgeStatus,
   ModelInfo,
   ModelPullProgress,
   SaveFileRequest,
@@ -58,6 +63,27 @@ const api: NyxApi = {
         cb(p)
       ipcRenderer.on(IPC.models.progress, listener)
       return () => ipcRenderer.removeListener(IPC.models.progress, listener)
+    },
+  },
+  knowledge: {
+    status: (): Promise<KnowledgeStatus> => ipcRenderer.invoke(IPC.knowledge.status),
+    list: (): Promise<KnowledgeDocument[]> => ipcRenderer.invoke(IPC.knowledge.list),
+    read: (path: string): Promise<string> => ipcRenderer.invoke(IPC.knowledge.read, path),
+    importFiles: (): Promise<KnowledgeImportResult | null> =>
+      ipcRenderer.invoke(IPC.knowledge.importFiles),
+    importFolder: (): Promise<KnowledgeImportResult | null> =>
+      ipcRenderer.invoke(IPC.knowledge.importFolder),
+    remove: (path: string): Promise<boolean> =>
+      ipcRenderer.invoke(IPC.knowledge.remove, path),
+    index: (rebuild: boolean): Promise<void> =>
+      ipcRenderer.invoke(IPC.knowledge.index, rebuild),
+    cancelIndex: (): Promise<boolean> => ipcRenderer.invoke(IPC.knowledge.cancelIndex),
+    search: (query: string, topK?: number): Promise<KnowledgeSearchHit[]> =>
+      ipcRenderer.invoke(IPC.knowledge.search, query, topK),
+    onProgress: (cb) => {
+      const listener = (_e: Electron.IpcRendererEvent, event: KnowledgeIndexEvent) => cb(event)
+      ipcRenderer.on(IPC.knowledge.progress, listener)
+      return () => ipcRenderer.removeListener(IPC.knowledge.progress, listener)
     },
   },
   config: {

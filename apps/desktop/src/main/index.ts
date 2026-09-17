@@ -6,6 +6,7 @@ import { ImageToImageService } from "./services/image-to-image"
 import { AutomaticSpeechRecognitionService } from "./services/automatic-speech-recognition"
 import { TextToSpeechService } from "./services/text-to-speech"
 import { ModelsService } from "./services/models"
+import { KnowledgeService } from "./services/knowledge"
 import { NyxServerProcess } from "./server"
 import { IPC } from "../shared/ipc"
 
@@ -123,6 +124,7 @@ app.whenReady().then(async () => {
   const textToSpeechService = new TextToSpeechService(server)
   const automaticSpeechRecognitionService = new AutomaticSpeechRecognitionService(server)
   const modelsService = new ModelsService(server)
+  const knowledgeService = new KnowledgeService(server)
   registerIpc({
     tasks: {
       imageToImage: imageToImageService,
@@ -131,18 +133,21 @@ app.whenReady().then(async () => {
     },
     chat: chatService,
     models: modelsService,
+    knowledge: knowledgeService,
     server: server,
   })
 
   const win = createWindow()
   chatService.attachWindow(win)
   modelsService.attachWindow(win)
+  knowledgeService.attachWindow(win)
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       const w = createWindow()
       chatService.attachWindow(w)
       modelsService.attachWindow(w)
+      knowledgeService.attachWindow(w)
     }
   })
 })

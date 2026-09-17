@@ -5,17 +5,20 @@ import { SettingsMenu } from "./components/SettingsMenu"
 import { AgentPage } from "./pages/AgentPage"
 import { AutomaticSpeechRecognitionPage } from "./pages/AutomaticSpeechRecognitionPage"
 import { ImageToImagePage } from "./pages/ImageToImagePage"
+import { KnowledgePage } from "./pages/KnowledgePage"
 import { TextToSpeechPage } from "./pages/TextToSpeechPage"
 import { ModelsPage } from "./pages/ModelsPage"
 import { SettingsPage } from "./pages/SettingsPage"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "./components/ui/sidebar"
 import { Toaster, toast } from "./components/ui/toast"
 import { useModelsStore } from "./store/models"
+import { useKnowledgeStore } from "./store/knowledge"
 import { initSessionPersistence } from "./store/sessions"
 import { applyTheme, getTheme } from "./lib/theme"
 
 const PAGE_TITLES: Record<string, string> = {
   "/agent": "Agent",
+  "/knowledge": "Knowledge",
   "/image-to-image": "Image to image",
   "/text-to-speech": "Text to speech",
   "/automatic-speech-recognition": "Automatic speech recognition",
@@ -44,6 +47,13 @@ function Shell() {
     })
     void useModelsStore.getState().load()
     return unsubscribe
+  }, [])
+
+  // Register knowledge index progress once; refresh when a run finishes.
+  useEffect(() => {
+    return window.nyx.knowledge.onProgress((event) => {
+      useKnowledgeStore.getState().updateProgress(event)
+    })
   }, [])
 
   // Persist the active chat session whenever a turn settles (module-level guard).
@@ -76,6 +86,7 @@ function Shell() {
           <Routes>
             <Route path="/" element={<Navigate to="/agent" replace />} />
             <Route path="/agent" element={<AgentPage />} />
+            <Route path="/knowledge" element={<KnowledgePage />} />
             <Route path="/image-to-image" element={<ImageToImagePage />} />
             <Route path="/text-to-speech" element={<TextToSpeechPage />} />
             <Route path="/automatic-speech-recognition" element={<AutomaticSpeechRecognitionPage />} />

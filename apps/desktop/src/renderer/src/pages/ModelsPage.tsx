@@ -14,6 +14,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "..
 import { Spinner } from "../components/ui/spinner"
 import { toast } from "../components/ui/toast"
 import { cn } from "../lib/utils"
+import { formatBytes } from "../lib/format"
 
 const TASK_OPTIONS: Array<{ id: LLMTask; label: string }> = [
   { id: "image-to-image", label: "Image to image" },
@@ -25,14 +26,6 @@ const TASK_LABEL: Record<string, string> = {
   "image-to-image": "Image to image",
   "text-to-speech": "Text to speech",
   "automatic-speech-recognition": "Automatic speech recognition",
-}
-
-/** Bytes → human readable ("4.2 GB"). */
-function formatBytes(n: number): string {
-  if (!Number.isFinite(n) || n <= 0) return "—"
-  const units = ["B", "KB", "MB", "GB", "TB"]
-  const i = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)))
-  return `${(n / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i]}`
 }
 
 /** Manage installed models: pull new ones with live progress, or remove cached ones. */

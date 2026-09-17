@@ -11,6 +11,12 @@ import type {
   ContextCheckpoint,
   ImageBytes,
   ImageResult,
+  KnowledgeDocument,
+  KnowledgeDocumentStatus,
+  KnowledgeImportResult,
+  KnowledgeIndexProgress,
+  KnowledgeSearchHit,
+  KnowledgeStatus,
   SavedAttachment,
   TextToSpeechInput,
   TokenUsage,
@@ -30,6 +36,12 @@ export type {
   ContextCheckpoint,
   ImageBytes,
   ImageResult,
+  KnowledgeDocument,
+  KnowledgeDocumentStatus,
+  KnowledgeImportResult,
+  KnowledgeIndexProgress,
+  KnowledgeSearchHit,
+  KnowledgeStatus,
   SavedAttachment,
   TextToSpeechInput,
   TokenUsage,
@@ -129,6 +141,13 @@ export interface ModelLimits {
   input?: number
   output?: number
 }
+/** Progress pushed main → renderer while one knowledge index run is in flight. */
+export interface KnowledgeIndexEvent extends KnowledgeIndexProgress {
+  /** True on the run's last frame (done, cancelled or error). */
+  done: boolean
+  cancelled?: boolean
+  error?: string
+}
 
 export interface ModelPullProgress {
   modelId: string
@@ -175,6 +194,32 @@ export interface NyxApi {
     remove: (modelId: string) => Promise<void>
     /** Subscribe to pull progress; returns an unsubscribe fn. */
     onProgress: (cb: (p: ModelPullProgress) => void) => () => void
+  }
+  knowledge: {
+    /** Documents, chunk count and index state in one call. */
+    status: () => Promise<KnowledgeStatus>
+    /** Every Markdown document with its index status. */
+    list: () => Promise<KnowledgeDocument[]>
+    /** One document's Markdown source. */
+    read: (path: string) => Promise<string>
+    /**
+     * Pick Markdown files and copy them into the knowledge base. Existing paths
+     * are only replaced after the user confirms; resolves null when the picker
+     * was cancelled.
+     */
+    importFiles: () => Promise<KnowledgeImportResult | null>
+    /** Import a folder's Markdown, nested under a folder named after it. */
+    importFolder: () => Promise<KnowledgeImportResult | null>
+    /** Delete a document after confirmation; false when the user declined. */
+    remove: (path: string) => Promise<boolean>
+    /** Update the index (or rebuild it from scratch); progress arrives via `onProgress`. */
+    index: (rebuild: boolean) => Promise<void>
+    /** Stop a running index build. */
+    cancelIndex: () => Promise<boolean>
+    /** Retrieval, for the page's search box. */
+    search: (query: string, topK?: number) => Promise<KnowledgeSearchHit[]>
+    /** Subscribe to index progress; returns an unsubscribe fn. */
+    onProgress: (cb: (e: KnowledgeIndexEvent) => void) => () => void
   }
   config: {
     getModelsDir: () => Promise<string>

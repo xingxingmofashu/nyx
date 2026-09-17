@@ -7,3 +7,11 @@ export function formatTokens(tokens: number): string {
   if (tokens < 1_000_000) return `${(tokens / 1_000).toFixed(tokens < 10_000 ? 1 : 0)}k`
   return `${(tokens / 1_000_000).toFixed(1)}m`
 }
+
+/** Bytes → human readable ("4.2 GB"), or "—" when unknown. */
+export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "—"
+  const units = ["B", "KB", "MB", "GB", "TB"]
+  const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)))
+  return `${(bytes / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+}

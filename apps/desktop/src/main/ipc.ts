@@ -18,6 +18,7 @@ import {
 import { IPC } from "../shared/ipc"
 import { saveAttachment } from "./attachment"
 import { readGeneratedFileDataUrl } from "./generated-file"
+import { readFolderDocuments, readPickedDocuments, type ImportDocument } from "./knowledge-import"
 import { readCatalogLimit } from "./model-limit"
 import { listProviderModels } from "./provider-models"
 import type {
@@ -30,6 +31,7 @@ import type {
   ChatSessionSaveRequest,
   ConfirmDialogRequest,
   ImageBytes,
+  KnowledgeImportResult,
   LLMTask,
   SaveFileRequest,
   Settings,
@@ -39,6 +41,7 @@ import { ChatStreamService } from "./services/chat-stream"
 import { ImageToImageService } from "./services/image-to-image"
 import { AutomaticSpeechRecognitionService } from "./services/automatic-speech-recognition"
 import { TextToSpeechService } from "./services/text-to-speech"
+import { KnowledgeService } from "./services/knowledge"
 import { ModelsService } from "./services/models"
 import type { NyxServerProcess } from "./server"
 
@@ -50,6 +53,7 @@ interface Services {
   }
   chat: ChatStreamService
   models: ModelsService
+  knowledge: KnowledgeService
   server: NyxServerProcess
 }
 
@@ -73,6 +77,7 @@ export function registerIpc(services: Services): void {
     tasks: { imageToImage, textToSpeech, automaticSpeechRecognition },
     chat,
     models,
+    knowledge,
     server,
   } = services
 
@@ -114,6 +119,36 @@ export function registerIpc(services: Services): void {
   )
   ipcMain.handle(IPC.models.remove, (_e, modelId: string) =>
     models.remove(modelId),
+  )
+
+  // --- Knowledge base ---
+  ipcMain.handle(IPC.knowledge.status, () => knowledge.status())
+  ipcMain.handle(IPC.knowledge.list, () => knowledge.list())
+  ipcMain.handle(IPC.knowledge.read, (_e, path: string) => knowledge.read(path))
+  ipcMain.handle(IPC.knowledge.importFiles, async (e) => {
+    const paths = await pickFiles(e)
+    if (paths === null) return null
+    return await importDocuments(e, knowledge, await readPickedDocuments(paths))
+  })
+  ipcMain.handle(IPC.knowledge.importFolder, async (e) => {
+    const dir = await pickDirectory(e)
+    if (dir === null) return null
+    return await importDocuments(e, knowledge, await readFolderDocuments(dir))
+  })
+  ipcMain.handle(IPC.knowledge.remove, async (e, path: string) => {
+    const confirmed = await confirm(e, {
+      message: "Delete this document?",
+      detail: `${path}\n\nThe file is removed from the knowledge base and its index entries are dropped.`,
+      confirmLabel: "Delete",
+    })
+    if (!confirmed) return false
+    await knowledge.remove(path)
+    return true
+  })
+  ipcMain.handle(IPC.knowledge.index, (_e, rebuild: boolean) => knowledge.index(rebuild))
+  ipcMain.handle(IPC.knowledge.cancelIndex, () => knowledge.cancelIndex())
+  ipcMain.handle(IPC.knowledge.search, (_e, query: string, topK?: number) =>
+    knowledge.search(query, topK),
   )
 
   // --- Config ---
@@ -161,16 +196,9 @@ export function registerIpc(services: Services): void {
   })
 
   // --- Dialog ---
-  ipcMain.handle(IPC.dialog.selectDirectory, async (e) => {
-    const win = BrowserWindow.fromWebContents(e.sender)
-    const properties: Array<"openDirectory" | "createDirectory"> = ["openDirectory", "createDirectory"]
-    const result = win
-      ? await dialog.showOpenDialog(win, { properties })
-      : await dialog.showOpenDialog({ properties })
-    return result.canceled ? null : (result.filePaths[0] ?? null)
-  })
+  ipcMain.handle(IPC.dialog.selectDirectory, (e) => pickDirectory(e))
   ipcMain.handle(IPC.dialog.saveFile, async (e, request: SaveFileRequest) => {
-    const win = BrowserWindow.fromWebContents(e.sender)
+    const win = windowFor(e)
     const options = { defaultPath: request.defaultPath, filters: request.filters }
     const result = win
       ? await dialog.showSaveDialog(win, options)
@@ -179,22 +207,7 @@ export function registerIpc(services: Services): void {
     await writeFile(result.filePath, request.content, "utf8")
     return result.filePath
   })
-  ipcMain.handle(IPC.dialog.confirm, async (e, request: ConfirmDialogRequest) => {
-    const win = BrowserWindow.fromWebContents(e.sender)
-    const options: MessageBoxOptions = {
-      type: "warning",
-      buttons: [request.cancelLabel ?? "Cancel", request.confirmLabel ?? "Confirm"],
-      defaultId: 0,
-      cancelId: 0,
-      noLink: true,
-      message: request.message,
-      detail: request.detail,
-    }
-    const result = win
-      ? await dialog.showMessageBox(win, options)
-      : await dialog.showMessageBox(options)
-    return result.response === 1
-  })
+  ipcMain.handle(IPC.dialog.confirm, (e, request: ConfirmDialogRequest) => confirm(e, request))
 
   // --- Files ---
   ipcMain.handle(IPC.files.readDataUrl, (_e, path: string) => readGeneratedFileDataUrl(path))
@@ -215,4 +228,74 @@ export function registerIpc(services: Services): void {
   ipcMain.on(IPC.window.close, (e) =>
     BrowserWindow.fromWebContents(e.sender)?.close(),
   )
+}
+
+/** The window a renderer request came from, so dialogs are modal to it. */
+function windowFor(e: Electron.IpcMainInvokeEvent): BrowserWindow | null {
+  return BrowserWindow.fromWebContents(e.sender)
+}
+
+/** Native multi-select picker for Markdown files; null when cancelled. */
+async function pickFiles(e: Electron.IpcMainInvokeEvent): Promise<string[] | null> {
+  const properties: Array<"openFile" | "multiSelections"> = ["openFile", "multiSelections"]
+  const options = { properties, filters: [{ name: "Markdown", extensions: ["md", "markdown"] }] }
+  const win = windowFor(e)
+  const result = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+  return result.canceled ? null : result.filePaths
+}
+
+/** Native folder picker; null when cancelled. */
+async function pickDirectory(e: Electron.IpcMainInvokeEvent): Promise<string | null> {
+  const properties: Array<"openDirectory" | "createDirectory"> = ["openDirectory", "createDirectory"]
+  const win = windowFor(e)
+  const result = win
+    ? await dialog.showOpenDialog(win, { properties })
+    : await dialog.showOpenDialog({ properties })
+  return result.canceled ? null : (result.filePaths[0] ?? null)
+}
+
+/** Native yes/no confirmation; true when the user picks the affirmative button. */
+async function confirm(e: Electron.IpcMainInvokeEvent, request: ConfirmDialogRequest): Promise<boolean> {
+  const win = windowFor(e)
+  const options: MessageBoxOptions = {
+    type: "warning",
+    buttons: [request.cancelLabel ?? "Cancel", request.confirmLabel ?? "Confirm"],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+    message: request.message,
+    detail: request.detail,
+  }
+  const result = win ? await dialog.showMessageBox(win, options) : await dialog.showMessageBox(options)
+  return result.response === 1
+}
+
+/**
+ * Copy read documents into the knowledge base. Existing paths are replaced only
+ * after the user agrees — one prompt covers the whole batch; declining imports
+ * the rest and leaves the existing files untouched.
+ */
+async function importDocuments(
+  e: Electron.IpcMainInvokeEvent,
+  knowledge: KnowledgeService,
+  documents: ImportDocument[],
+): Promise<KnowledgeImportResult> {
+  if (documents.length === 0) return { written: [], overwritten: [], skipped: [] }
+  const existing = new Set((await knowledge.list()).map((doc) => doc.file))
+  const conflicts = documents.filter((doc) => existing.has(doc.path)).map((doc) => doc.path)
+  const overwrite =
+    conflicts.length === 0 ||
+    (await confirm(e, {
+      message: conflicts.length === 1 ? "This document already exists" : `${conflicts.length} documents already exist`,
+      detail: `${previewPaths(conflicts)}\n\nOverwrite them, or skip them and import the rest?`,
+      confirmLabel: "Overwrite",
+      cancelLabel: "Skip",
+    }))
+  return await knowledge.import(documents, overwrite)
+}
+
+/** List conflicting paths for a dialog, capped so it stays readable. */
+function previewPaths(paths: string[]): string {
+  const shown = paths.slice(0, 10).join("\n")
+  return paths.length > 10 ? `${shown}\n… and ${paths.length - 10} more` : shown
 }

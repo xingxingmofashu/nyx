@@ -10,6 +10,8 @@ interface MarkdownTextProps {
   text: string
   /** Streaming assistant output: shows the caret and disables interactive controls. */
   isAnimating?: boolean
+  /** `static` renders complete markdown (previews) instead of streaming-safe parsing. */
+  mode?: "static" | "streaming"
   className?: string
 }
 
@@ -22,6 +24,7 @@ interface MarkdownTextProps {
 export const MarkdownText = memo(function MarkdownText({
   text,
   isAnimating = false,
+  mode = "streaming",
   className,
 }: MarkdownTextProps) {
   return (
@@ -31,6 +34,7 @@ export const MarkdownText = memo(function MarkdownText({
         className,
       )}
       plugins={plugins}
+      mode={mode}
       caret={isAnimating ? "block" : undefined}
       isAnimating={isAnimating}
     >

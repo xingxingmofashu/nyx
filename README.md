@@ -140,10 +140,12 @@ Drop Markdown files anywhere under `~/.nyx/knowledge/` and nyx indexes them loca
 ```bash
 nyx model pull Xenova/multilingual-e5-base --task feature-extraction   # one-time: download the embedding model
 mkdir -p ~/.nyx/knowledge && cp ~/notes/*.md ~/.nyx/knowledge/         # drop in your Markdown
-nyx                                                                    # start the agent; it indexes in the background
+nyx                                                                    # start the agent (build the index from the Knowledge page)
 ```
 
-Indexing is incremental (files are skipped by content hash), runs in the background at startup, and lives in `~/.nyx/knowledge/.index/` (override the knowledge dir with `NYX_KNOWLEDGE_DIR`). If the embedding model isn't downloaded yet, indexing is skipped with a hint — it is not fetched implicitly. While any Markdown file exists, the agent gets a read-only `search_knowledge` tool so it can ground answers in your documents (set `agent.tools.knowledge: false` in `settings.json` to disable). New documents are picked up on the next launch.
+Indexing is incremental (files are skipped by content hash) and lives in `~/.nyx/knowledge/.index/` (override the knowledge dir with `NYX_KNOWLEDGE_DIR`). It never runs on its own — not at startup and not on a query — so opening the app costs nothing: build or refresh it from the desktop's **Knowledge** page (`Update index` / `Rebuild`). If the embedding model isn't downloaded yet, indexing stops with a hint — it is not fetched implicitly. While any Markdown file exists, the agent gets a read-only `search_knowledge` tool so it can ground answers in your documents (set `agent.tools.knowledge: false` in `settings.json` to disable).
+
+The desktop's **Knowledge** page manages the same base: documents appear as a file tree with a status dot each (green: in the vector store, amber: being embedded right now, grey: still to build), the selected one renders as Markdown, and you can import files or a whole folder (an existing path is only replaced after you confirm), delete a document (right-click), run **Update index** to embed what changed, or **Rebuild** to drop the index and embed everything again — for example after changing `knowledge.embeddingModel`. A retrieval box at the bottom runs the same hybrid search the agent's tool uses. Files dropped into `~/.nyx/knowledge/` by hand show up as "not indexed yet" and are only picked up when you press **Update index**.
 
 ## Desktop app
 

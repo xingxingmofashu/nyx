@@ -1,5 +1,5 @@
 import { Fragment } from "react"
-import { AudioLines, Bot, Boxes, Image as ImageIcon, Mic, Sparkles } from "lucide-react"
+import { AudioLines, Bot, BookOpen, Boxes, Image as ImageIcon, Mic, Sparkles } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import { SessionNav } from "./agent/SessionNav"
 import {
@@ -14,7 +14,13 @@ import {
   SidebarMenuButton,
 } from "./ui/sidebar"
 
-export type ViewId = "agent" | "image-to-image" | "text-to-speech" | "automatic-speech-recognition" | "models"
+export type ViewId =
+  | "agent"
+  | "knowledge"
+  | "image-to-image"
+  | "text-to-speech"
+  | "automatic-speech-recognition"
+  | "models"
 
 interface ViewDef {
   id: ViewId
@@ -27,6 +33,10 @@ interface ViewDef {
 const NAV: Array<{ label?: string; views: ViewDef[] }> = [
   {
     views: [{ id: "agent", path: "/agent", label: "Agent", icon: Bot }],
+  },
+  {
+    label: "Knowledge",
+    views: [{ id: "knowledge", path: "/knowledge", label: "Knowledge base", icon: BookOpen }],
   },
   {
     label: "Tools",
@@ -42,7 +52,7 @@ const NAV: Array<{ label?: string; views: ViewDef[] }> = [
   },
 ]
 
-/** Collapsible sidebar: agent, tools, and model management. */
+/** Collapsible sidebar: agent, knowledge, tools, and model management. */
 export function AppSidebar() {
   const location = useLocation()
 

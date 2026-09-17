@@ -28,6 +28,22 @@ export const IPC = {
     /** main → renderer: download progress. */
     progress: "models:progress",
   },
+  /** The local knowledge base (documents + vector index). */
+  knowledge: {
+    status: "knowledge:status",
+    list: "knowledge:list",
+    read: "knowledge:read",
+    /** Pick + read + import documents (asks before overwriting; main reads the files). */
+    importFiles: "knowledge:importFiles",
+    importFolder: "knowledge:importFolder",
+    /** Delete a document after a native confirmation. */
+    remove: "knowledge:remove",
+    index: "knowledge:index",
+    cancelIndex: "knowledge:cancelIndex",
+    search: "knowledge:search",
+    /** main → renderer: index build progress. */
+    progress: "knowledge:progress",
+  },
   config: {
     getModelsDir: "config:getModelsDir",
     getSettings: "config:getSettings",

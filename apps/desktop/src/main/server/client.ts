@@ -1,6 +1,12 @@
 import type { LLMTask } from "@nyx/llm"
 import type { ModelInfo } from "@nyx/config"
-import type { AgentRequestInput, CompactRequestInput } from "@nyx/server/schema"
+import type {
+  AgentRequestInput,
+  CompactRequestInput,
+  KnowledgeImportRequestInput,
+  KnowledgeIndexRequestInput,
+  KnowledgeSearchRequestInput,
+} from "@nyx/server/schema"
 import type { AppType } from "@nyx/server/api"
 import { parseJsonEventStream, uiMessageChunkSchema } from "ai"
 import { createParser } from "eventsource-parser"
@@ -11,6 +17,11 @@ import type {
   CompactionResult,
   ImageBytes,
   ImageResult,
+  KnowledgeDocument,
+  KnowledgeImportResult,
+  KnowledgeIndexProgress,
+  KnowledgeSearchHit,
+  KnowledgeStatus,
   ModelPullProgress,
   TextToSpeechInput,
   TranscriptResult,
@@ -25,6 +36,14 @@ export class PullCancelledError extends Error {
   constructor(modelId: string) {
     super(`Pull cancelled: ${modelId}`)
     this.name = "PullCancelledError"
+  }
+}
+
+/** Thrown when an index build was cancelled (server sent the `cancelled` SSE event). */
+export class IndexCancelledError extends Error {
+  constructor() {
+    super("Index build cancelled")
+    this.name = "IndexCancelledError"
   }
 }
 
@@ -104,6 +123,97 @@ export class NyxServerClient {
   async removeModel(modelId: string): Promise<void> {
     const res = await this.client.v1.models.$delete({ json: { model: modelId } })
     if (!res.ok) throw new Error(await errorMessage(res, "models"))
+  }
+
+  async knowledgeStatus(): Promise<KnowledgeStatus> {
+    const res = await this.client.v1.knowledge.$get()
+    if (!res.ok) throw new Error(await errorMessage(res, "knowledge"))
+    return (await res.json()) as KnowledgeStatus
+  }
+
+  async knowledgeDocuments(): Promise<KnowledgeDocument[]> {
+    const res = await this.client.v1.knowledge.documents.$get()
+    if (!res.ok) throw new Error(await errorMessage(res, "knowledge/documents"))
+    return (await res.json()) as KnowledgeDocument[]
+  }
+
+  /** One document's Markdown source, for the preview pane. */
+  async knowledgeDocument(path: string): Promise<string> {
+    const res = await this.client.v1.knowledge.document.$get({ query: { path } })
+    if (!res.ok) throw new Error(await errorMessage(res, "knowledge/document"))
+    return ((await res.json()) as { content: string }).content
+  }
+
+  /** Copy documents into the knowledge base; conflicts are replaced only when `overwrite`. */
+  async importKnowledge(
+    documents: KnowledgeImportRequestInput["documents"],
+    overwrite: boolean,
+  ): Promise<KnowledgeImportResult> {
+    const res = await this.client.v1.knowledge.documents.$post({ json: { documents, overwrite } })
+    if (!res.ok) throw new Error(await errorMessage(res, "knowledge/documents"))
+    return (await res.json()) as KnowledgeImportResult
+  }
+
+  async removeKnowledge(path: string): Promise<void> {
+    const res = await this.client.v1.knowledge.documents.$delete({ json: { path } })
+    if (!res.ok) throw new Error(await errorMessage(res, "knowledge/documents"))
+  }
+
+  /** Build the index (or rebuild it); progress events are delivered via `onProgress`. */
+  async indexKnowledge(
+    rebuild: boolean,
+    onProgress?: (p: KnowledgeIndexProgress) => void,
+  ): Promise<{ files: number; chunks: number; skipped: number }> {
+    const res = await this.client.v1.knowledge.build.$post({ json: { rebuild } as KnowledgeIndexRequestInput })
+    if (!res.ok) throw new Error(await errorMessage(res, "knowledge/build"))
+    if (!res.body) throw new Error("no response body")
+
+    let stats = { files: 0, chunks: 0, skipped: 0 }
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    const parser = createParser({
+      onEvent(event) {
+        if (event.event === "progress") {
+          onProgress?.(JSON.parse(event.data) as KnowledgeIndexProgress)
+        } else if (event.event === "done") {
+          stats = JSON.parse(event.data) as { files: number; chunks: number; skipped: number }
+        } else if (event.event === "cancelled") {
+          throw new IndexCancelledError()
+        } else if (event.event === "error") {
+          const message = (JSON.parse(event.data) as { message?: string }).message
+          throw new Error(message ?? "indexing failed")
+        }
+      },
+    })
+
+    try {
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        parser.feed(decoder.decode(value, { stream: true }))
+      }
+    } finally {
+      // Cancelling matters when a callback threw (e.g. IndexCancelledError).
+      await reader.cancel().catch(() => undefined)
+      reader.releaseLock()
+    }
+    return stats
+  }
+
+  /** Ask the server to stop an in-flight index build. */
+  async cancelKnowledgeIndex(): Promise<boolean> {
+    const res = await this.client.v1.knowledge.build.cancel.$post()
+    if (!res.ok) throw new Error(await errorMessage(res, "knowledge/build/cancel"))
+    return ((await res.json()) as { cancelled: boolean }).cancelled
+  }
+
+  /** Retrieve passages for the page's search box. */
+  async searchKnowledge(query: string, topK?: number): Promise<KnowledgeSearchHit[]> {
+    const res = await this.client.v1.knowledge.search.$post({
+      json: { query, ...(topK === undefined ? {} : { topK }) } as KnowledgeSearchRequestInput,
+    })
+    if (!res.ok) throw new Error(await errorMessage(res, "knowledge/search"))
+    return (await res.json()) as KnowledgeSearchHit[]
   }
 
   /** Stream one agent turn over the AI SDK UI message protocol. */
