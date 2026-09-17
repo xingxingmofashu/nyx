@@ -1,4 +1,4 @@
-import { ChevronRightIcon, FileIcon, FolderIcon, Trash2 } from "lucide-react"
+import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2 } from "lucide-react"
 import { cn } from "#lib/utils.ts"
 import type { KnowledgeDocument, KnowledgeDocumentStatus } from "../../../../shared/types"
 import { Button } from "../ui/button"
@@ -129,8 +129,9 @@ function FolderRow({
       <CollapsibleTrigger
         render={
           <Button variant="ghost" size="sm" className="group w-full justify-start gap-2 transition-none">
-            <ChevronRightIcon className="transition-transform group-data-[state=open]:rotate-90" />
-            <FolderIcon />
+            <ChevronRightIcon className="transition-transform group-data-[panel-open]:rotate-90" />
+            <FolderIcon className="group-data-[panel-open]:hidden" />
+            <FolderOpenIcon className="hidden group-data-[panel-open]:block" />
             <span className="truncate">{folder.name}</span>
             <span className="ms-auto text-xs text-muted-foreground tabular-nums">{countDocuments(folder)}</span>
           </Button>
@@ -184,7 +185,7 @@ function DocumentRow({
   const dot = statusDot(doc.status, processing === doc.file)
   return (
     <ContextMenu>
-      <ContextMenuTrigger render={<div className="flex items-center gap-0.5" />}>
+      <ContextMenuTrigger render={<div className="flex items-center" />}>
         <Button
           variant="ghost"
           size="sm"
@@ -194,13 +195,13 @@ function DocumentRow({
         >
           <FileIcon />
           <span className="truncate">{name}</span>
+          <span
+            role="img"
+            aria-label={dot.label}
+            title={dot.label}
+            className={cn("ms-auto size-1.5 shrink-0 rounded-full", dot.className)}
+          />
         </Button>
-        <span
-          role="img"
-          aria-label={dot.label}
-          title={dot.label}
-          className={cn("size-1.5 shrink-0 rounded-full", dot.className)}
-        />
       </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem variant="destructive" onClick={() => onDelete(doc.file)}>
