@@ -47,7 +47,7 @@ const NAV: Array<{ label?: string; views: ViewDef[] }> = [
     ],
   },
   {
-    label: "Models",
+    label: "Local models",
     views: [{ id: "models", path: "/models", label: "Manage models", icon: Boxes }],
   },
 ]
