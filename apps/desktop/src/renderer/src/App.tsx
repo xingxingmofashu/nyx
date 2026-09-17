@@ -17,7 +17,7 @@ import { initSessionPersistence } from "./store/sessions"
 import { applyTheme, getTheme } from "./lib/theme"
 
 const PAGE_TITLES: Record<string, string> = {
-  "/agent": "Agent",
+  "/agent": "Chat",
   "/knowledge": "Knowledge",
   "/image-to-image": "Image to image",
   "/text-to-speech": "Text to speech",

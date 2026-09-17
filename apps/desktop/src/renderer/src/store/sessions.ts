@@ -62,6 +62,9 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
   create: () => {
     if (get().busy) return
     agentChat.messages = []
+    // Both entry points ("Agent" in the sidebar, "New session" in the header)
+    // start a clean slate, so a failed turn's error doesn't follow you over.
+    agentChat.clearError()
     set({ activeId: newId() })
   },
 

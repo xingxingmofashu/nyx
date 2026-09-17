@@ -8,7 +8,6 @@ import {
   Pencil,
   Pin,
   PinOff,
-  Plus,
   Search,
   Trash2,
 } from "lucide-react"
@@ -17,7 +16,6 @@ import { useAgentStore } from "../../store/agent"
 import { useSessionsStore } from "../../store/sessions"
 import {
   SidebarGroup,
-  SidebarGroupAction,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarInput,
@@ -41,7 +39,6 @@ export function SessionNav() {
   const sessions = useSessionsStore((s) => s.sessions)
   const activeId = useSessionsStore((s) => s.activeId)
   const busy = useSessionsStore((s) => s.busy)
-  const create = useSessionsStore((s) => s.create)
   const open = useSessionsStore((s) => s.open)
   const rename = useSessionsStore((s) => s.rename)
   const setPinned = useSessionsStore((s) => s.setPinned)
@@ -89,9 +86,6 @@ export function SessionNav() {
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Chats{workspaceDir ? ` · ${baseName(workspaceDir)}` : ""}</SidebarGroupLabel>
-      <SidebarGroupAction onClick={() => void create()} title="New chat" disabled={busy}>
-        <Plus />
-      </SidebarGroupAction>
       <SidebarGroupContent className="flex flex-col gap-1">
         <div className="relative px-1 group-data-[collapsible=icon]:hidden">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
