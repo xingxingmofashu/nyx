@@ -59,6 +59,8 @@
     "@types/react-dom": "19.2.0",
     "@vitejs/plugin-react": "4.3.4",
     "electron": "37.2.0",
+    "fs-xattr": "catalog:",
+    "macos-alias": "catalog:",
     "tailwindcss": "4.3.3",
     "vite": "7.0.0"
   }
