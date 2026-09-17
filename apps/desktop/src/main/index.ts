@@ -37,13 +37,11 @@ function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
-    minWidth: 960,
-    minHeight: 640,
+    minWidth: 1080,
+    minHeight: 700,
     title: "Nyx",
     backgroundColor: "#1a1a1e",
     ...(windowIcon ? { icon: windowIcon } : {}),
-    // Frameless: the renderer header provides the drag region and controls.
-    frame: false,
     webPreferences: {
       preload: join(__dirname, "preload.js"),
       sandbox: false,
