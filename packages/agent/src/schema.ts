@@ -241,12 +241,14 @@ export interface KnowledgeDocument {
 export interface KnowledgeStatus {
   /** Knowledge dir on the server's machine (documents live here). */
   dir: string;
-  /** Embedding model the index is built with. */
-  embeddingModel: string;
-  /** Model that produced the current index; differs after a settings change. */
+  /** Embedding model the user selected; absent when none is (indexing/search are refused). */
+  embeddingModel?: string;
+  /** Model that produced the current index; differs after a model change, which needs a rebuild. */
   indexedModel?: string;
-  /** False when the embedding model is not downloaded (indexing/search unavailable). */
+  /** False when no model is selected, or the selected one is not downloaded. */
   modelDownloaded: boolean;
+  /** Installed local embedding models (`feature-extraction`) the user can pick from. */
+  availableEmbeddingModels: string[];
   /** Markdown files on disk. */
   documents: number;
   /** Files recorded in the index manifest. */

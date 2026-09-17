@@ -9,9 +9,6 @@ import { createOnnxEmbeddingModel } from "@nyx/llm";
 import { chunkDocument } from "./chunk.ts";
 import { KnowledgeStore, type SearchHit } from "./store.ts";
 
-/** Default local embedding model (multilingual, 768d). */
-export const DEFAULT_EMBEDDING_MODEL = "Xenova/multilingual-e5-base";
-
 /** Only Markdown files are indexed; the walk skips dotted dirs (incl. `.index`). */
 const DOCUMENT_EXTENSIONS = [".md", ".markdown"];
 const IGNORED_DIRS = new Set(["node_modules", ".git"]);
@@ -21,10 +18,9 @@ const INDEX_DIR = ".index";
 
 /** Persisted index metadata (kept next to the LanceDB table). */
 export interface KnowledgeBaseConfig {
-  embeddingModel: string;
   /** Embedding dimension, recorded after the first index run. */
   dim?: number;
-  /** Model that produced the current index; a mismatch triggers a full re-index. */
+  /** Embedding model that produced the current index, recorded after a run. */
   indexedModel?: string;
   updatedAt?: string;
 }
@@ -69,9 +65,20 @@ export interface ImportResult {
   skipped: string[];
 }
 
-/** Embedding model to use, honoring `settings.knowledge.embeddingModel`. */
-export function resolveEmbeddingModel(): string {
-  return getSettings().knowledge?.embeddingModel ?? DEFAULT_EMBEDDING_MODEL;
+/**
+ * Embedding model the user selected, or undefined when none is configured.
+ * There is deliberately no built-in fallback: with nothing selected the
+ * knowledge base stays idle instead of embedding with a model of our choosing.
+ */
+export function resolveEmbeddingModel(): string | undefined {
+  return getSettings().knowledge?.embeddingModel;
+}
+
+/** Selected embedding model, refusing to embed when the user picked none. */
+function requireEmbeddingModel(): string {
+  const model = resolveEmbeddingModel();
+  if (!model) throw new Error("No embedding model is selected.");
+  return model;
 }
 
 function indexDir(): string {
@@ -92,15 +99,14 @@ function lanceDir(): string {
 
 function readConfig(): KnowledgeBaseConfig {
   try {
-    const raw = JSON.parse(readFileSync(configPath(), "utf8")) as KnowledgeBaseConfig;
+    const raw = JSON.parse(readFileSync(configPath(), "utf8")) as Partial<KnowledgeBaseConfig>;
     return {
-      embeddingModel: raw?.embeddingModel ?? resolveEmbeddingModel(),
       ...(raw?.dim !== undefined ? { dim: raw.dim } : {}),
       ...(raw?.indexedModel !== undefined ? { indexedModel: raw.indexedModel } : {}),
       ...(raw?.updatedAt !== undefined ? { updatedAt: raw.updatedAt } : {}),
     };
   } catch {
-    return { embeddingModel: resolveEmbeddingModel() };
+    return {};
   }
 }
 
@@ -147,16 +153,21 @@ export class KnowledgeBase {
   async index(
     options: { onProgress?: (progress: IndexProgress) => void; signal?: AbortSignal } = {},
   ): Promise<IndexStats> {
+    const model = requireEmbeddingModel();
     const store = await KnowledgeStore.open(lanceDir());
     try {
       const sourceDir = getKnowledgeDir();
       const files = walkDocuments(sourceDir);
       const previous = readManifest();
       // Reusing hashes is only safe when the index came from the same model.
-      const modelMatches = this.config.indexedModel === this.config.embeddingModel;
+      const modelMatches = this.config.indexedModel === model;
       const manifest: Manifest = modelMatches ? previous : {};
       if (!modelMatches) {
+        // Switching models re-embeds everything below; forget the old
+        // dimension too, so the check further down can't fire against a
+        // different model's vectors.
         for (const file of Object.keys(previous)) await store.deleteFile(file);
+        this.config.dim = undefined;
       }
       const report = (progress: IndexProgress) => options.onProgress?.(progress);
       const seen = new Set<string>();
@@ -187,10 +198,7 @@ export class KnowledgeBase {
         }
 
         const { embeddings } = await embedMany({
-          model: createOnnxEmbeddingModel({
-            model: this.config.embeddingModel,
-            type: "passage",
-          }),
+          model: createOnnxEmbeddingModel({ model, type: "passage" }),
           values: parts.map((part) => part.text),
           ...(options.signal ? { abortSignal: options.signal } : {}),
         });
@@ -230,7 +238,7 @@ export class KnowledgeBase {
 
       const chunks = await store.countChunks();
       if (dim !== undefined) this.config.dim = dim;
-      this.config.indexedModel = this.config.embeddingModel;
+      this.config.indexedModel = model;
       writeManifest(manifest);
       writeConfig(this.config);
       report({ phase: "done", filesDone, filesTotal: files.length, chunks });
@@ -242,10 +250,17 @@ export class KnowledgeBase {
 
   /** Hybrid (vector + keyword) search over the index. */
   async search(query: string, options: { topK?: number } = {}): Promise<SearchHit[]> {
+    const model = requireEmbeddingModel();
+    // Query vectors must come from the model that built the index, or the
+    // distances are meaningless; the caller rebuilds to switch models.
+    const indexed = this.config.indexedModel;
+    if (indexed !== undefined && indexed !== model) {
+      throw new Error(`The index was built with "${indexed}", but "${model}" is selected; rebuild the index first.`);
+    }
     const store = await KnowledgeStore.open(lanceDir());
     try {
       const { embedding } = await embed({
-        model: createOnnxEmbeddingModel({ model: this.config.embeddingModel, type: "query" }),
+        model: createOnnxEmbeddingModel({ model, type: "query" }),
         value: query,
       });
       return await store.search(Float32Array.from(embedding), query, options.topK ?? 6);
@@ -343,7 +358,7 @@ export class KnowledgeBase {
    */
   async rebuild(options: { onProgress?: (progress: IndexProgress) => void; signal?: AbortSignal } = {}): Promise<IndexStats> {
     rmSync(indexDir(), { recursive: true, force: true });
-    this.config = { embeddingModel: resolveEmbeddingModel() };
+    this.config = {};
     return await this.index(options);
   }
 }

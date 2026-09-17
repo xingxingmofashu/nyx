@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { FilePlus, FolderPlus, HardDrive, Library, RefreshCw, Search, Trash2 } from "lucide-react"
 import { relativeTime } from "@nyx/shared"
 import { useKnowledgeStore } from "../store/knowledge"
@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../components/ui/empty"
 import { Input } from "../components/ui/input"
 import { Progress } from "../components/ui/progress"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
 import { Separator } from "../components/ui/separator"
 import { Spinner } from "../components/ui/spinner"
 import { toast } from "../components/ui/toast"
@@ -46,6 +47,7 @@ export function KnowledgePage() {
     importFiles,
     importFolder,
     remove,
+    setEmbeddingModel,
     updateIndex,
     cancelIndex,
     dismissNotice,
@@ -61,7 +63,21 @@ export function KnowledgePage() {
 
   const busy = indexing !== null && !indexing.done
   const modelMissing = status !== null && !status.modelDownloaded
+  const modelChanged =
+    status !== null &&
+    status.embeddingModel !== undefined &&
+    status.indexedModel !== undefined &&
+    status.indexedModel !== status.embeddingModel
   const current = documents.find((doc) => doc.file === selected)
+  // A selected model that is not installed (or none at all) still has to show
+  // in the picker, so the trigger never renders blank.
+  const modelOptions = useMemo(() => {
+    const installed = status?.availableEmbeddingModels ?? []
+    const selectedModel = status?.embeddingModel
+    return selectedModel !== undefined && !installed.includes(selectedModel)
+      ? [selectedModel, ...installed]
+      : installed
+  }, [status])
 
   const runImport = async (pick: () => Promise<KnowledgeImportResult | null>) => {
     if (normalizeImportTarget(target) === null) {
@@ -122,7 +138,7 @@ export function KnowledgePage() {
               ? "Loading…"
               : `${status.documents} document${status.documents === 1 ? "" : "s"} · ${status.chunks} chunks · ${
                   status.updatedAt === undefined ? "never indexed" : `indexed ${relativeTime(status.updatedAt)}`
-                } · ${status.embeddingModel}`}
+                } · ${status.embeddingModel ?? "no embedding model selected"}`}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
@@ -161,6 +177,27 @@ export function KnowledgePage() {
                   Cancel
                 </Button>
               </>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="shrink-0 text-xs text-muted-foreground">Embedding model</span>
+            <Select value={status?.embeddingModel} onValueChange={(model) => model !== null && void setEmbeddingModel(model)}>
+              <SelectTrigger size="sm" className="w-72" aria-label="Embedding model">
+                <SelectValue placeholder="Select a local model" />
+              </SelectTrigger>
+              <SelectContent>
+                {modelOptions.map((model) => (
+                  <SelectItem key={model} value={model}>
+                    {model}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {status !== null && modelOptions.length === 0 && (
+              <span className="text-xs text-muted-foreground">
+                No local embedding model installed — pull one from <span className="font-medium">Local models</span>{" "}
+                with the <code className="font-mono text-xs">feature-extraction</code> task.
+              </span>
             )}
           </div>
           {status !== null && (
@@ -207,9 +244,26 @@ export function KnowledgePage() {
 
       {modelMissing && status !== null && (
         <p className="shrink-0 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
-          Embedding model “{status.embeddingModel}” is not downloaded, so indexing and search are
-          unavailable. Download it from <span className="font-medium">Local models</span> with the{" "}
-          <code className="font-mono text-xs">feature-extraction</code> task.
+          {status.embeddingModel === undefined ? (
+            <>
+              No embedding model is selected, so indexing and search are unavailable. Pick a local model above, or
+              pull one from <span className="font-medium">Local models</span> with the{" "}
+              <code className="font-mono text-xs">feature-extraction</code> task.
+            </>
+          ) : (
+            <>
+              Embedding model “{status.embeddingModel}” is not downloaded, so indexing and search are unavailable.
+              Download it from <span className="font-medium">Local models</span> with the{" "}
+              <code className="font-mono text-xs">feature-extraction</code> task.
+            </>
+          )}
+        </p>
+      )}
+
+      {modelChanged && status !== null && (
+        <p className="shrink-0 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+          The index was built with “{status.indexedModel}”. Press <span className="font-medium">Rebuild</span> to
+          replace it with “{status.embeddingModel}”.
         </p>
       )}
 
@@ -309,7 +363,11 @@ export function KnowledgePage() {
               placeholder="Try a retrieval query"
               aria-label="Retrieval query"
             />
-            <Button variant="outline" disabled={searching || query.trim() === ""} onClick={() => void runSearch()}>
+            <Button
+              variant="outline"
+              disabled={searching || modelMissing || query.trim() === ""}
+              onClick={() => void runSearch()}
+            >
               {searching ? <Spinner data-icon="inline-start" /> : <Search data-icon="inline-start" />}
               Search
             </Button>

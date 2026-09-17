@@ -8,26 +8,36 @@ import {
   type IndexStats,
   type KnowledgeDocument,
 } from "@nyx/knowledge"
-import { findModel } from "@nyx/llm"
+import { findModel, listModels } from "@nyx/llm"
 import type { KnowledgeSearchHit, KnowledgeStatus } from "../schema"
 
 /**
  * Owns the single local knowledge base (Markdown files under the nyx knowledge
  * dir, `~/.nyx/knowledge` by default) and is the only writer of its index.
- * Indexing runs the local ONNX embedding model, so it is CPU-bound, and it is
- * never implicit: nothing embeds at server startup or on a query. Only the
- * desktop's Knowledge page starts a run, through `beginIndex()`/`endIndex()` —
- * one run at a time, cancellable between files, with progress streamed to the
- * caller. Importing and deleting documents never index on their own either.
+ * Indexing runs a local ONNX embedding model the user selected — there is no
+ * default, so with none selected (or one that was never downloaded) indexing
+ * and search are refused instead of silently picking a model. It is CPU-bound,
+ * and it is never implicit: nothing embeds at server startup or on a query.
+ * Only the desktop's Knowledge page starts a run, through
+ * `beginIndex()`/`endIndex()` — one run at a time, cancellable between files,
+ * with progress streamed to the caller. Importing and deleting documents never
+ * index on their own either.
  *
  * Logging is injected: the server binary passes a stderr logger, which the
  * desktop captures behind the app.
  */
 export class KnowledgeService {
-  private kb = KnowledgeBase.open()
   private controller?: AbortController
 
   constructor(private readonly log: (message: string) => void) {}
+
+  /**
+   * The base is re-opened per use so a settings change (the embedding model is
+   * picked on the Knowledge page) is visible without restarting the server.
+   */
+  private get kb(): KnowledgeBase {
+    return KnowledgeBase.open()
+  }
 
   /** True when the knowledge dir holds at least one `.md` file. */
   hasDocuments(): boolean {
@@ -40,27 +50,32 @@ export class KnowledgeService {
    */
   async search(query: string, topK = 6): Promise<KnowledgeSearchHit[]> {
     if (this.controller) throw new Error("The knowledge index is being built; search again once it finishes.")
-    if (this.kb.fileCount() === 0) {
+    const kb = this.kb
+    if (kb.fileCount() === 0) {
       throw new Error("The knowledge index is empty. Build it from the Knowledge page (Update index).")
     }
     this.requireModel()
-    return this.kb.search(query, { topK })
+    return kb.search(query, { topK })
   }
 
   /** Everything the knowledge management page shows at a glance. */
   async status(): Promise<KnowledgeStatus> {
+    const kb = this.kb
     const embeddingModel = resolveEmbeddingModel()
-    const { indexedModel, updatedAt } = this.kb.config
+    const { indexedModel, updatedAt } = kb.config
     // A missing or unreadable index is 0 chunks, not an error: the page then
     // offers to build one.
-    const chunks = await this.kb.countChunks().catch(() => 0)
+    const chunks = await kb.countChunks().catch(() => 0)
     return {
       dir: getKnowledgeDir(),
-      embeddingModel,
+      ...(embeddingModel !== undefined ? { embeddingModel } : {}),
       ...(indexedModel !== undefined ? { indexedModel } : {}),
-      modelDownloaded: findModel(embeddingModel) !== undefined,
-      documents: this.kb.listDocuments().length,
-      indexed: this.kb.fileCount(),
+      modelDownloaded: embeddingModel !== undefined && findModel(embeddingModel) !== undefined,
+      availableEmbeddingModels: listModels()
+        .filter((model) => model.task === "feature-extraction")
+        .map((model) => model.id),
+      documents: kb.listDocuments().length,
+      indexed: kb.fileCount(),
       chunks,
       ...(updatedAt !== undefined ? { updatedAt } : {}),
       indexing: this.controller !== undefined,
@@ -120,16 +135,22 @@ export class KnowledgeService {
     options: { rebuild?: boolean; onProgress?: (progress: IndexProgress) => void; signal?: AbortSignal } = {},
   ): Promise<IndexStats> {
     this.requireModel()
-    const stats = options.rebuild === true ? await this.kb.rebuild(options) : await this.kb.index(options)
+    const kb = this.kb
+    const stats = options.rebuild === true ? await kb.rebuild(options) : await kb.index(options)
     this.log(
       `${options.rebuild === true ? "rebuilt" : "indexed"} ${stats.chunks} chunks from ${stats.files} files (${stats.skipped} unchanged)`,
     )
     return stats
   }
 
-  /** Refuse to index with an embedding model that was never downloaded. */
+  /** Refuse to embed without a selected embedding model that is downloaded. */
   private requireModel(): string {
     const model = resolveEmbeddingModel()
+    if (!model) {
+      throw new Error(
+        'No embedding model is selected. Download one from the Local models page (task "feature-extraction") and pick it above.',
+      )
+    }
     if (!findModel(model)) {
       throw new Error(
         `Embedding model "${model}" is not downloaded. Download it from the Local models page (task "feature-extraction").`,

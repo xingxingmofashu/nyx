@@ -36,6 +36,8 @@ interface KnowledgeState {
   importFolder: () => Promise<KnowledgeImportResult | null>
   /** Delete a document; false when the user declined the confirmation. */
   remove: (path: string) => Promise<boolean>
+  /** Select the embedding model the index is built with (persisted to settings). */
+  setEmbeddingModel: (model: string) => Promise<void>
   /** Update the index (or rebuild it); progress arrives via `updateProgress`. */
   updateIndex: (rebuild: boolean) => Promise<void>
   cancelIndex: () => Promise<void>
@@ -121,6 +123,14 @@ export const useKnowledgeStore = create<KnowledgeState>((set, get) => ({
     if (get().selected === path) set({ selected: null, content: null })
     await get().load()
     return true
+  },
+
+  setEmbeddingModel: async (model) => {
+    if (get().status?.embeddingModel === model) return
+    await window.nyx.config.setSettings({ knowledge: { embeddingModel: model } })
+    // Results came from the previous model; they are meaningless now.
+    set({ results: null, searchError: null })
+    await get().load()
   },
 
   updateIndex: async (rebuild) => {

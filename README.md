@@ -118,7 +118,7 @@ Set `agent.tools.webSearch: false` (or `NYX_AGENT_WEB_SEARCH=0`) to disable both
 
 ## Knowledge base (RAG)
 
-The **Knowledge** page manages the Markdown under `~/.nyx/knowledge/` and indexes it locally with the ONNX embedding model (`Xenova/multilingual-e5-base` by default), so the agent can answer from your own documents. Import files or a whole folder on the page, or drop them in by hand:
+The **Knowledge** page manages the Markdown under `~/.nyx/knowledge/` and indexes it locally with an ONNX embedding model you pick on the page (there is no built-in default: until one is selected and installed, indexing and search stay off), so the agent can answer from your own documents. Import files or a whole folder on the page, or drop them in by hand:
 
 ```bash
 cp ~/notes/*.md ~/.nyx/knowledge/     # hand-dropped files show up as "not indexed yet"
@@ -128,7 +128,7 @@ Chunks are stored in [LanceDB](https://lancedb.com/) with a native full-text ind
 
 Indexing is incremental (files are skipped by content hash) and lives in `~/.nyx/knowledge/.index/` (override the knowledge dir with `NYX_KNOWLEDGE_DIR`). It never runs on its own — not at startup and not on a query — so opening the app costs nothing: build or refresh it from the desktop's **Knowledge** page (`Update index` / `Rebuild`). If the embedding model isn't downloaded yet, indexing stops with a hint — download it once from **Local models** (task `feature-extraction`). While any Markdown file exists, the agent gets a read-only `search_knowledge` tool so it can ground answers in your documents (set `agent.tools.knowledge: false` in `settings.json` to disable).
 
-The desktop's **Knowledge** page manages the same base: documents appear as a file tree with a status dot each (green: in the vector store, amber: being embedded right now, grey: still to build), the selected one renders as Markdown, and you can import files or a whole folder into a target folder inside the knowledge dir — picked from a tree of the existing folders (root by default), an existing path is only replaced after you confirm, delete a document (right-click), run **Update index** to embed what changed, or **Rebuild** to drop the index and embed everything again — for example after changing `knowledge.embeddingModel`. A retrieval box at the bottom runs the same hybrid search the agent's tool uses. Files dropped into `~/.nyx/knowledge/` by hand show up as "not indexed yet" and are only picked up when you press **Update index**.
+The desktop's **Knowledge** page manages the same base: documents appear as a file tree with a status dot each (green: in the vector store, amber: being embedded right now, grey: still to build), the selected one renders as Markdown, and you can import files or a whole folder into a target folder inside the knowledge dir — picked from a tree of the existing folders (root by default), an existing path is only replaced after you confirm, delete a document (right-click), pick the local embedding model in the toolbar (the installed `feature-extraction` models; nothing is embedded until one is selected), run **Update index** to embed what changed, or **Rebuild** to drop the index and embed everything again — which is needed after switching the model. A retrieval box at the bottom runs the same hybrid search the agent's tool uses. Files dropped into `~/.nyx/knowledge/` by hand show up as "not indexed yet" and are only picked up when you press **Update index**.
 
 ## Desktop app
 
