@@ -20,12 +20,12 @@ export function knowledge(service: KnowledgeService) {
   return new Hono()
     .get("/", async (c) => c.json(await service.status()))
 
-    .get("/documents", (c) => c.json(service.list()))
+    .get("/documents", async (c) => c.json(await service.list()))
 
     /** One document's Markdown source, for the preview pane. */
-    .get("/document", zValidator("query", KnowledgeReadQuerySchema, validationHook), (c) => {
+    .get("/document", zValidator("query", KnowledgeReadQuerySchema, validationHook), async (c) => {
       try {
-        return c.json({ path: c.req.valid("query").path, content: service.read(c.req.valid("query").path) })
+        return c.json({ path: c.req.valid("query").path, content: await service.read(c.req.valid("query").path) })
       } catch (error) {
         return c.json({ error: message(error) }, 404)
       }

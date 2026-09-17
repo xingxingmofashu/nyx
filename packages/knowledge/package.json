@@ -13,7 +13,11 @@
     "@lancedb/lancedb": "catalog:",
     "@nyx/global": "workspace:*",
     "@nyx/llm": "workspace:*",
-    "@nyx/shared": "workspace:*",
-    "apache-arrow": "catalog:"
+    "apache-arrow": "catalog:",
+    "fs-extra": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "catalog:"
   }
 }

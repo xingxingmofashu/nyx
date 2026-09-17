@@ -12,8 +12,8 @@ const MAX_OUTPUT = 40_000
  * Returns {} when there are no Markdown documents, so the agent never sees a
  * dead tool.
  */
-export function createKnowledgeTools(service: KnowledgeService): ToolSet {
-  if (!service.hasDocuments()) return {}
+export async function createKnowledgeTools(service: KnowledgeService): Promise<ToolSet> {
+  if (!(await service.hasDocuments())) return {}
 
   return {
     search_knowledge: tool({

@@ -115,7 +115,7 @@ export class AgentService {
             sessionId,
             inlineAudio,
           })),
-      ...(settings.tools?.knowledge === false ? {} : createKnowledgeTools(this.knowledge)),
+      ...(settings.tools?.knowledge === false ? {} : await createKnowledgeTools(this.knowledge)),
       ...(settings.tools?.webSearch === false ? {} : createWebTools({ sessionId })),
     }
   }
