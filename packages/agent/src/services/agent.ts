@@ -100,7 +100,7 @@ export class AgentService {
 
   /** The tool set one turn (or one compaction estimate) is scoped to. */
   private async tools(
-    settings: Global.AgentSettings,
+    settings: Global.AgentSettingsSchemaType,
     workspaceDir: string,
     sessionId?: string,
     inlineAudio?: boolean,

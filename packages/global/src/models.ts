@@ -20,21 +20,21 @@ export const ModelsSchema = z
   })
   .loose()
 
-export interface ModelInfo extends z.infer<typeof ModelInfoSchema> {}
-export interface ModelsData extends z.infer<typeof ModelsSchema> {}
+export type ModelInfoSchemaType = z.infer<typeof ModelInfoSchema>
+export type ModelsSchemaType = z.infer<typeof ModelsSchema>
 
 export class Models {
   private static get file(): string {
     return join(Path.root, "models.json")
   }
 
-  static async read(): Promise<ModelsData> {
+  static async read(): Promise<ModelsSchemaType> {
     const raw = await Bun.file(Models.file).json().catch(() => undefined)
     const parsed = ModelsSchema.safeParse(raw)
     return parsed.success ? parsed.data : { provider: {} }
   }
 
-  static async register(entry: ModelsData): Promise<void> {
+  static async register(entry: ModelsSchemaType): Promise<void> {
     const merged = defu(await Models.read(), entry)
     await fs.outputJson(Models.file, merged, { spaces: 2 })
   }

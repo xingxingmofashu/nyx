@@ -5,15 +5,15 @@ import { LLM_TASKS } from "@nyx/llm";
 import { Global } from "@nyx/global";
 import type { ContextCheckpoint, TokenUsage } from "./types.ts";
 
-export type Settings = Global.Settings;
-export type AgentSettings = Global.AgentSettings;
-export type AgentToolsSettings = Global.AgentToolsSettings;
-export type AgentCompactionSettings = Global.AgentCompactionSettings;
-export type KnowledgeSettings = Global.KnowledgeSettings;
-export type AgentProviderEntry = Global.AgentProviderEntry;
-export type AgentProviderOptions = Global.AgentProviderOptions;
-export type AgentProviderLimit = Global.AgentProviderLimit;
-export type ModelInfo = Global.ModelInfo;
+export type Settings = Global.SettingsSchemaType;
+export type AgentSettings = Global.AgentSettingsSchemaType;
+export type AgentToolsSettings = Global.AgentToolsSettingsSchemaType;
+export type AgentCompactionSettings = Global.AgentCompactionSchemaType;
+export type KnowledgeSettings = Global.KnowledgeSettingsSchemaType;
+export type AgentProviderEntry = Global.AgentProviderEntrySchemaType;
+export type AgentProviderOptions = Global.AgentProviderOptionsSchemaType;
+export type AgentProviderLimit = Global.AgentProviderLimitSchemaType;
+export type ModelInfo = Global.ModelInfoSchemaType;
 export type ChatSession = Global.ChatSession;
 export type ChatSessionMeta = Global.ChatSessionMeta;
 
@@ -21,11 +21,11 @@ export const SessionIdSchema = z.string().regex(/^[A-Za-z0-9_-]+$/);
 
 /** PATCH /v1/settings — deep-merge a settings patch. */
 export const SettingsPatchSchema = Global.SettingsSchema;
-export type SettingsPatch = Global.Settings;
+export type SettingsPatch = Global.SettingsSchemaType;
 
 /** PUT /v1/settings — replace the settings file wholesale. */
 export const SettingsReplaceSchema = Global.SettingsSchema;
-export type SettingsReplace = Global.Settings;
+export type SettingsReplace = Global.SettingsSchemaType;
 
 export const WorkspaceQuerySchema = z.object({
   workspaceDir: z.string().optional(),

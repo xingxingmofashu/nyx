@@ -17,7 +17,7 @@ const port = process.env.NYX_SERVER_PORT ? Number(process.env.NYX_SERVER_PORT) :
 const host = process.env.NYX_SERVER_HOST ?? "127.0.0.1";
 
 const hub = (await Global.Settings.read()).hubBaseUrl?.replace(/\/$/, "");
-if (hub && hub !== Global.DEFAULT_HUB_URL) {
+if (hub) {
   process.env.HF_ENDPOINT = hub;
 }
 

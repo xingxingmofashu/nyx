@@ -23,7 +23,7 @@ export interface CachedModel {
   [key: string]: unknown;
 }
 
-function asCached(info: Global.ModelInfo): CachedModel {
+function asCached(info: Global.ModelInfoSchemaType): CachedModel {
   return info as CachedModel;
 }
 
@@ -80,7 +80,7 @@ export async function pullModel(
 
   throwIfAborted(modelId, signal);
 
-  const info: Global.ModelInfo = {
+  const info: Global.ModelInfoSchemaType = {
     id: modelId,
     name,
     task,

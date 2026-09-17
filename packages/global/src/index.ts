@@ -7,12 +7,8 @@ import * as workspaceModule from "./workspace.ts"
 export namespace Global {
   export import Path = pathModule.Path
   export import Workspace = workspaceModule.Workspace
-
   export import Settings = settingsModule.Settings
-  export import DEFAULT_HUB_URL = settingsModule.DEFAULT_HUB_URL
-
   export import Models = modelsModule.Models
-
   export import Session = sessionModule.Session
 
   export import SettingsSchema = settingsModule.SettingsSchema
@@ -26,15 +22,16 @@ export namespace Global {
   export import ModelInfoSchema = modelsModule.ModelInfoSchema
   export import ModelsSchema = modelsModule.ModelsSchema
 
-  export type AgentSettings = settingsModule.AgentSettings
-  export type AgentToolsSettings = settingsModule.AgentToolsSettings
-  export type AgentCompactionSettings = settingsModule.AgentCompactionSettings
-  export type KnowledgeSettings = settingsModule.KnowledgeSettings
-  export type AgentProviderEntry = settingsModule.AgentProviderEntry
-  export type AgentProviderOptions = settingsModule.AgentProviderOptions
-  export type AgentProviderLimit = settingsModule.AgentProviderLimit
-  export type ModelInfo = modelsModule.ModelInfo
-  export type ModelsData = modelsModule.ModelsData
+  export type SettingsSchemaType = settingsModule.SettingsSchemaType
+  export type AgentSettingsSchemaType = settingsModule.AgentSettingsSchemaType
+  export type AgentToolsSettingsSchemaType = settingsModule.AgentToolsSettingsSchemaType
+  export type AgentCompactionSchemaType = settingsModule.AgentCompactionSchemaType
+  export type KnowledgeSettingsSchemaType = settingsModule.KnowledgeSettingsSchemaType
+  export type AgentProviderEntrySchemaType = settingsModule.AgentProviderEntrySchemaType
+  export type AgentProviderOptionsSchemaType = settingsModule.AgentProviderOptionsSchemaType
+  export type AgentProviderLimitSchemaType = settingsModule.AgentProviderLimitSchemaType
+  export type ModelInfoSchemaType = modelsModule.ModelInfoSchemaType
+  export type ModelsSchemaType = modelsModule.ModelsSchemaType
   export type ChatSession = sessionModule.ChatSession
   export type ChatSessionMeta = sessionModule.ChatSessionMeta
   export type SessionSaveInput = sessionModule.SessionSaveInput

@@ -39,7 +39,7 @@ export class ModelsService {
   }
 
   /** List locally installed models. */
-  listModels(): Promise<Global.ModelInfo[]> {
+  listModels(): Promise<Global.ModelInfoSchemaType[]> {
     return listInstalledModels()
   }
 

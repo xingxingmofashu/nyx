@@ -4,8 +4,6 @@ import fs from "fs-extra"
 import { z } from "zod/v4"
 import { Path } from "./path.ts"
 
-export const DEFAULT_HUB_URL = "https://huggingface.co"
-
 export const AgentProviderOptionsSchema = z
   .object({
     baseURL: z.string().optional(),
@@ -80,40 +78,42 @@ export const SettingsSchema = z
   })
   .loose()
 
-export interface Settings extends z.infer<typeof SettingsSchema> {}
+export type SettingsSchemaType = z.infer<typeof SettingsSchema>
 
-export type AgentSettings = z.infer<typeof AgentSettingsSchema>
-export type AgentToolsSettings = z.infer<typeof AgentToolsSettingsSchema>
-export type AgentCompactionSettings = z.infer<typeof AgentCompactionSchema>
-export type KnowledgeSettings = z.infer<typeof KnowledgeSettingsSchema>
-export type AgentProviderEntry = z.infer<typeof AgentProviderEntrySchema>
-export type AgentProviderOptions = z.infer<typeof AgentProviderOptionsSchema>
-export type AgentProviderLimit = z.infer<typeof AgentProviderLimitSchema>
+export type AgentSettingsSchemaType = z.infer<typeof AgentSettingsSchema>
+export type AgentToolsSettingsSchemaType = z.infer<typeof AgentToolsSettingsSchema>
+export type AgentCompactionSchemaType = z.infer<typeof AgentCompactionSchema>
+export type KnowledgeSettingsSchemaType = z.infer<typeof KnowledgeSettingsSchema>
+export type AgentProviderEntrySchemaType = z.infer<typeof AgentProviderEntrySchema>
+export type AgentProviderOptionsSchemaType = z.infer<typeof AgentProviderOptionsSchema>
+export type AgentProviderLimitSchemaType = z.infer<typeof AgentProviderLimitSchema>
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
-export namespace Settings {
-  const file = (): string => join(Path.root, "settings.json")
-
-  export async function read(): Promise<Settings> {
-    const raw = await Bun.file(file()).json().catch(() => undefined)
-    const parsed = SettingsSchema.safeParse(raw)
-    if (parsed.success) return parsed.data
-    return isRecord(raw) ? (raw as Settings) : {}
+export class Settings {
+  private static get file(): string {
+    return join(Path.root, "settings.json")
   }
 
-  export async function update(patch: Settings): Promise<Settings> {
-    const merged = defu(patch, await read())
-    await fs.outputJson(file(), merged, { spaces: 2 })
+  static async read(): Promise<SettingsSchemaType> {
+    const raw = await Bun.file(Settings.file).json().catch(() => undefined)
+    const parsed = SettingsSchema.safeParse(raw)
+    if (parsed.success) return parsed.data
+    return isRecord(raw) ? (raw as SettingsSchemaType) : {}
+  }
+
+  static async update(patch: SettingsSchemaType): Promise<SettingsSchemaType> {
+    const merged = defu(patch, await Settings.read())
+    await fs.outputJson(Settings.file, merged, { spaces: 2 })
     return merged
   }
 
-  export async function replace(settings: Settings): Promise<Settings> {
+  static async replace(settings: SettingsSchemaType): Promise<SettingsSchemaType> {
     const parsed = SettingsSchema.safeParse(settings)
     const next = parsed.success ? parsed.data : settings
-    await fs.outputJson(file(), next, { spaces: 2 })
+    await fs.outputJson(Settings.file, next, { spaces: 2 })
     return next
   }
 }

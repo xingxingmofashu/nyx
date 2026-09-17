@@ -85,7 +85,7 @@ export interface ContextCheckpoint {
   reason: "auto" | "manual";
 }
 
-/** Context-compaction policy, mirroring `AgentCompactionSettings` from settings. */
+/** Context-compaction policy, mirroring `AgentCompactionSchemaType` from settings. */
 export interface CompactionPolicy {
   /** Summarize automatically when the window fills (default true). */
   auto?: boolean;

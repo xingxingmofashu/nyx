@@ -42,7 +42,7 @@ export class Provider {
    * `<providerId>/<modelId>` ref resolved against the `provider` map. Throws with
    * an actionable message when the ref is missing/malformed or unknown.
    */
-  static resolveModelConfig(settings: Global.AgentSettings): ResolvedAgentModel {
+  static resolveModelConfig(settings: Global.AgentSettingsSchemaType): ResolvedAgentModel {
     const ref = settings.model;
     const slash = ref ? ref.indexOf("/") : -1;
     if (!ref || slash <= 0) {

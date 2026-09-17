@@ -50,7 +50,7 @@ export async function configureEnv(options: ModelRuntimeOptions = {}): Promise<v
     applyEnv({ remoteHost: process.env.HF_ENDPOINT });
   } else {
     const fromSettings = settings.hubBaseUrl;
-    if (fromSettings && fromSettings !== Global.DEFAULT_HUB_URL) {
+    if (fromSettings) {
       applyEnv({ remoteHost: fromSettings });
     }
   }
