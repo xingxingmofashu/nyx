@@ -20,13 +20,10 @@ const TASK_OPTIONS: Array<{ id: LLMTask; label: string }> = [
   { id: "image-to-image", label: "Image to image" },
   { id: "text-to-speech", label: "Text to speech" },
   { id: "automatic-speech-recognition", label: "Automatic speech recognition" },
+  { id: "feature-extraction", label: "Feature extraction (embeddings)" },
 ]
 
-const TASK_LABEL: Record<string, string> = {
-  "image-to-image": "Image to image",
-  "text-to-speech": "Text to speech",
-  "automatic-speech-recognition": "Automatic speech recognition",
-}
+const TASK_LABEL: Record<string, string> = Object.fromEntries(TASK_OPTIONS.map((t) => [t.id, t.label]))
 
 /** Manage installed models: pull new ones with live progress, or remove cached ones. */
 export function ModelsPage() {
@@ -95,7 +92,8 @@ export function ModelsPage() {
               <Select
                 value={task}
                 onValueChange={(v) => {
-                  if (v === "image-to-image" || v === "text-to-speech" || v === "automatic-speech-recognition") setTask(v)
+                  const option = TASK_OPTIONS.find((t) => t.id === v)
+                  if (option) setTask(option.id)
                 }}
               >
                 <SelectTrigger id="task" size="sm" className="w-40">
