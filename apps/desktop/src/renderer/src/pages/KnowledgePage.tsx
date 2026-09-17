@@ -128,13 +128,13 @@ export function KnowledgePage() {
         <CardContent className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <ImportTargetPicker value={target} documents={documents} onChange={setTarget} />
-            <Button onClick={() => void runImport(importFiles)}>
-              <FilePlus data-icon="inline-start" />
-              Import files
-            </Button>
-            <Button variant="outline" onClick={() => void runImport(importFolder)}>
+            <Button onClick={() => void runImport(importFolder)}>
               <FolderPlus data-icon="inline-start" />
               Import folder
+            </Button>
+            <Button variant="outline" onClick={() => void runImport(importFiles)}>
+              <FilePlus data-icon="inline-start" />
+              Import files
             </Button>
             <Separator orientation="vertical" className="mx-1 h-6" />
             <Button

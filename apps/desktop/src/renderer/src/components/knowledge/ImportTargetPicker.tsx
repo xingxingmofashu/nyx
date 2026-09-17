@@ -21,13 +21,21 @@ interface ImportTargetPickerProps {
  * a forgotten choice cannot send files somewhere unseen.
  */
 export function ImportTargetPicker({ value, documents, onChange }: ImportTargetPickerProps) {
+  const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState("")
   const needle = filter.trim().toLowerCase()
   const folders = buildTree(documents).folders
   const visible = needle === "" ? folders : filterFolders(folders, needle)
 
   return (
-    <Popover>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        // Reopening starts from the whole tree, not from the last search.
+        if (next) setFilter("")
+      }}
+    >
       <PopoverTrigger
         render={
           <Button
