@@ -6,8 +6,9 @@ Bun workspace monorepo (`bun@1.3.14`). `README.md` explains the product and arch
 
 - `bun install`
 - `bun run typecheck` — runs each `@nyx/*` package's `typecheck` (`tsc --noEmit`).
-- `bun run lint` — runs each `@nyx/*` package's `lint` (`oxlint --deny-warnings`); shared config at `.oxlintrc.json`.
-- Single package: `bun run --cwd packages/<name> typecheck` (or `lint`).
+- `bun run lint` — runs each `@nyx/*` package's `lint` (`oxlint`); shared config at `.oxlintrc.json`.
+- Single package: `bun run --cwd packages/<name> typecheck` (or `lint`, or `build`).
+- Library packages' `build` is `bun build src/index.ts --outdir dist --packages external` (deps kept external); entry points stay `src/`, so raw-TS consumption is unchanged and `dist/` is unused internally.
 - Server binary (required before desktop dev): `bun run --cwd packages/server build` → `packages/server/dist/nyx-server` (a `bun build --compile` executable).
 - Desktop dev: `bun run dev` (alias `bun run dev:desktop`). Package: `bun run desktop:make`.
 

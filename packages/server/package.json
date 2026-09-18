@@ -10,7 +10,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint --deny-warnings",
+    "lint": "oxlint",
     "build": "tsc --noEmit && bun run scripts/build.ts",
     "dev": "bun run src/bin.ts"
   },

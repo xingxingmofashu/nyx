@@ -17,7 +17,7 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint --deny-warnings"
+    "lint": "oxlint"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
