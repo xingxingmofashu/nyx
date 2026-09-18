@@ -12,7 +12,7 @@ const nodeBuiltins = [...builtinModules, ...builtinModules.map((name) => `node:$
  * cannot be bundled (native .node/.dylib), and @huggingface/transformers is
  * kept external so its node build resolves onnxruntime-node at runtime from
  * node_modules. Node builtins are externalized too (bare and `node:`-prefixed).
- * Everything else (@nyx/shared — pure TS; the desktop type-only imports the
+ * Everything else (the desktop's own pure TS; the desktop type-only imports the
  * server wire schema) is bundled into .vite/build.
  */
 export default defineConfig({

@@ -10,11 +10,11 @@ import type {
   KnowledgeIndexRequestInput,
   KnowledgeSearchRequestInput,
   ModelInfo,
+  ModelLimit,
   SavedAttachment,
   SessionSaveRequest,
   Settings,
 } from "@nyx/server/schema"
-import type { CatalogLimit } from "@nyx/shared"
 import type { AppType } from "@nyx/server/api"
 import { parseJsonEventStream, uiMessageChunkSchema } from "ai"
 import { createParser } from "eventsource-parser"
@@ -157,10 +157,10 @@ export class NyxServerClient {
     return (await res.json()) as Settings
   }
 
-  async catalogLimit(provider: string, model: string): Promise<CatalogLimit | null> {
+  async catalogLimit(provider: string, model: string): Promise<ModelLimit | null> {
     const res = await this.client.v1.catalog.limit.$get({ query: { provider, model } })
     if (!res.ok) throw new Error(await errorMessage(res, "catalog/limit"))
-    return (await res.json()) as CatalogLimit | null
+    return (await res.json()) as ModelLimit | null
   }
 
   async listSessions(workspaceDir?: string): Promise<ChatSessionMeta[]> {

@@ -10,7 +10,6 @@ import {
   type ToolSet,
   type UIMessage,
 } from "ai";
-import { estimateTokens } from "@nyx/shared";
 import type { CompactionPolicy, ContextCheckpoint, TokenUsage } from "./types.ts";
 import SUMMARY_TEMPLATE from "./compaction-prompt.txt";
 
@@ -51,6 +50,14 @@ const PRUNE_TURNS = 2;
 const CLEARED = "[Old tool result content cleared]";
 /** Approximate token cost of one tool's name + JSON schema. */
 const TOOL_SCHEMA_TOKENS = 300;
+
+/**
+ * Rough token estimate from character count (~4 chars/token). Deliberately
+ * heuristic: it drives context-budget decisions without a tokenizer dependency.
+ */
+function estimateTokens(text: string): number {
+  return Math.max(0, Math.round(text.length / 4));
+}
 
 const UPDATE_INSTRUCTIONS = `The <prior-summary> summarizes everything that happened before the <conversation>. Construct a new summary that combines both. The <prior-summary> is discarded after this: anything you do not carry into the new summary is lost.
 

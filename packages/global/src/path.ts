@@ -1,11 +1,11 @@
 import { homedir } from "node:os"
 import { join } from "node:path"
 
-const CONFIG_DIR = ".nyx"
-
 export class Path {
+  private static readonly CONFIG_DIR = ".nyx"
+
   static get root(): string {
-    return join(homedir(), CONFIG_DIR)
+    return join(homedir(), Path.CONFIG_DIR)
   }
 
   static get models(): string {

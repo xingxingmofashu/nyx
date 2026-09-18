@@ -1,7 +1,15 @@
 import { realpathSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import isPathInside from "is-path-inside";
 import { Global } from "@nyx/global";
-import { isWithinPath } from "@nyx/shared/node";
+
+/**
+ * True when `target` is `root` or a descendant of it. Lexical (no symlink
+ * resolution); callers that must also defeat symlinks realpath both sides.
+ */
+export function isWithinPath(root: string, target: string): boolean {
+  return target === root || isPathInside(target, root);
+}
 
 /**
  * Resolve `p` under `root`, rejecting paths that escape the workspace. Both the

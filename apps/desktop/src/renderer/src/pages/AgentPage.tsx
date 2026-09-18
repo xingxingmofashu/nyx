@@ -3,7 +3,7 @@ import { Bot, FolderOpen, Minimize2, RotateCcw, Settings2 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useChat } from "@ai-sdk/react"
 import { getToolName, isReasoningUIPart, isToolUIPart } from "ai"
-import { newId } from "@nyx/shared"
+import { nanoid } from "nanoid"
 import { agentChat } from "../lib/chat"
 import { baseName } from "../lib/format"
 import { useAgentStore } from "../store/agent"
@@ -145,7 +145,7 @@ export function AgentPage() {
     setAttachments((prev) => [
       ...prev,
       ...images.slice(0, Math.max(0, MAX_ATTACHMENTS - prev.length)).map((file) => ({
-        id: newId(),
+        id: nanoid(),
         name: file.name || "image",
         url: URL.createObjectURL(file),
         file,

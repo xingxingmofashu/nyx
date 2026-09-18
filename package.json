@@ -34,6 +34,7 @@
       "@lancedb/lancedb": "0.38.0",
       "apache-arrow": "18.1.0",
       "eventsource-parser": "4.1.0",
+      "date-fns": "4.4.0",
       "fs-extra": "11.4.0",
       "htmlparser2": "8.0.2",
       "is-path-inside": "4.0.0",

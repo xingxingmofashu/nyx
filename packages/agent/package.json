@@ -20,9 +20,10 @@
     "@nyx/global": "workspace:*",
     "@nyx/knowledge": "workspace:*",
     "@nyx/llm": "workspace:*",
-    "@nyx/shared": "workspace:*",
     "ai": "catalog:",
     "htmlparser2": "catalog:",
+    "is-path-inside": "catalog:",
+    "mrmime": "catalog:",
     "turndown": "catalog:",
     "zod": "catalog:"
   },

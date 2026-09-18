@@ -79,6 +79,13 @@ export const CatalogLimitQuerySchema = z.object({
 });
 export type CatalogLimitQuery = z.infer<typeof CatalogLimitQuerySchema>;
 
+/** Provider-reported limits for one model (the models.dev catalog shape). */
+export interface ModelLimit {
+  context?: number;
+  input?: number;
+  output?: number;
+}
+
 /** GET /v1/environment — on-disk locations. */
 export interface AppEnvironment {
   modelsDir: string;

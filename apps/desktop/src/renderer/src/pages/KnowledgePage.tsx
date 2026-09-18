@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { FilePlus, FolderPlus, HardDrive, Library, RefreshCw, Search, Trash2 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import { relativeTime } from "@nyx/shared"
+import { relativeTime } from "../lib/format"
 import { useKnowledgeStore } from "../store/knowledge"
 import type { KnowledgeDocument, KnowledgeImportResult, KnowledgeIndexEvent } from "../../../shared/types"
 import { normalizeImportTarget } from "../../../shared/knowledge"

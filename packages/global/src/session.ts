@@ -4,19 +4,6 @@ import { z } from "zod/v4"
 import { Path } from "./path.ts"
 import { Workspace } from "./workspace.ts"
 
-const SESSION_ID_RE = /^[A-Za-z0-9_-]+$/
-
-const StoredMetaSchema = z
-  .object({
-    id: z.string().regex(SESSION_ID_RE),
-    title: z.string(),
-    workspaceDir: z.string().optional(),
-    pinned: z.boolean().optional(),
-    createdAt: z.string(),
-    updatedAt: z.string(),
-  })
-  .loose()
-
 export interface ChatSessionMeta {
   id: string
   title: string
@@ -38,8 +25,21 @@ export interface SessionSaveInput {
 }
 
 export class Session {
+  private static readonly SESSION_ID_RE = /^[A-Za-z0-9_-]+$/
+
+  private static readonly StoredMetaSchema = z
+    .object({
+      id: z.string().regex(Session.SESSION_ID_RE),
+      title: z.string(),
+      workspaceDir: z.string().optional(),
+      pinned: z.boolean().optional(),
+      createdAt: z.string(),
+      updatedAt: z.string(),
+    })
+    .loose()
+
   static isValidId(id: string): boolean {
-    return SESSION_ID_RE.test(id)
+    return Session.SESSION_ID_RE.test(id)
   }
 
   static async list(workspaceDir?: string): Promise<ChatSessionMeta[]> {
@@ -145,7 +145,7 @@ export class Session {
 
   private static async readMeta(path: string, fallbackWorkspaceDir?: string): Promise<ChatSessionMeta | undefined> {
     const raw = await Bun.file(path).json().catch(() => undefined)
-    const parsed = StoredMetaSchema.safeParse(raw)
+    const parsed = Session.StoredMetaSchema.safeParse(raw)
     if (!parsed.success) return undefined
     const { id, title, createdAt, updatedAt, pinned } = parsed.data
     const workspaceDir = parsed.data.workspaceDir ?? fallbackWorkspaceDir

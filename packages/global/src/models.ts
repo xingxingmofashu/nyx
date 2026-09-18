@@ -16,7 +16,10 @@ export const ModelInfoSchema = z
 
 export const ModelsSchema = z
   .object({
-    provider: z.record(z.string(), z.object({ models: z.record(z.string(), ModelInfoSchema) })),
+    provider: z.record(
+      z.string(),
+      z.object({ models: z.record(z.string(), ModelInfoSchema) }),
+    ),
   })
   .loose()
 
@@ -29,7 +32,9 @@ export class Models {
   }
 
   static async read(): Promise<ModelsSchemaType> {
-    const raw = await Bun.file(Models.file).json().catch(() => undefined)
+    const raw = await Bun.file(Models.file)
+      .json()
+      .catch(() => undefined)
     const parsed = ModelsSchema.safeParse(raw)
     return parsed.success ? parsed.data : { provider: {} }
   }

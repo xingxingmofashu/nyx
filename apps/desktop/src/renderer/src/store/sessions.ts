@@ -1,6 +1,6 @@
 import { create } from "zustand"
-import { newId } from "@nyx/shared"
-import { messagesToMarkdown, sessionTitle } from "@nyx/shared/chat"
+import { nanoid } from "nanoid"
+import { messagesToMarkdown, sessionTitle } from "../lib/transcript"
 import type { ChatSessionMeta, ChatSessionSaveRequest, CompactionResult, UIMessage } from "../../../shared/types"
 import { agentChat } from "../lib/chat"
 import { useAgentStore } from "./agent"
@@ -65,7 +65,7 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
     // Both entry points ("Agent" in the sidebar, "New session" in the header)
     // start a clean slate, so a failed turn's error doesn't follow you over.
     agentChat.clearError()
-    set({ activeId: newId() })
+    set({ activeId: nanoid() })
   },
 
   open: async (id) => {
@@ -88,7 +88,7 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
   ensureId: () => {
     const current = get().activeId
     if (current) return current
-    const id = newId()
+    const id = nanoid()
     set({ activeId: id })
     return id
   },
@@ -113,7 +113,7 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
     const session = await window.nyx.sessions.get(meta.workspaceDir, id)
     if (!session) return
     await window.nyx.sessions.save({
-      id: newId(),
+      id: nanoid(),
       title: `${session.title} (copy)`,
       workspaceDir: meta.workspaceDir,
       messages: session.messages,
@@ -149,7 +149,7 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
   persist: async () => {
     const messages = agentChat.messages
     if (!messages.some((message) => message.role === "user")) return
-    const id = get().activeId ?? newId()
+    const id = get().activeId ?? nanoid()
     const existing = get().sessions.find((session) => session.id === id)
     const workspaceDir = useAgentStore.getState().workspaceDir
     const request: ChatSessionSaveRequest = {

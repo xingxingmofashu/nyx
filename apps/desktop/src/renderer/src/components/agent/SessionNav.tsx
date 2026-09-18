@@ -11,7 +11,7 @@ import {
   Search,
   Trash2,
 } from "lucide-react"
-import { baseName, relativeTime } from "@nyx/shared"
+import { baseName, relativeTime } from "../../lib/format"
 import { useAgentStore } from "../../store/agent"
 import { useSessionsStore } from "../../store/sessions"
 import {

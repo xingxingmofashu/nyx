@@ -1,7 +1,7 @@
 import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { lookupCatalogLimit, type CatalogLimit, type ModelsCatalog } from "@nyx/shared";
 import { Global } from "@nyx/global";
+import type { ModelLimit } from "./schema.ts";
 
 /**
  * The models.dev catalog: model metadata (notably the context window) for
@@ -14,7 +14,8 @@ import { Global } from "@nyx/global";
  * `~/.nyx/cache/models.json`. Set `NYX_DISABLE_MODELS_FETCH=1` to stay offline.
  */
 
-export type { CatalogLimit };
+/** The slice of the models.dev catalog this repo needs. */
+type ModelsCatalog = Record<string, { models?: Record<string, { limit?: ModelLimit }> } | undefined>;
 
 const DEFAULT_URL = "https://models.dev/api.json";
 const TTL_MS = 5 * 60 * 1000;
@@ -110,7 +111,31 @@ async function refresh(): Promise<void> {
   loadedAt = Date.now();
 }
 
+/**
+ * Look up a model's limits in the catalog. The provider id in a user's settings
+ * does not always match the catalog's (e.g. `opencode` vs `opencode-go`), so an
+ * exact provider match is tried first and then the model id is matched anywhere
+ * in the catalog. Returns undefined when the model is unknown.
+ */
+function lookupCatalogLimit(
+  catalog: ModelsCatalog | undefined,
+  providerId: string,
+  modelId: string,
+): ModelLimit | undefined {
+  if (!catalog || !modelId) return undefined;
+  const direct = catalog[providerId]?.models?.[modelId]?.limit;
+  if (direct) return direct;
+
+  const wanted = modelId.toLowerCase();
+  for (const provider of Object.values(catalog)) {
+    for (const [id, model] of Object.entries(provider?.models ?? {})) {
+      if (id.toLowerCase() === wanted && model.limit) return model.limit;
+    }
+  }
+  return undefined;
+}
+
 /** Look up a model's limits in the loaded catalog (see `lookupCatalogLimit`). */
-export function lookupModelLimit(providerId: string, modelId: string): CatalogLimit | undefined {
+export function lookupModelLimit(providerId: string, modelId: string): ModelLimit | undefined {
   return lookupCatalogLimit(catalog, providerId, modelId);
 }

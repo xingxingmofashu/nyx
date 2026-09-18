@@ -29,6 +29,7 @@ import type {
   AgentSettings,
   ChatSessionMeta,
   ModelInfo,
+  ModelLimit,
   Settings,
 } from "@nyx/server/schema"
 import type { LLM } from "@nyx/llm"
@@ -141,11 +142,7 @@ export interface ProviderModels {
 }
 
 /** Provider-reported limits for one model (models.dev), for the context meter. */
-export interface ModelLimits {
-  context?: number
-  input?: number
-  output?: number
-}
+export type ModelLimits = ModelLimit
 /** Progress pushed main → renderer while one knowledge index run is in flight. */
 export interface KnowledgeIndexEvent extends KnowledgeIndexProgress {
   /** True on the run's last frame (done, cancelled or error). */

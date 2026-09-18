@@ -21,9 +21,9 @@
     "@nyx/agent": "workspace:*",
     "@nyx/global": "workspace:*",
     "@nyx/llm": "workspace:*",
-    "@nyx/shared": "workspace:*",
     "ai": "catalog:",
     "hono": "catalog:",
+    "nanoid": "catalog:",
     "zod": "catalog:"
   }
 }

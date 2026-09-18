@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { parseContextLimit } from "@nyx/shared"
+import { parseContextLimit } from "../lib/model"
 
 interface AgentSettingsState {
   /** Current agent model, e.g. "OpenCode Go · opencode/mimo-v2.5". */

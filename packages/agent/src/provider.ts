@@ -1,5 +1,4 @@
 import { LLM } from "@nyx/llm"
-import { parseContextLimit } from "@nyx/shared";
 import { lookupModelLimit } from "./models-dev.ts";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
@@ -9,6 +8,25 @@ import type { ResolvedAgentModel } from "./types.ts";
 
 const OPENAI_COMPATIBLE = "@ai-sdk/openai-compatible";
 const ANTHROPIC = "@ai-sdk/anthropic";
+
+/**
+ * Parse a context-window limit: a raw token count, or a `"128k"` / `"1m"` style
+ * string. Returns `undefined` for anything unusable, so callers can tell "not
+ * configured" apart from a real value (a made-up default would silently compact
+ * the wrong amount).
+ */
+function parseContextLimit(value: number | string | undefined): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) return Math.round(value);
+  if (typeof value === "string") {
+    const match = /^\s*([\d.]+)\s*([km])?\s*$/i.exec(value);
+    if (match) {
+      const scale = match[2]?.toLowerCase() === "k" ? 1_000 : match[2]?.toLowerCase() === "m" ? 1_000_000 : 1;
+      const scaled = Number(match[1]) * scale;
+      if (Number.isFinite(scaled) && scaled > 0) return Math.round(scaled);
+    }
+  }
+  return undefined;
+}
 
 /**
  * The agent's provider layer, in one place:

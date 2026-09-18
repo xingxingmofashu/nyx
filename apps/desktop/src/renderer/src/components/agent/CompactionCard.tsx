@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react"
 import { ChevronRight, History, Minimize2 } from "lucide-react"
-import { relativeTime } from "@nyx/shared"
+import { relativeTime } from "../../lib/format"
 import type { UIMessage } from "ai"
 import { isReasoningUIPart, isTextUIPart, isToolUIPart, getToolName } from "ai"
 import { Badge } from "../ui/badge"

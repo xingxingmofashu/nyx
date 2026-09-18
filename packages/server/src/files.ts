@@ -1,8 +1,8 @@
 import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { extname, isAbsolute, join, resolve } from "node:path";
 import { Global } from "@nyx/global";
-import { mimeFor, newId } from "@nyx/shared";
-import { isWithinPath } from "@nyx/shared/node";
+import { isWithinPath, mimeFor } from "@nyx/agent";
+import { nanoid } from "nanoid";
 import type { AttachmentSaveRequest, SavedAttachment } from "@nyx/agent/schema";
 
 const MAX_BYTES = 20 * 1024 * 1024;
@@ -63,7 +63,7 @@ export async function saveAttachment(input: AttachmentSaveRequest): Promise<Save
   const name = safeName(input.name);
   const ext = extname(name) || IMAGE_EXT[input.mimeType] || ".png";
   const stem = name.slice(0, name.length - extname(name).length).slice(0, 60) || "image";
-  const target = join(dir, `${input.sessionId}-${stem}-${newId()}${ext}`);
+  const target = join(dir, `${input.sessionId}-${stem}-${nanoid()}${ext}`);
   await writeFile(target, data);
 
   return { path: target, name, mimeType: input.mimeType, size: data.byteLength };
