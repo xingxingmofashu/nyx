@@ -61,11 +61,11 @@ export class Files {
   }
 
   private static async readDataUrl(path: string, workspaceDir?: string): Promise<string | null> {
-    const configured = workspaceDir ?? (await Global.Settings.read()).agent?.workspaceDir ?? process.cwd()
-    const workspaceRoot = resolve(configured)
-    const target = isAbsolute(path) ? resolve(path) : resolve(workspaceRoot, path)
+    const configured = workspaceDir ?? (await Global.Settings.read()).agent?.workspaceDir
+    const workspaceRoot = configured ? resolve(configured) : undefined
+    const target = isAbsolute(path) ? resolve(path) : resolve(workspaceRoot ?? Global.Path.sessions, path)
     try {
-      for (const root of [workspaceRoot, Global.Path.sessions]) {
+      for (const root of [Global.Path.sessions, ...(workspaceRoot ? [workspaceRoot] : [])]) {
         if (!Agent.Workspace.isWithin(root, target)) continue
         const realRoot = await realpath(root).catch(() => root)
         const realTarget = await realpath(target)

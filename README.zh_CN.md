@@ -47,7 +47,7 @@ bun run dev                           # 启动桌面应用
 
 ## agent 模型
 
-**Agent** 页面是一个对话：**agent 模型是远程模型**（自带 API key），工具是本地编码工具（`read_file`、`grep`、`glob`、`write_file`、`edit_file`、`bash`）。只读工具自动执行；写文件与 shell 命令在对话里等待审批。所有操作限制在页面顶部选择的工作区内（未选择时用应用的工作目录）。
+**Agent** 页面是一个对话：**agent 模型是远程模型**（自带 API key），工具是本地编码工具（`read_file`、`grep`、`glob`、`write_file`、`edit_file`、`bash`）。只读工具自动执行；写文件与 shell 命令在对话里等待审批。所有操作限制在页面顶部选择的工作区内（未选择目录前无法发送消息）。
 
 agent 循环运行在本地 server（`POST /v1/agent`）：只对外发出模型请求，文件与命令都不出本机。在 `~/.nyx/settings.json` 中配置 agent 模型 —— `agent.model` 是指向 `agent.provider` 的 `<providerId>/<modelId>` 引用：
 

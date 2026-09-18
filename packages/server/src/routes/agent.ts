@@ -40,7 +40,7 @@ export class Agent {
 
         const request: AgentApi.Services.AgentRequest = {
           messages: validated,
-          ...(workspaceDir !== undefined ? { workspaceDir } : {}),
+          workspaceDir,
           ...(sessionId !== undefined ? { sessionId } : {}),
           ...(inlineAudio !== undefined ? { inlineAudio } : {}),
           ...(forceCompact !== undefined ? { forceCompact } : {}),
@@ -53,7 +53,7 @@ export class Agent {
 
         const request: AgentApi.Services.CompactRequest = {
           messages: validated,
-          ...(workspaceDir !== undefined ? { workspaceDir } : {}),
+          workspaceDir,
           ...(sessionId !== undefined ? { sessionId } : {}),
         }
         return c.json(await service.compact(request), 200)

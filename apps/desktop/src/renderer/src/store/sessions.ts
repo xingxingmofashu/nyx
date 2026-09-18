@@ -48,13 +48,16 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
   compactNotice: undefined,
 
   load: async () => {
-    // Chats created before a workspace is picked persist to the `_default`
-    // workspace (workspaceDir ""), so list that rather than hiding them.
     const workspaceDir = useAgentStore.getState().workspaceDir
+    if (!workspaceDir) {
+      set({ sessions: [] })
+      return
+    }
     set({ sessions: await window.nyx.sessions.list(workspaceDir) })
   },
 
   restoreLast: async (workspaceDir) => {
+    if (!workspaceDir) return
     const active = await window.nyx.sessions.getActive(workspaceDir)
     if (active) await get().open(active)
   },
@@ -149,9 +152,10 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
   persist: async () => {
     const messages = agentChat.messages
     if (!messages.some((message) => message.role === "user")) return
+    const workspaceDir = useAgentStore.getState().workspaceDir
+    if (!workspaceDir) return
     const id = get().activeId ?? nanoid()
     const existing = get().sessions.find((session) => session.id === id)
-    const workspaceDir = useAgentStore.getState().workspaceDir
     const request: ChatSessionSaveRequest = {
       id,
       title: existing?.title ?? sessionTitle(messages),

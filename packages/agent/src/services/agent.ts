@@ -21,7 +21,7 @@ import { Knowledge } from "./knowledge.ts"
 import DEFAULT_SYSTEM_PROMPT from "../system-prompt.txt"
 
 export const AgentOptionsSchema = z.object({
-  workspaceDir: z.string().optional(),
+  workspaceDir: z.string().min(1),
   sessionId: z.string().optional(),
   inlineAudio: z.boolean().optional(),
   forceCompact: z.boolean().optional(),
@@ -39,14 +39,14 @@ export interface AgentRequest extends AgentOptions {
 
 export const CompactRequestSchema = z.object({
   messages: z.array(z.unknown()).min(1),
-  workspaceDir: z.string().optional(),
+  workspaceDir: z.string().min(1),
   sessionId: z.string().optional(),
 })
 export type CompactRequestInput = z.infer<typeof CompactRequestSchema>
 
 export interface CompactRequest {
   messages: UIMessage[]
-  workspaceDir?: string
+  workspaceDir: string
   sessionId?: string
 }
 
@@ -90,7 +90,7 @@ export class Agent {
       )
     }
 
-    const workspaceDir = resolve(request.workspaceDir ?? settings.workspaceDir ?? process.cwd())
+    const workspaceDir = resolve(request.workspaceDir)
     const tools = await this.tools(settings, workspaceDir, request.sessionId, request.inlineAudio)
     return Loop.stream({
       model,
@@ -108,7 +108,7 @@ export class Agent {
   async compact(request: CompactRequest): Promise<CompactResponse> {
     const settings = (await Global.Settings.read()).agent ?? {}
     const model = Provider.resolveModelConfig(settings)
-    const workspaceDir = resolve(request.workspaceDir ?? settings.workspaceDir ?? process.cwd())
+    const workspaceDir = resolve(request.workspaceDir)
     const tools = await this.tools(settings, workspaceDir, request.sessionId)
     const systemPrompt = settings.systemPrompt ?? DEFAULT_SYSTEM_PROMPT
 

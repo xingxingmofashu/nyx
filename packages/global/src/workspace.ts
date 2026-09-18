@@ -13,7 +13,6 @@ export class Workspace {
       .replace(/_/g, "__")
       .replace(/-/g, "_-")
       .replace(/[\\/]/g, "-")
-    if (!key) return "_default"
     if (key.length <= 180) return key
     const hash = new Bun.CryptoHasher("sha1").update(key).digest("hex").slice(0, 8)
     return `${key.slice(0, 160)}-${hash}`

@@ -162,7 +162,7 @@ export function AgentPage() {
 
   const submit = () => {
     const text = input.trim()
-    if (busy || uploading || (!text && attachments.length === 0)) return
+    if (!workspaceDir || busy || uploading || (!text && attachments.length === 0)) return
     const pending = attachments
     setAttachError(null)
 
@@ -217,11 +217,13 @@ export function AgentPage() {
     clearError()
   }
 
-  const placeholder = !configured
-    ? "Configure the agent model in Settings"
-    : busy
-      ? "Working…"
-      : "Message the agent… (Enter to send)"
+  const placeholder = !workspaceDir
+    ? "Choose a workspace to start"
+    : !configured
+      ? "Configure the agent model in Settings"
+      : busy
+        ? "Working…"
+        : "Message the agent… (Enter to send)"
 
   return (
     <MessageScrollerProvider autoScroll>
@@ -245,7 +247,7 @@ export function AgentPage() {
                 onClick={() => void compact()}
                 aria-label="Compact context"
                 title="Summarize the earlier conversation now to free up context"
-                disabled={busy || compacting || messages.length === 0}
+                disabled={!workspaceDir || busy || compacting || messages.length === 0}
               >
                 {compacting ? <Spinner /> : <Minimize2 />}
               </Button>
@@ -271,18 +273,27 @@ export function AgentPage() {
                   <EmptyMedia variant="icon">
                     <Bot />
                   </EmptyMedia>
-                  <EmptyTitle>{configured ? "Ready when you are" : "No agent model configured"}</EmptyTitle>
-                <EmptyDescription>
-                  {configured
-                    ? "Ask the agent to read or edit files, run commands, or use local models in the workspace."
-                    : "Set the model and provider on the Settings page, then send a message."}
-                </EmptyDescription>
-                {!configured && (
-                  <Button variant="outline" size="sm" onClick={() => navigate("/settings")}>
-                    <Settings2 data-icon="inline-start" />
-                    Open settings
-                  </Button>
-                )}
+                  <EmptyTitle>
+                    {!workspaceDir ? "Choose a workspace" : configured ? "Ready when you are" : "No agent model configured"}
+                  </EmptyTitle>
+                  <EmptyDescription>
+                    {!workspaceDir
+                      ? "The agent's file and shell tools run inside the folder you pick."
+                      : configured
+                        ? "Ask the agent to read or edit files, run commands, or use local models in the workspace."
+                        : "Set the model and provider on the Settings page, then send a message."}
+                  </EmptyDescription>
+                  {!workspaceDir ? (
+                    <Button variant="outline" size="sm" onClick={() => void pickWorkspace()}>
+                      <FolderOpen data-icon="inline-start" />
+                      Choose folder
+                    </Button>
+                  ) : !configured ? (
+                    <Button variant="outline" size="sm" onClick={() => navigate("/settings")}>
+                      <Settings2 data-icon="inline-start" />
+                      Open settings
+                    </Button>
+                  ) : undefined}
                 </EmptyHeader>
               </Empty>
             ) : (
@@ -442,7 +453,7 @@ export function AgentPage() {
             onSend={submit}
             onAbort={() => stop()}
             streaming={busy}
-            disabled={!configured || busy || uploading}
+            disabled={!configured || !workspaceDir || busy || uploading}
             placeholder={placeholder}
             attachments={attachments}
             onAttach={workspaceDir ? addAttachments : undefined}
@@ -450,7 +461,7 @@ export function AgentPage() {
             trailing={
               <VoiceInputButton
                 model={voiceModel}
-                disabled={!configured || busy}
+                disabled={!configured || !workspaceDir || busy}
                 onTranscribed={(text) => void sendMessage({ text })}
               />
             }

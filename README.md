@@ -47,7 +47,7 @@ Pull an automatic-speech-recognition model (e.g. `Xenova/whisper-base`) on the *
 
 ## Agent model
 
-The **Agent** page is a chat whose **agent model is a remote model** (bring your own API key) and whose tools are local coding tools (`read_file`, `grep`, `glob`, `write_file`, `edit_file`, `bash`). Read-only tools run automatically; writes and shell commands wait for approval in the chat. Everything runs inside the workspace picked in the page header (until one is picked, the app's working directory).
+The **Agent** page is a chat whose **agent model is a remote model** (bring your own API key) and whose tools are local coding tools (`read_file`, `grep`, `glob`, `write_file`, `edit_file`, `bash`). Read-only tools run automatically; writes and shell commands wait for approval in the chat. Everything runs inside the workspace picked in the page header; until a folder is picked the composer stays disabled.
 
 The agent loop runs in the local server (`POST /v1/agent`), so API calls go out but files and commands stay on your machine. Configure the agent model in `~/.nyx/settings.json` — `agent.model` is a `<providerId>/<modelId>` ref into the `agent.provider` map:
 
