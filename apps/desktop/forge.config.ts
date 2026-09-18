@@ -67,7 +67,7 @@ const config: ForgeConfig = {
       config: {
         build: [
           {
-            entry: { main: "src/main/index.ts" },
+            entry: { main: "src/main/bin.ts" },
             config: "vite.main.config.ts",
             target: "main",
           },

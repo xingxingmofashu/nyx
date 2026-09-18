@@ -5,7 +5,7 @@ import type {
   KnowledgeIndexEvent,
   KnowledgeSearchHit,
   KnowledgeStatus,
-} from "../../../shared/types"
+} from "../types"
 
 interface KnowledgeState {
   status: KnowledgeStatus | null

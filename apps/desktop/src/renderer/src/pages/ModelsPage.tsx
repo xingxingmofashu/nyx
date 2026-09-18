@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Boxes, Download, HardDrive, Trash2, X } from "lucide-react"
 import { useModelsStore, type PullState } from "../store/models"
-import type { LLMTask } from "../../../shared/types"
+import type { LLMTask } from "../types"
 import { Badge } from "../components/ui/badge"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"

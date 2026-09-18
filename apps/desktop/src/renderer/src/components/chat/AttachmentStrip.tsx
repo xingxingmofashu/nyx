@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import type { SavedAttachment } from "../../../../shared/types"
+import type { SavedAttachment } from "../../types"
 
 /** Load one attachment's bytes as a data URL (the workspace is a trusted root). */
 function useAttachmentUrl(path: string): string | null {

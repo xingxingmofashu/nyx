@@ -3,8 +3,7 @@ import { FilePlus, FolderPlus, HardDrive, Library, RefreshCw, Search, Trash2 } f
 import { useNavigate } from "react-router-dom"
 import { relativeTime } from "../lib/format"
 import { useKnowledgeStore } from "../store/knowledge"
-import type { KnowledgeDocument, KnowledgeImportResult, KnowledgeIndexEvent } from "../../../shared/types"
-import { normalizeImportTarget } from "../../../shared/knowledge"
+import type { KnowledgeDocument, KnowledgeImportResult, KnowledgeIndexEvent } from "../types"
 import { ImportTargetPicker } from "../components/knowledge/ImportTargetPicker"
 import { KnowledgeTree } from "../components/knowledge/KnowledgeTree"
 import { MarkdownText } from "../components/chat/MarkdownText"
@@ -459,4 +458,14 @@ function importSummary(result: KnowledgeImportResult): string {
   if (result.overwritten.length > 0) parts.push(`overwrote ${result.overwritten.length}`)
   if (result.skipped.length > 0) parts.push(`skipped ${result.skipped.length}`)
   return parts.join(", ")
+}
+
+/** Validate an import target folder inside the knowledge dir; null when it could escape. */
+function normalizeImportTarget(target: string): string | null {
+  const segments = target
+    .trim()
+    .split("/")
+    .filter((segment) => segment !== "")
+  const valid = segments.every((segment) => segment !== "." && segment !== ".." && !segment.startsWith("."))
+  return valid ? segments.join("/") : null
 }

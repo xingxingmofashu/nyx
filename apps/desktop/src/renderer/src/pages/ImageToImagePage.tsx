@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ImageIcon, Sparkles, Upload, X } from "lucide-react"
 import { useModelsStore } from "../store/models"
-import type { ImageResult } from "../../../shared/types"
+import type { ImageResult } from "../types"
 import { ModelPicker } from "../components/ModelPicker"
 import { Button } from "../components/ui/button"
 import { Spinner } from "../components/ui/spinner"

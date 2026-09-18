@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import type { AudioSamples } from "../../../shared/types"
+import type { AudioSamples } from "../types"
 
 /** Whisper expects 16 kHz mono input; the recorder always produces that. */
 const TARGET_SAMPLE_RATE = 16000

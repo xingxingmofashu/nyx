@@ -1,7 +1,7 @@
 import { Check, ChevronDown, Settings2 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useModelsStore } from "../store/models"
-import type { LLMTask } from "../../../shared/types"
+import type { LLMTask } from "../types"
 import { Button } from "./ui/button"
 import { Separator } from "./ui/separator"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"

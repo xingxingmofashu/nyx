@@ -1,26 +1,24 @@
 import type { BrowserWindow } from "electron"
-import type { NyxServerProcess } from "../server"
-import { IPC } from "../../shared/ipc"
+import type { NyxServer } from "../server.ts"
+import { IPC } from "../../preload/ipc.ts"
 import type {
   KnowledgeDocument,
   KnowledgeImportResult,
   KnowledgeIndexEvent,
   KnowledgeSearchHit,
   KnowledgeStatus,
-} from "../../shared/types"
-import type { ImportDocument } from "../knowledge-import"
-import { IndexCancelledError } from "../server/client"
+} from "../../renderer/src/types.ts"
+import { IndexCancelledError } from "../server.ts"
 
-/**
- * Bridges the knowledge base to the inference server. A stateless proxy over
- * the server's `/v1/knowledge` routes: reads and writes go straight through,
- * and an index build streams its progress to every attached window on
- * `IPC.knowledge.progress`.
- */
-export class KnowledgeService {
+export interface ImportDocument {
+  path: string
+  content: string
+}
+
+export class Knowledge {
   private windows = new Set<BrowserWindow>()
 
-  constructor(private readonly server: NyxServerProcess) {}
+  constructor(private readonly server: NyxServer) {}
 
   attachWindow(win: BrowserWindow): void {
     this.windows.add(win)
@@ -28,38 +26,37 @@ export class KnowledgeService {
   }
 
   status(): Promise<KnowledgeStatus> {
-    return this.server.client.knowledgeStatus()
+    return this.server.knowledgeStatus()
   }
 
   list(): Promise<KnowledgeDocument[]> {
-    return this.server.client.knowledgeDocuments()
+    return this.server.knowledgeDocuments()
   }
 
   read(path: string): Promise<string> {
-    return this.server.client.knowledgeDocument(path)
+    return this.server.knowledgeDocument(path)
   }
 
   import(documents: ImportDocument[], overwrite: boolean): Promise<KnowledgeImportResult> {
-    return this.server.client.importKnowledge(documents, overwrite)
+    return this.server.importKnowledge(documents, overwrite)
   }
 
   remove(path: string): Promise<void> {
-    return this.server.client.removeKnowledge(path)
+    return this.server.removeKnowledge(path)
   }
 
   cancelIndex(): Promise<boolean> {
-    return this.server.client.cancelKnowledgeIndex()
+    return this.server.cancelKnowledgeIndex()
   }
 
   search(query: string, topK?: number): Promise<KnowledgeSearchHit[]> {
-    return this.server.client.searchKnowledge(query, topK)
+    return this.server.searchKnowledge(query, topK)
   }
 
-  /** Build the index (or rebuild it), streaming progress to all windows. */
   async index(rebuild: boolean): Promise<void> {
     this.broadcast({ phase: "embed", filesDone: 0, filesTotal: 0, chunks: 0, done: false })
     try {
-      const stats = await this.server.client.indexKnowledge(rebuild, (p) => {
+      const stats = await this.server.indexKnowledge(rebuild, (p) => {
         this.broadcast({ ...p, done: false })
       })
       this.broadcast({

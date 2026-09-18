@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Eye, EyeOff, Plus, Trash2 } from "lucide-react"
-import type { AgentProviderEntry } from "../../../../shared/types"
+import type { AgentProviderEntry } from "../../types"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"

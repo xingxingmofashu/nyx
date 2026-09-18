@@ -1,7 +1,7 @@
 import { create } from "zustand"
 import { nanoid } from "nanoid"
 import { messagesToMarkdown, sessionTitle } from "../lib/transcript"
-import type { ChatSessionMeta, ChatSessionSaveRequest, CompactionResult, UIMessage } from "../../../shared/types"
+import type { ChatSessionMeta, ChatSessionSaveRequest, CompactionResult, UIMessage } from "../types"
 import { agentChat } from "../lib/chat"
 import { useAgentStore } from "./agent"
 

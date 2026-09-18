@@ -1,48 +1,36 @@
 import type { BrowserWindow } from "electron"
-import type { NyxServerProcess } from "../server"
-import { IPC } from "../../shared/ipc"
-import type { ChatCompactRequest, ChatSendRequest, ChatStreamEvent, CompactionResult } from "../../shared/types"
+import type { NyxServer } from "../server.ts"
+import { IPC } from "../../preload/ipc.ts"
+import type { ChatCompactRequest, ChatSendRequest, ChatStreamEvent, CompactionResult } from "../../renderer/src/types.ts"
 
-/**
- * Stateless proxy for the agent chat. Each stream is identified by
- * a renderer-generated id so chunks can be routed back to the right `useChat`
- * transport and aborted individually.
- */
-export class ChatStreamService {
-  private readonly manager: NyxServerProcess
+export class Chat {
   private windows = new Set<BrowserWindow>()
   private controllers = new Map<string, AbortController>()
 
-  constructor(manager: NyxServerProcess) {
-    this.manager = manager
-  }
+  constructor(private readonly server: NyxServer) {}
 
   attachWindow(win: BrowserWindow): void {
     this.windows.add(win)
     win.on("closed", () => this.windows.delete(win))
   }
 
-  /** Abort one in-flight stream by its renderer-generated id. */
   abort(streamId: string): void {
     this.controllers.get(streamId)?.abort()
   }
 
-  /** Summarize the transcript now (manual Compact); no stream, one JSON reply. */
   compact(request: ChatCompactRequest): Promise<CompactionResult> {
-    return this.manager.client.agentCompact({ ...request })
+    return this.server.agentCompact({ ...request })
   }
 
-  /** Start a stream; chunks are pushed to all attached windows until it ends. */
   async send({ streamId, body }: ChatSendRequest): Promise<void> {
     const controller = new AbortController()
     this.controllers.set(streamId, controller)
     try {
-      for await (const chunk of this.manager.client.agent(body, controller.signal)) {
+      for await (const chunk of this.server.agent(body, controller.signal)) {
         this.broadcast({ type: "chunk", streamId, chunk })
       }
       this.broadcast({ type: "end", streamId })
     } catch (error) {
-      // A user-initiated abort (Stop) is expected and simply closes the stream.
       if (controller.signal.aborted) {
         this.broadcast({ type: "end", streamId })
       } else {

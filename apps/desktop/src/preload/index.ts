@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron"
-import { IPC } from "../shared/ipc"
+import { IPC } from "./ipc"
 import type {
   ChatCompactRequest,
   ChatSendRequest,
@@ -24,7 +24,7 @@ import type {
   TranscriptResult,
   LLMTask,
   NyxApi,
-} from "../shared/types"
+} from "../renderer/src/types"
 
 const api: NyxApi = {
   tasks: {

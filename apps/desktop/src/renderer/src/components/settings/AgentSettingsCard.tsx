@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { Loader2, Plus, RefreshCw } from "lucide-react"
-import type { AgentProviderEntry, AgentSettings, ProviderModels } from "../../../../shared/types"
+import type { AgentProviderEntry, AgentSettings, ProviderModels } from "../../types"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Field, FieldDescription, FieldError, FieldLabel } from "../ui/field"

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Save } from "lucide-react"
-import type { AppEnvironment, Settings } from "../../../shared/types"
+import type { AppEnvironment, Settings } from "../types"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
 import { Label } from "../components/ui/label"

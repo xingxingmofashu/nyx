@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { AudioLines, Sparkles, X } from "lucide-react"
 import { useModelsStore } from "../store/models"
-import type { AudioResult } from "../../../shared/types"
+import type { AudioResult } from "../types"
 import { ModelPicker } from "../components/ModelPicker"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"

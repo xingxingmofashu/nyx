@@ -1,6 +1,6 @@
 import { ChevronRightIcon, FileIcon, FolderIcon, FolderOpenIcon, Trash2 } from "lucide-react"
 import { cn } from "#lib/utils.ts"
-import type { KnowledgeDocument, KnowledgeDocumentStatus } from "../../../../shared/types"
+import type { KnowledgeDocument, KnowledgeDocumentStatus } from "../../types"
 import { buildTree, countDocuments, type TreeFolder } from "./tree"
 import { Button } from "../ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible"

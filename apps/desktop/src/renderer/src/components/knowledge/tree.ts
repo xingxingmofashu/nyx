@@ -1,4 +1,4 @@
-import type { KnowledgeDocument } from "../../../../shared/types"
+import type { KnowledgeDocument } from "../../types"
 
 /** A folder of the knowledge tree; `""` is the invisible root. */
 export interface TreeFolder {

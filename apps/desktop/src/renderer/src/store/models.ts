@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import type { ModelInfo, ModelPullProgress, LLMTask } from "../../../shared/types"
+import type { ModelInfo, ModelPullProgress, LLMTask } from "../types"
 
 /** Rich progress state for one in-flight download. */
 export interface PullState {

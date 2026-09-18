@@ -9,7 +9,7 @@ import { baseName } from "../lib/format"
 import { useAgentStore } from "../store/agent"
 import { useModelsStore } from "../store/models"
 import { useSessionsStore } from "../store/sessions"
-import type { ChatMessageMetadata, SavedAttachment } from "../../../shared/types"
+import type { ChatMessageMetadata, SavedAttachment } from "../types"
 import { Button } from "../components/ui/button"
 import {
   Card,

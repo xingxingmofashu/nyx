@@ -6,7 +6,7 @@ import { isReasoningUIPart, isTextUIPart, isToolUIPart, getToolName } from "ai"
 import { Badge } from "../ui/badge"
 import { cn } from "#lib/utils.ts"
 import { MarkdownText } from "../chat/MarkdownText"
-import type { ContextCheckpoint } from "../../../../shared/types"
+import type { ContextCheckpoint } from "../../types"
 
 interface CompactionCardProps {
   checkpoint: ContextCheckpoint

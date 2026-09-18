@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { ChevronDownIcon, FolderIcon, FolderInputIcon } from "lucide-react"
-import type { KnowledgeDocument } from "../../../../shared/types"
+import type { KnowledgeDocument } from "../../types"
 import { buildTree, type TreeFolder } from "./tree"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
