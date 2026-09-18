@@ -4,7 +4,7 @@ import { z } from "zod/v4"
 import { Global } from "@nyx/global"
 import { Provider, type ResolvedModel } from "../provider.ts"
 import { Loop } from "../loop.ts"
-import { Compaction, type ContextCheckpoint } from "../compaction.ts"
+import { Compaction, ContextCheckpointSchema } from "../compaction.ts"
 import { Attachment } from "../attachment.ts"
 import { Bash } from "../tools/bash.ts"
 import { Edit } from "../tools/edit.ts"
@@ -50,13 +50,14 @@ export interface CompactRequest {
   sessionId?: string
 }
 
-export interface CompactResponse {
-  checkpoint?: ContextCheckpoint
-  compacted: boolean
-  skipped?: "too-short"
-  estimatedTokens?: number
-  baselineTokens?: number
-}
+export const CompactResponseSchema = z.object({
+  checkpoint: ContextCheckpointSchema.optional(),
+  compacted: z.boolean(),
+  skipped: z.literal("too-short").optional(),
+  estimatedTokens: z.number().optional(),
+  baselineTokens: z.number().optional(),
+})
+export type CompactResponse = z.infer<typeof CompactResponseSchema>
 
 
 export class Agent {

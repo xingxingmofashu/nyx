@@ -10,21 +10,24 @@ import {
   type ToolSet,
   type UIMessage,
 } from "ai"
+import { z } from "zod/v4"
 import SUMMARY_TEMPLATE from "./compaction-prompt.txt"
 
-export interface TokenUsage {
-  inputTokens?: number
-  outputTokens?: number
-  totalTokens?: number
-}
+export const TokenUsageSchema = z.object({
+  inputTokens: z.number().optional(),
+  outputTokens: z.number().optional(),
+  totalTokens: z.number().optional(),
+})
+export type TokenUsage = z.infer<typeof TokenUsageSchema>
 
-export interface ContextCheckpoint {
-  summary: string
-  coveredThroughId: string
-  coveredCount: number
-  createdAt: string
-  reason: "auto" | "manual"
-}
+export const ContextCheckpointSchema = z.object({
+  summary: z.string(),
+  coveredThroughId: z.string(),
+  coveredCount: z.number(),
+  createdAt: z.string(),
+  reason: z.enum(["auto", "manual"]),
+})
+export type ContextCheckpoint = z.infer<typeof ContextCheckpointSchema>
 
 export interface CompactionPolicy {
   auto?: boolean

@@ -1,13 +1,37 @@
-import { Hono } from "hono"
-import { zValidator } from "@hono/zod-validator"
+import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
 import { safeValidateUIMessages, type UIMessage } from "ai"
 import { Agent as AgentApi } from "@nyx/agent"
 import { Errors } from "../errors.ts"
 
 export class Agent {
+  private static readonly runRoute = createRoute({
+    method: "post",
+    path: "/",
+    request: {
+      body: { content: { "application/json": { schema: AgentApi.Services.AgentRequestSchema } }, required: true },
+    },
+    responses: {
+      200: { description: "Server-sent stream of AI SDK UI message chunks" },
+    },
+  })
+
+  private static readonly compactRoute = createRoute({
+    method: "post",
+    path: "/compact",
+    request: {
+      body: { content: { "application/json": { schema: AgentApi.Services.CompactRequestSchema } }, required: true },
+    },
+    responses: {
+      200: {
+        content: { "application/json": { schema: AgentApi.Services.CompactResponseSchema } },
+        description: "Summary of the compaction",
+      },
+    },
+  })
+
   static create(service: AgentApi.Services.Agent) {
-    return new Hono()
-      .post("/", zValidator("json", AgentApi.Services.AgentRequestSchema, Errors.hook), async (c) => {
+    return new OpenAPIHono({ defaultHook: Errors.hook })
+      .openapi(Agent.runRoute, async (c) => {
         const { messages, workspaceDir, sessionId, inlineAudio, forceCompact } = c.req.valid("json")
         const validated = await Agent.validate(messages)
 
@@ -23,7 +47,7 @@ export class Agent {
         }
         return service.run(request, controller.signal)
       })
-      .post("/compact", zValidator("json", AgentApi.Services.CompactRequestSchema, Errors.hook), async (c) => {
+      .openapi(Agent.compactRoute, async (c) => {
         const { messages, workspaceDir, sessionId } = c.req.valid("json")
         const validated = await Agent.validate(messages)
 
@@ -32,7 +56,7 @@ export class Agent {
           ...(workspaceDir !== undefined ? { workspaceDir } : {}),
           ...(sessionId !== undefined ? { sessionId } : {}),
         }
-        return c.json(await service.compact(request))
+        return c.json(await service.compact(request), 200)
       })
   }
 

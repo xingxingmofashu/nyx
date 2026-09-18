@@ -5,6 +5,7 @@ import * as agentRouteModule from "./routes/agent.ts"
 import * as automaticSpeechRecognitionRouteModule from "./routes/automatic-speech-recognition.ts"
 import * as environmentRouteModule from "./routes/environment.ts"
 import * as filesRouteModule from "./routes/files.ts"
+import * as healthRouteModule from "./routes/health.ts"
 import * as imageToImageRouteModule from "./routes/image-to-image.ts"
 import * as knowledgeRouteModule from "./routes/knowledge.ts"
 import * as modelsRouteModule from "./routes/models.ts"
@@ -31,6 +32,7 @@ export namespace Server {
     export import AutomaticSpeechRecognition = automaticSpeechRecognitionRouteModule.AutomaticSpeechRecognition
     export import Environment = environmentRouteModule.Environment
     export import Files = filesRouteModule.Files
+    export import Health = healthRouteModule.Health
     export import ImageToImage = imageToImageRouteModule.ImageToImage
     export import Knowledge = knowledgeRouteModule.Knowledge
     export import Models = modelsRouteModule.Models

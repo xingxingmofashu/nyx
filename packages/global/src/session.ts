@@ -4,18 +4,20 @@ import { z } from "zod/v4"
 import { Path } from "./path.ts"
 import { Workspace } from "./workspace.ts"
 
-export interface ChatSessionMeta {
-  id: string
-  title: string
-  workspaceDir: string
-  pinned?: boolean
-  createdAt: string
-  updatedAt: string
-}
+export const ChatSessionMetaSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  workspaceDir: z.string(),
+  pinned: z.boolean().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+export type ChatSessionMeta = z.infer<typeof ChatSessionMetaSchema>
 
-export interface ChatSession extends ChatSessionMeta {
-  messages: unknown[]
-}
+export const ChatSessionSchema = ChatSessionMetaSchema.extend({
+  messages: z.array(z.unknown()),
+})
+export type ChatSession = z.infer<typeof ChatSessionSchema>
 
 export interface SessionSaveInput {
   workspaceDir: string

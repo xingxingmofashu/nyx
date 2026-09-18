@@ -1,7 +1,7 @@
 import { mkdir, readFile, realpath, writeFile } from "node:fs/promises"
 import { extname, isAbsolute, join, resolve } from "node:path"
-import { Hono } from "hono"
-import { zValidator } from "@hono/zod-validator"
+import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
+import { z } from "zod/v4"
 import { Agent } from "@nyx/agent"
 import { Global } from "@nyx/global"
 import { nanoid } from "nanoid"
@@ -19,15 +19,41 @@ export class Files {
     "image/avif": ".avif",
   }
 
+  private static readonly dataUrlRoute = createRoute({
+    method: "get",
+    path: "/data-url",
+    request: { query: Agent.GeneratedFileQuerySchema },
+    responses: {
+      200: {
+        content: { "application/json": { schema: z.object({ dataUrl: z.string().nullable() }) } },
+        description: "File rendered as a data URL",
+      },
+    },
+  })
+
+  private static readonly attachmentRoute = createRoute({
+    method: "post",
+    path: "/attachments",
+    request: {
+      body: { content: { "application/json": { schema: Agent.AttachmentSaveRequestSchema } }, required: true },
+    },
+    responses: {
+      200: {
+        content: { "application/json": { schema: Agent.SavedAttachmentSchema } },
+        description: "Attachment copied into the workspace",
+      },
+    },
+  })
+
   static create() {
-    return new Hono()
-      .get("/data-url", zValidator("query", Agent.GeneratedFileQuerySchema, Errors.hook), async (c) => {
+    return new OpenAPIHono({ defaultHook: Errors.hook })
+      .openapi(Files.dataUrlRoute, async (c) => {
         const { path, workspaceDir } = c.req.valid("query")
-        return c.json({ dataUrl: await Files.readDataUrl(path, workspaceDir) })
+        return c.json({ dataUrl: await Files.readDataUrl(path, workspaceDir) }, 200)
       })
-      .post("/attachments", zValidator("json", Agent.AttachmentSaveRequestSchema, Errors.hook), async (c) => {
+      .openapi(Files.attachmentRoute, async (c) => {
         try {
-          return c.json(await Files.saveAttachment(c.req.valid("json")))
+          return c.json(await Files.saveAttachment(c.req.valid("json")), 200)
         } catch (error) {
           throw Errors.status(400, error)
         }

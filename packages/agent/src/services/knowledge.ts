@@ -3,34 +3,38 @@ import { Knowledge as KnowledgeBase } from "@nyx/knowledge"
 import { LLM } from "@nyx/llm"
 import { z } from "zod/v4"
 
-export interface KnowledgeSearchHit {
-  file: string
-  heading: string
-  text: string
-  score: number
-}
+export const KnowledgeSearchHitSchema = z.object({
+  file: z.string(),
+  heading: z.string(),
+  text: z.string(),
+  score: z.number(),
+})
+export type KnowledgeSearchHit = z.infer<typeof KnowledgeSearchHitSchema>
 
-export type KnowledgeDocumentStatus = "indexed" | "stale" | "new"
+export const KnowledgeDocumentStatusSchema = z.enum(["indexed", "stale", "new"])
+export type KnowledgeDocumentStatus = z.infer<typeof KnowledgeDocumentStatusSchema>
 
-export interface KnowledgeDocument {
-  file: string
-  size: number
-  modifiedAt: string
-  status: KnowledgeDocumentStatus
-}
+export const KnowledgeDocumentSchema = z.object({
+  file: z.string(),
+  size: z.number(),
+  modifiedAt: z.string(),
+  status: KnowledgeDocumentStatusSchema,
+})
+export type KnowledgeDocument = z.infer<typeof KnowledgeDocumentSchema>
 
-export interface KnowledgeStatus {
-  dir: string
-  embeddingModel?: string
-  indexedModel?: string
-  modelDownloaded: boolean
-  availableEmbeddingModels: string[]
-  documents: number
-  indexed: number
-  chunks: number
-  updatedAt?: string
-  indexing: boolean
-}
+export const KnowledgeStatusSchema = z.object({
+  dir: z.string(),
+  embeddingModel: z.string().optional(),
+  indexedModel: z.string().optional(),
+  modelDownloaded: z.boolean(),
+  availableEmbeddingModels: z.array(z.string()),
+  documents: z.number(),
+  indexed: z.number(),
+  chunks: z.number(),
+  updatedAt: z.string().optional(),
+  indexing: z.boolean(),
+})
+export type KnowledgeStatus = z.infer<typeof KnowledgeStatusSchema>
 
 export const KnowledgeDocumentInputSchema = z.object({
   path: z.string().min(1),
@@ -44,11 +48,12 @@ export const KnowledgeImportRequestSchema = z.object({
 })
 export type KnowledgeImportRequestInput = z.infer<typeof KnowledgeImportRequestSchema>
 
-export interface KnowledgeImportResult {
-  written: string[]
-  overwritten: string[]
-  skipped: string[]
-}
+export const KnowledgeImportResultSchema = z.object({
+  written: z.array(z.string()),
+  overwritten: z.array(z.string()),
+  skipped: z.array(z.string()),
+})
+export type KnowledgeImportResult = z.infer<typeof KnowledgeImportResultSchema>
 
 export const KnowledgeDeleteRequestSchema = z.object({
   path: z.string().min(1),
@@ -71,13 +76,14 @@ export const KnowledgeSearchRequestSchema = z.object({
 })
 export type KnowledgeSearchRequestInput = z.infer<typeof KnowledgeSearchRequestSchema>
 
-export interface KnowledgeIndexProgress {
-  phase: "embed" | "done"
-  file?: string
-  filesDone: number
-  filesTotal: number
-  chunks: number
-}
+export const KnowledgeIndexProgressSchema = z.object({
+  phase: z.enum(["embed", "done"]),
+  file: z.string().optional(),
+  filesDone: z.number(),
+  filesTotal: z.number(),
+  chunks: z.number(),
+})
+export type KnowledgeIndexProgress = z.infer<typeof KnowledgeIndexProgressSchema>
 
 export class Knowledge {
   private controller?: AbortController

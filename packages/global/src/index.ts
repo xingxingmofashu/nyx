@@ -21,6 +21,8 @@ export namespace Global {
   export import KnowledgeSettingsSchema = settingsModule.KnowledgeSettingsSchema
   export import ModelInfoSchema = modelsModule.ModelInfoSchema
   export import ModelsSchema = modelsModule.ModelsSchema
+  export import ChatSessionMetaSchema = sessionModule.ChatSessionMetaSchema
+  export import ChatSessionSchema = sessionModule.ChatSessionSchema
 
   export type SettingsSchemaType = settingsModule.SettingsSchemaType
   export type AgentSettingsSchemaType = settingsModule.AgentSettingsSchemaType

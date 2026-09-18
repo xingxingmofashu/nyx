@@ -19,9 +19,8 @@ export const AutomaticSpeechRecognitionRequestSchema = AutomaticSpeechRecognitio
 })
 export type AutomaticSpeechRecognitionRequest = z.infer<typeof AutomaticSpeechRecognitionRequestSchema>
 
-export interface TranscriptResult {
-  text: string
-}
+export const TranscriptResultSchema = z.object({ text: z.string() })
+export type TranscriptResult = z.infer<typeof TranscriptResultSchema>
 
 export class AutomaticSpeechRecognition {
   constructor(private readonly cache: Provider = new Provider()) {}

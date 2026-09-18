@@ -3,12 +3,13 @@ import { z } from "zod/v4"
 import { SessionIdSchema } from "./session.ts"
 import type { ContextCheckpoint, TokenUsage } from "./compaction.ts"
 
-export interface SavedAttachment {
-  path: string
-  name: string
-  mimeType: string
-  size: number
-}
+export const SavedAttachmentSchema = z.object({
+  path: z.string(),
+  name: z.string(),
+  mimeType: z.string(),
+  size: z.number(),
+})
+export type SavedAttachment = z.infer<typeof SavedAttachmentSchema>
 
 export const GeneratedFileQuerySchema = z.object({
   path: z.string().min(1),

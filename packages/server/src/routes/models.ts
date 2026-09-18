@@ -1,16 +1,67 @@
-import { Hono } from "hono"
+import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
 import { streamSSE } from "hono/streaming"
-import { zValidator } from "@hono/zod-validator"
+import { z } from "zod/v4"
 import { LLM } from "@nyx/llm"
 import { Agent } from "@nyx/agent"
+import { Global } from "@nyx/global"
 import { Errors } from "../errors.ts"
+import { OkSchema, PullCancelledSchema } from "../responses.ts"
 
 export class Models {
-  static create(store: Agent.Services.Models) {
-    return new Hono()
-      .get("/", async (c) => c.json(await store.listModels()))
+  private static readonly listRoute = createRoute({
+    method: "get",
+    path: "/",
+    responses: {
+      200: {
+        content: { "application/json": { schema: z.array(Global.ModelInfoSchema) } },
+        description: "Cached and downloadable models",
+      },
+    },
+  })
 
-      .post("/pull", zValidator("json", Agent.Services.ModelPullRequestSchema, Errors.hook), (c) => {
+  private static readonly pullRoute = createRoute({
+    method: "post",
+    path: "/pull",
+    request: {
+      body: { content: { "application/json": { schema: Agent.Services.ModelPullRequestSchema } }, required: true },
+    },
+    responses: {
+      200: { description: "Server-sent progress stream for the download" },
+    },
+  })
+
+  private static readonly pullCancelRoute = createRoute({
+    method: "post",
+    path: "/pull/cancel",
+    request: {
+      body: { content: { "application/json": { schema: Agent.Services.ModelIdRequestSchema } }, required: true },
+    },
+    responses: {
+      200: {
+        content: { "application/json": { schema: PullCancelledSchema } },
+        description: "Whether a running pull was cancelled",
+      },
+    },
+  })
+
+  private static readonly deleteRoute = createRoute({
+    method: "delete",
+    path: "/",
+    request: {
+      body: { content: { "application/json": { schema: Agent.Services.ModelIdRequestSchema } }, required: true },
+    },
+    responses: {
+      200: {
+        content: { "application/json": { schema: OkSchema } },
+        description: "Model removed from the local cache",
+      },
+    },
+  })
+
+  static create(store: Agent.Services.Models) {
+    return new OpenAPIHono({ defaultHook: Errors.hook })
+      .openapi(Models.listRoute, async (c) => c.json(await store.listModels(), 200))
+      .openapi(Models.pullRoute, (c) => {
         const { model, task } = c.req.valid("json")
 
         return streamSSE(c, async (stream) => {
@@ -58,18 +109,16 @@ export class Models {
           }
         })
       })
-
-      .post("/pull/cancel", zValidator("json", Agent.Services.ModelIdRequestSchema, Errors.hook), (c) => {
+      .openapi(Models.pullCancelRoute, (c) => {
         const cancelled = store.cancelPull(c.req.valid("json").model)
-        return c.json({ ok: true, cancelled })
+        return c.json({ ok: true, cancelled }, 200)
       })
-
-      .delete("/", zValidator("json", Agent.Services.ModelIdRequestSchema, Errors.hook), async (c) => {
+      .openapi(Models.deleteRoute, async (c) => {
         const { model } = c.req.valid("json")
         if (!(await store.removeModel(model))) {
           throw Errors.status(404, new Error(`model not cached: ${model}`))
         }
-        return c.json({ ok: true })
+        return c.json({ ok: true }, 200)
       })
   }
 }

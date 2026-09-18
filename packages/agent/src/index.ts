@@ -59,6 +59,7 @@ export namespace Agent {
     export import AgentOptionsSchema = agentServiceModule.AgentOptionsSchema
     export import AgentRequestSchema = agentServiceModule.AgentRequestSchema
     export import CompactRequestSchema = agentServiceModule.CompactRequestSchema
+    export import CompactResponseSchema = agentServiceModule.CompactResponseSchema
     export type AgentOptions = agentServiceModule.AgentOptions
     export type AgentRequestInput = agentServiceModule.AgentRequestInput
     export type AgentRequest = agentServiceModule.AgentRequest
@@ -91,6 +92,7 @@ export namespace Agent {
       automaticSpeechRecognitionServiceModule.AutomaticSpeechRecognitionInputSchema
     export import AutomaticSpeechRecognitionRequestSchema =
       automaticSpeechRecognitionServiceModule.AutomaticSpeechRecognitionRequestSchema
+    export import TranscriptResultSchema = automaticSpeechRecognitionServiceModule.TranscriptResultSchema
     export type AudioSamples = automaticSpeechRecognitionServiceModule.AudioSamples
     export type AutomaticSpeechRecognitionInput =
       automaticSpeechRecognitionServiceModule.AutomaticSpeechRecognitionInput
@@ -104,6 +106,12 @@ export namespace Agent {
     export import KnowledgeReadQuerySchema = knowledgeServiceModule.KnowledgeReadQuerySchema
     export import KnowledgeIndexRequestSchema = knowledgeServiceModule.KnowledgeIndexRequestSchema
     export import KnowledgeSearchRequestSchema = knowledgeServiceModule.KnowledgeSearchRequestSchema
+    export import KnowledgeSearchHitSchema = knowledgeServiceModule.KnowledgeSearchHitSchema
+    export import KnowledgeDocumentSchema = knowledgeServiceModule.KnowledgeDocumentSchema
+    export import KnowledgeDocumentStatusSchema = knowledgeServiceModule.KnowledgeDocumentStatusSchema
+    export import KnowledgeStatusSchema = knowledgeServiceModule.KnowledgeStatusSchema
+    export import KnowledgeImportResultSchema = knowledgeServiceModule.KnowledgeImportResultSchema
+    export import KnowledgeIndexProgressSchema = knowledgeServiceModule.KnowledgeIndexProgressSchema
     export type KnowledgeSearchHit = knowledgeServiceModule.KnowledgeSearchHit
     export type KnowledgeDocumentStatus = knowledgeServiceModule.KnowledgeDocumentStatus
     export type KnowledgeDocument = knowledgeServiceModule.KnowledgeDocument
@@ -120,6 +128,8 @@ export namespace Agent {
 
   export type ResolvedModel = providerModule.ResolvedModel
   export type RunOptions = loopModule.RunOptions
+  export import TokenUsageSchema = compactionModule.TokenUsageSchema
+  export import ContextCheckpointSchema = compactionModule.ContextCheckpointSchema
   export type TokenUsage = compactionModule.TokenUsage
   export type ContextCheckpoint = compactionModule.ContextCheckpoint
   export type CompactionPolicy = compactionModule.CompactionPolicy
@@ -141,6 +151,7 @@ export namespace Agent {
 
   export import GeneratedFileQuerySchema = attachmentModule.GeneratedFileQuerySchema
   export import AttachmentSaveRequestSchema = attachmentModule.AttachmentSaveRequestSchema
+  export import SavedAttachmentSchema = attachmentModule.SavedAttachmentSchema
   export type SavedAttachment = attachmentModule.SavedAttachment
   export type GeneratedFileQuery = attachmentModule.GeneratedFileQuery
   export type AttachmentSaveRequest = attachmentModule.AttachmentSaveRequest

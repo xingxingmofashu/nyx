@@ -33,18 +33,12 @@ type ChatSession = Agent.ChatSession
 type ChatSessionMeta = Agent.ChatSessionMeta
 type CompactRequestInput = Agent.Services.CompactRequestInput
 type KnowledgeImportRequestInput = Agent.Services.KnowledgeImportRequestInput
-type KnowledgeIndexRequestInput = Agent.Services.KnowledgeIndexRequestInput
-type KnowledgeSearchRequestInput = Agent.Services.KnowledgeSearchRequestInput
 type ModelInfo = Agent.Services.ModelInfo
 type SavedAttachment = Agent.SavedAttachment
 type SessionSaveRequest = Agent.SessionSaveRequest
 type Settings = Global.SettingsSchemaType
 
 type NyxClient = ReturnType<typeof hc<Server.AppType>>
-
-interface JsonResponse {
-  json(): Promise<unknown>
-}
 
 export class PullCancelledError extends Error {
   constructor(modelId: string) {
@@ -150,8 +144,8 @@ export class NyxServer {
     })
   }
 
-  listModels(): Promise<ModelInfo[]> {
-    return this.json(this.client.v1.models.$get())
+  async listModels(): Promise<ModelInfo[]> {
+    return (await this.client.v1.models.$get()).json()
   }
 
   async pullModel(
@@ -191,59 +185,61 @@ export class NyxServer {
   }
 
   async cancelPull(modelId: string): Promise<boolean> {
-    const res = await this.json<{ cancelled: boolean }>(
-      this.client.v1.models.pull.cancel.$post({ json: { model: modelId } }),
-    )
-    return res.cancelled
+    const res = await this.client.v1.models.pull.cancel.$post({ json: { model: modelId } })
+    return (await res.json()).cancelled
   }
 
   async removeModel(modelId: string): Promise<void> {
     await this.client.v1.models.$delete({ json: { model: modelId } })
   }
 
-  environment(): Promise<AppEnvironment> {
-    return this.json(this.client.v1.environment.$get())
+  async environment(): Promise<AppEnvironment> {
+    return (await this.client.v1.environment.$get()).json()
   }
 
-  settings(): Promise<Settings> {
-    return this.json(this.client.v1.settings.$get())
+  async settings(): Promise<Settings> {
+    return (await this.client.v1.settings.$get()).json()
   }
 
-  updateSettings(patch: Settings): Promise<Settings> {
-    return this.json(this.client.v1.settings.$patch({ json: patch }))
+  async updateSettings(patch: Settings): Promise<Settings> {
+    return (await this.client.v1.settings.$patch({ json: patch })).json()
   }
 
-  replaceSettings(settings: Settings): Promise<Settings> {
-    return this.json(this.client.v1.settings.$put({ json: settings }))
+  async replaceSettings(settings: Settings): Promise<Settings> {
+    return (await this.client.v1.settings.$put({ json: settings })).json()
   }
 
-  listSessions(workspaceDir?: string): Promise<ChatSessionMeta[]> {
+  async listSessions(workspaceDir?: string): Promise<ChatSessionMeta[]> {
     const query = workspaceDir === undefined ? {} : { workspaceDir }
-    return this.json(this.client.v1.sessions.$get({ query }))
+    return (await this.client.v1.sessions.$get({ query })).json()
   }
 
-  getSession(workspaceDir: string, id: string): Promise<ChatSession | null> {
-    return this.json(this.client.v1.sessions[":id"].$get({ param: { id }, query: { workspaceDir } }))
+  async getSession(workspaceDir: string, id: string): Promise<ChatSession | null> {
+    return (await this.client.v1.sessions[":id"].$get({ param: { id }, query: { workspaceDir } })).json()
   }
 
-  saveSession(session: SessionSaveRequest): Promise<ChatSessionMeta> {
-    return this.json(this.client.v1.sessions.$put({ json: session }))
+  async saveSession(session: SessionSaveRequest): Promise<ChatSessionMeta> {
+    return (await this.client.v1.sessions.$put({ json: session })).json()
   }
 
-  renameSession(workspaceDir: string, id: string, title: string): Promise<ChatSessionMeta | null> {
-    return this.json(this.client.v1.sessions[":id"].$patch({ param: { id }, json: { workspaceDir, title } }))
+  async renameSession(workspaceDir: string, id: string, title: string): Promise<ChatSessionMeta | null> {
+    return (
+      await this.client.v1.sessions[":id"].$patch({ param: { id }, json: { workspaceDir, title } })
+    ).json()
   }
 
-  setSessionPinned(workspaceDir: string, id: string, pinned: boolean): Promise<ChatSessionMeta | null> {
-    return this.json(this.client.v1.sessions[":id"].$patch({ param: { id }, json: { workspaceDir, pinned } }))
+  async setSessionPinned(workspaceDir: string, id: string, pinned: boolean): Promise<ChatSessionMeta | null> {
+    return (
+      await this.client.v1.sessions[":id"].$patch({ param: { id }, json: { workspaceDir, pinned } })
+    ).json()
   }
 
   async removeSession(workspaceDir: string, id: string): Promise<void> {
     await this.client.v1.sessions[":id"].$delete({ param: { id }, query: { workspaceDir } })
   }
 
-  activeSessionId(workspaceDir: string): Promise<string | null> {
-    return this.json(this.client.v1.sessions.active.$get({ query: { workspaceDir } }))
+  async activeSessionId(workspaceDir: string): Promise<string | null> {
+    return (await this.client.v1.sessions.active.$get({ query: { workspaceDir } })).json()
   }
 
   async setActiveSessionId(workspaceDir: string, id: string | null): Promise<void> {
@@ -252,34 +248,32 @@ export class NyxServer {
 
   async readGeneratedFileDataUrl(path: string, workspaceDir?: string): Promise<string | null> {
     const query = workspaceDir === undefined ? { path } : { path, workspaceDir }
-    const res = await this.json<{ dataUrl: string | null }>(this.client.v1.files["data-url"].$get({ query }))
-    return res.dataUrl
+    const res = await this.client.v1.files["data-url"].$get({ query })
+    return (await res.json()).dataUrl
   }
 
-  saveAttachment(input: AttachmentSaveRequest): Promise<SavedAttachment> {
-    return this.json(this.client.v1.files.attachments.$post({ json: input }))
+  async saveAttachment(input: AttachmentSaveRequest): Promise<SavedAttachment> {
+    return (await this.client.v1.files.attachments.$post({ json: input })).json()
   }
 
-  knowledgeStatus(): Promise<KnowledgeStatus> {
-    return this.json(this.client.v1.knowledge.$get())
+  async knowledgeStatus(): Promise<KnowledgeStatus> {
+    return (await this.client.v1.knowledge.$get()).json()
   }
 
-  knowledgeDocuments(): Promise<KnowledgeDocument[]> {
-    return this.json(this.client.v1.knowledge.documents.$get())
+  async knowledgeDocuments(): Promise<KnowledgeDocument[]> {
+    return (await this.client.v1.knowledge.documents.$get()).json()
   }
 
   async knowledgeDocument(path: string): Promise<string> {
-    const res = await this.json<{ content: string }>(
-      this.client.v1.knowledge.document.$get({ query: { path } }),
-    )
-    return res.content
+    const res = await this.client.v1.knowledge.document.$get({ query: { path } })
+    return (await res.json()).content
   }
 
-  importKnowledge(
+  async importKnowledge(
     documents: KnowledgeImportRequestInput["documents"],
     overwrite: boolean,
   ): Promise<KnowledgeImportResult> {
-    return this.json(this.client.v1.knowledge.documents.$post({ json: { documents, overwrite } }))
+    return (await this.client.v1.knowledge.documents.$post({ json: { documents, overwrite } })).json()
   }
 
   async removeKnowledge(path: string): Promise<void> {
@@ -290,9 +284,7 @@ export class NyxServer {
     rebuild: boolean,
     onProgress?: (p: KnowledgeIndexProgress) => void,
   ): Promise<{ files: number; chunks: number; skipped: number }> {
-    const res = await this.client.v1.knowledge.build.$post({
-      json: { rebuild } as KnowledgeIndexRequestInput,
-    })
+    const res = await this.client.v1.knowledge.build.$post({ json: { rebuild } })
     if (!res.body) throw new Error("no response body")
 
     let stats = { files: 0, chunks: 0, skipped: 0 }
@@ -327,16 +319,15 @@ export class NyxServer {
   }
 
   async cancelKnowledgeIndex(): Promise<boolean> {
-    const res = await this.json<{ cancelled: boolean }>(this.client.v1.knowledge.build.cancel.$post())
-    return res.cancelled
+    const res = await this.client.v1.knowledge.build.cancel.$post()
+    return (await res.json()).cancelled
   }
 
-  searchKnowledge(query: string, topK?: number): Promise<KnowledgeSearchHit[]> {
-    return this.json(
-      this.client.v1.knowledge.search.$post({
-        json: { query, ...(topK === undefined ? {} : { topK }) } as KnowledgeSearchRequestInput,
-      }),
-    )
+  async searchKnowledge(query: string, topK?: number): Promise<KnowledgeSearchHit[]> {
+    const res = await this.client.v1.knowledge.search.$post({
+      json: { query, ...(topK === undefined ? {} : { topK }) },
+    })
+    return (await res.json())
   }
 
   async *agent(body: Record<string, unknown>, signal?: AbortSignal): AsyncIterable<UIMessageChunk> {
@@ -360,8 +351,8 @@ export class NyxServer {
     }
   }
 
-  agentCompact(body: Record<string, unknown>): Promise<CompactionResult> {
-    return this.json(this.client.v1.agent.compact.$post({ json: body as CompactRequestInput }))
+  async agentCompact(body: Record<string, unknown>): Promise<CompactionResult> {
+    return (await this.client.v1.agent.compact.$post({ json: body as CompactRequestInput })).json()
   }
 
   async imageToImage(modelId: string, input: ImageBytes): Promise<ImageResult> {
@@ -400,9 +391,9 @@ export class NyxServer {
     }
   }
 
-  automaticSpeechRecognition(modelId: string, input: AudioSamples): Promise<TranscriptResult> {
-    return this.json(
-      this.client.v1.tasks["automatic-speech-recognition"].$post({
+  async automaticSpeechRecognition(modelId: string, input: AudioSamples): Promise<TranscriptResult> {
+    return (
+      await this.client.v1.tasks["automatic-speech-recognition"].$post({
         json: {
           model: modelId,
           audio: {
@@ -414,8 +405,8 @@ export class NyxServer {
             samplingRate: input.samplingRate,
           },
         },
-      }),
-    )
+      })
+    ).json()
   }
 
   private get client(): NyxClient {
@@ -443,10 +434,6 @@ export class NyxServer {
       throw new Error(body.error ?? `HTTP ${response.status} ${response.statusText}`)
     }
     return response
-  }
-
-  private async json<T>(res: Promise<JsonResponse>): Promise<T> {
-    return (await res).json() as T
   }
 
   private async waitForHealth(): Promise<void> {

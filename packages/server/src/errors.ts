@@ -1,8 +1,8 @@
-import type { Hook } from "@hono/zod-validator"
+import type { Hook } from "@hono/zod-openapi"
 import { HTTPException } from "hono/http-exception"
 
 export class Errors {
-  static readonly hook: Hook<any, any, any, any, any, any> = (result, c) => {
+  static readonly hook: Hook<any, any, any, any> = (result, c) => {
     if (result.success) return
     const message = result.error.issues
       .map((issue) => {

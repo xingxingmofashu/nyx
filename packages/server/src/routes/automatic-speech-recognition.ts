@@ -1,13 +1,28 @@
-import { Hono } from "hono"
-import { zValidator } from "@hono/zod-validator"
+import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
 import { Agent } from "@nyx/agent"
 import { Errors } from "../errors.ts"
 
 export class AutomaticSpeechRecognition {
+  private static readonly route = createRoute({
+    method: "post",
+    path: "/",
+    request: {
+      body: {
+        content: { "application/json": { schema: Agent.Services.AutomaticSpeechRecognitionRequestSchema } },
+        required: true,
+      },
+    },
+    responses: {
+      200: {
+        content: { "application/json": { schema: Agent.Services.TranscriptResultSchema } },
+        description: "Transcribed text",
+      },
+    },
+  })
+
   static create(service: Agent.Services.AutomaticSpeechRecognition) {
-    return new Hono().post(
-      "/",
-      zValidator("json", Agent.Services.AutomaticSpeechRecognitionRequestSchema, Errors.hook),
+    return new OpenAPIHono({ defaultHook: Errors.hook }).openapi(
+      AutomaticSpeechRecognition.route,
       async (c) => {
         const { model, audio, language, task } = c.req.valid("json")
         const bytes = Buffer.from(audio.data, "base64")
@@ -19,7 +34,7 @@ export class AutomaticSpeechRecognition {
           ...(language ? { language } : {}),
           ...(task ? { task } : {}),
         })
-        return c.json({ text })
+        return c.json({ text }, 200)
       },
     )
   }

@@ -1,5 +1,5 @@
 import { serve } from "@hono/node-server"
-import { Hono } from "hono"
+import { $, OpenAPIHono } from "@hono/zod-openapi"
 import { HTTPException } from "hono/http-exception"
 import { Agent } from "@nyx/agent"
 import { Auth } from "./middleware/auth.ts"
@@ -8,6 +8,7 @@ import { Agent as AgentRoute } from "./routes/agent.ts"
 import { AutomaticSpeechRecognition } from "./routes/automatic-speech-recognition.ts"
 import { Environment } from "./routes/environment.ts"
 import { Files } from "./routes/files.ts"
+import { Health } from "./routes/health.ts"
 import { ImageToImage } from "./routes/image-to-image.ts"
 import { Knowledge } from "./routes/knowledge.ts"
 import { Models } from "./routes/models.ts"
@@ -53,12 +54,11 @@ export class App {
       agent: new Agent.Services.Agent(cache, knowledge),
     }
 
-    const v1 = new Hono()
-      .use("*", Auth.middleware(options.token))
+    const v1 = $(new OpenAPIHono({ defaultHook: Errors.hook }).use("*", Auth.middleware(options.token)))
       .onError((error, c) =>
         c.json({ error: Errors.message(error) }, error instanceof HTTPException ? error.status : 500),
       )
-      .get("/health", (c) => c.json({ ok: true }))
+      .route("/health", Health.create())
       .route("/settings", Settings.create())
       .route("/environment", Environment.create())
       .route("/sessions", Sessions.create())
@@ -73,7 +73,7 @@ export class App {
       .route("/agent", AgentRoute.create(services.agent))
       .route("/knowledge", Knowledge.create(services.knowledge))
 
-    return new Hono().route("/v1", v1)
+    return new OpenAPIHono().route("/v1", v1)
   }
 
   static serve(options: ServeOptions): Promise<Handle> {
