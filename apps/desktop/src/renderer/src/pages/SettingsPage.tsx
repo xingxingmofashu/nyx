@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { toast } from "../components/ui/toast"
 import { AgentSettingsCard } from "../components/settings/AgentSettingsCard"
 import { HuggingFaceSettingsCard } from "../components/settings/HuggingFaceSettingsCard"
+import { KnowledgeSettingsCard } from "../components/settings/KnowledgeSettingsCard"
 import { getTheme, setTheme, type Theme } from "../lib/theme"
 import { useAgentStore } from "../store/agent"
 
@@ -164,6 +165,15 @@ export function SettingsPage() {
               })
             }
             onRestartServer={() => restartServer()}
+          />
+
+          <KnowledgeSettingsCard
+            knowledge={settings.knowledge ?? {}}
+            onChange={(knowledge) =>
+              update((draft) => {
+                draft.knowledge = knowledge
+              })
+            }
           />
 
           {error && <p className="text-sm text-destructive">{error}</p>}

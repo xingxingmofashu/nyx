@@ -4,7 +4,6 @@ import fs from "fs-extra"
 export interface ChunkRecord {
   id: string
   file: string
-  heading: string
   ordinal: number
   text: string
   vector: Float32Array
@@ -12,7 +11,6 @@ export interface ChunkRecord {
 
 export interface SearchHit {
   file: string
-  heading: string
   text: string
   score: number
 }
@@ -58,7 +56,6 @@ export class Store {
       .toArray()
     return rows.map((row) => ({
       file: String(row.file),
-      heading: String(row.heading),
       text: String(row.text),
       score: Number(row._relevance_score ?? 0),
     }))
@@ -93,7 +90,6 @@ export class Store {
     return rows.map((row) => ({
       id: row.id,
       file: row.file,
-      heading: row.heading,
       ordinal: row.ordinal,
       text: row.text,
       vector: row.vector,

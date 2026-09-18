@@ -24,6 +24,7 @@ export type KnowledgeDocumentStatus = Agent.Services.KnowledgeDocumentStatus
 export type KnowledgeImportResult = Agent.Services.KnowledgeImportResult
 export type KnowledgeIndexProgress = Agent.Services.KnowledgeIndexProgress
 export type KnowledgeSearchHit = Agent.Services.KnowledgeSearchHit
+export type KnowledgeSettings = Global.KnowledgeSettingsSchemaType
 export type KnowledgeStatus = Agent.Services.KnowledgeStatus
 export type ModelInfo = Agent.Services.ModelInfo
 export type SavedAttachment = Agent.SavedAttachment

@@ -4,7 +4,7 @@ import fs from "fs-extra"
 import { z } from "zod/v4"
 import { Global } from "@nyx/global"
 import { LLM } from "@nyx/llm"
-import { Chunker } from "./chunker.ts"
+import { Chunker, type ChunkerOptions } from "./chunker.ts"
 import { Store, type SearchHit } from "./store.ts"
 
 export const ConfigSchema = z.object({
@@ -73,6 +73,14 @@ export class Base {
     return (await Global.Settings.read()).knowledge?.embeddingModel
   }
 
+  static async chunkOptions(): Promise<Required<ChunkerOptions>> {
+    const settings = await Global.Settings.read()
+    return Chunker.options({
+      chunkSize: settings.knowledge?.chunkSize,
+      chunkOverlap: settings.knowledge?.chunkOverlap,
+    })
+  }
+
   async hasDocuments(): Promise<boolean> {
     return (await Base.walk(this.dir)).length > 0
   }
@@ -108,6 +116,7 @@ export class Base {
       let filesDone = 0
       let skipped = 0
       let dim: number | undefined
+      const chunkOptions = await Base.chunkOptions()
 
       for (const absolute of files) {
         options.signal?.throwIfAborted()
@@ -123,7 +132,7 @@ export class Base {
           continue
         }
 
-        const parts = Chunker.split(content)
+        const parts = await Chunker.split(content, chunkOptions)
         if (parts.length === 0) {
           await store.deleteFile(file)
           delete this.manifest[file]
@@ -149,7 +158,6 @@ export class Base {
           parts.map((part, index) => ({
             id: `${file}#${part.ordinal}`,
             file,
-            heading: part.heading,
             ordinal: part.ordinal,
             text: part.text,
             vector: embeddings[index]!,

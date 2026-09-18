@@ -5,7 +5,6 @@ import { z } from "zod/v4"
 
 export const KnowledgeSearchHitSchema = z.object({
   file: z.string(),
-  heading: z.string(),
   text: z.string(),
   score: z.number(),
 })

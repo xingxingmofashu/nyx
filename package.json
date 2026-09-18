@@ -32,6 +32,8 @@
       "@streamdown/code": "1.1.1",
       "@streamdown/cjk": "1.0.3",
       "@lancedb/lancedb": "0.38.0",
+      "@langchain/core": "1.2.11",
+      "@langchain/textsplitters": "1.0.1",
       "apache-arrow": "18.1.0",
       "eventsource-parser": "4.1.0",
       "date-fns": "4.4.0",

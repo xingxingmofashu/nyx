@@ -10,6 +10,7 @@ export namespace Knowledge {
   export import ConfigSchema = baseModule.ConfigSchema
 
   export type Chunk = chunkModule.Chunk
+  export type ChunkerOptions = chunkModule.ChunkerOptions
   export type SearchHit = storeModule.SearchHit
   export type ConfigSchemaType = baseModule.ConfigSchemaType
   export type Document = baseModule.Document

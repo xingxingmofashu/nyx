@@ -46,7 +46,6 @@ export class SearchKnowledge {
   }
 
   private static format(hit: KnowledgeSearchHit, index: number): string {
-    const where = hit.heading ? `${hit.file} › ${hit.heading}` : hit.file
-    return `[${index}] ${where} (score ${hit.score.toFixed(4)})\n${hit.text}`
+    return `[${index}] ${hit.file} (score ${hit.score.toFixed(4)})\n${hit.text}`
   }
 }

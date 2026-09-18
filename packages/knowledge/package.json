@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@lancedb/lancedb": "catalog:",
+    "@langchain/core": "catalog:",
+    "@langchain/textsplitters": "catalog:",
     "@nyx/global": "workspace:*",
     "@nyx/llm": "workspace:*",
     "apache-arrow": "catalog:",

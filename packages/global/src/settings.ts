@@ -54,6 +54,8 @@ export const AgentCompactionSchema = z
 export const KnowledgeSettingsSchema = z
   .object({
     embeddingModel: z.string().optional(),
+    chunkSize: z.number().int().positive().optional(),
+    chunkOverlap: z.number().int().nonnegative().optional(),
   })
   .loose()
 
