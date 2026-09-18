@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
 import { Agent } from "@nyx/agent"
-import { Errors } from "../errors.ts"
+import { Errors } from "../../errors.ts"
 
 export class TextToSpeech {
   private static readonly route = createRoute({
