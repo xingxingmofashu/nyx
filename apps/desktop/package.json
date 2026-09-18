@@ -23,6 +23,8 @@
     "@ai-sdk/react": "catalog:",
     "ai": "catalog:",
     "@huggingface/transformers": "catalog:",
+    "@nyx/agent": "workspace:*",
+    "@nyx/global": "workspace:*",
     "@nyx/llm": "workspace:*",
     "@nyx/server": "workspace:*",
     "@radix-ui/react-slot": "1.3.3",

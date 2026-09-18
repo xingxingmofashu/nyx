@@ -19,8 +19,4 @@ export class Path {
   static get sessions(): string {
     return join(Path.root, "sessions")
   }
-
-  static get modelsCatalog(): string {
-    return join(Path.root, "cache", "models.json")
-  }
 }

@@ -1,27 +1,54 @@
-import type { UIMessage } from "./types.ts";
-import type { ChatMessageMetadata } from "./schema";
+import type { UIMessage } from "ai"
+import { z } from "zod/v4"
+import { SessionIdSchema } from "./session.ts"
+import type { ContextCheckpoint, TokenUsage } from "./compaction.ts"
 
-/**
- * Attachments live in the workspace's session folder as real files; the agent model
- * only learns their paths. Each user message carrying attachment metadata gets
- * an extra text part describing those paths, so tools like
- * `local_image_to_image` can be pointed at them. The bytes are never sent to
- * the model, so this works with text-only providers.
- */
-export function withAttachmentNotes(messages: UIMessage[]): UIMessage[] {
-  return messages.map((message) => {
-    if (message.role !== "user") return message;
-    const attachments = (message.metadata as ChatMessageMetadata | undefined)?.attachments;
-    if (!attachments || attachments.length === 0) return message;
+export interface SavedAttachment {
+  path: string
+  name: string
+  mimeType: string
+  size: number
+}
 
-    const note = attachments
-      .map(
-        (a) =>
-          `[Attached file: ${a.path} (${a.mimeType}, ${a.size} bytes). ` +
-          "Pass this path as `inputPath` to local_image_to_image.]",
-      )
-      .join("\n");
+export const GeneratedFileQuerySchema = z.object({
+  path: z.string().min(1),
+  workspaceDir: z.string().optional(),
+})
+export type GeneratedFileQuery = z.infer<typeof GeneratedFileQuerySchema>
 
-    return { ...message, parts: [...message.parts, { type: "text" as const, text: `\n\n${note}` }] };
-  });
+export const AttachmentSaveRequestSchema = z.object({
+  workspaceDir: z.string(),
+  sessionId: SessionIdSchema,
+  name: z.string(),
+  mimeType: z.string(),
+  data: z.string(),
+})
+export type AttachmentSaveRequest = z.infer<typeof AttachmentSaveRequestSchema>
+
+export interface ChatMessageMetadata {
+  attachments?: SavedAttachment[]
+  compaction?: ContextCheckpoint
+  usage?: TokenUsage
+  contextLimit?: number
+  compactionSkipped?: "too-short"
+}
+
+export class Attachment {
+  static annotate(messages: UIMessage[]): UIMessage[] {
+    return messages.map((message) => {
+      if (message.role !== "user") return message
+      const attachments = (message.metadata as ChatMessageMetadata | undefined)?.attachments
+      if (!attachments || attachments.length === 0) return message
+
+      const note = attachments
+        .map(
+          (attachment) =>
+            `[Attached file: ${attachment.path} (${attachment.mimeType}, ${attachment.size} bytes). ` +
+            "Pass this path as `inputPath` to local_image_to_image.]",
+        )
+        .join("\n")
+
+      return { ...message, parts: [...message.parts, { type: "text" as const, text: `\n\n${note}` }] }
+    })
+  }
 }

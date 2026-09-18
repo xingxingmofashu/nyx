@@ -54,8 +54,6 @@ export const IPC = {
     getEnvironment: "config:getEnvironment",
     /** List a provider's models from its `/models` endpoint (main-process fetch). */
     listModels: "config:listModels",
-    /** Context window for a provider/model, read from the cached models.dev catalog. */
-    modelLimits: "config:modelLimits",
     /** Restart the inference-server child (applies a changed HF endpoint). */
     restartServer: "config:restartServer",
   },

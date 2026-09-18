@@ -40,10 +40,16 @@ export function ProviderEditor({
 }: ProviderEditorProps) {
   const [revealed, setRevealed] = useState(false)
   const options = entry.options ?? {}
+  const context = entry.limit?.context
   const output = entry.limit?.output
 
   const setOption = (patch: Partial<typeof options>) =>
     onChange({ ...entry, options: { ...options, ...patch } })
+
+  const setContext = (raw: string) => {
+    const value = raw.trim()
+    onChange({ ...entry, limit: { ...entry.limit, context: value === "" ? undefined : value } })
+  }
 
   const setOutput = (raw: string) => {
     const value = Number(raw)
@@ -154,17 +160,28 @@ export function ProviderEditor({
         <p className="text-xs text-muted-foreground">Stored in plain text in ~/.nyx/settings.json.</p>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`provider-output-${providerId}`}>Max output tokens (optional)</Label>
-        <Input
-          id={`provider-output-${providerId}`}
-          type="number"
-          min={1}
-          value={output ?? ""}
-          onChange={(e) => setOutput(e.target.value)}
-          placeholder="4096"
-          className="max-w-40"
-        />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`provider-context-${providerId}`}>Context window (optional)</Label>
+          <Input
+            id={`provider-context-${providerId}`}
+            value={context ?? ""}
+            onChange={(e) => setContext(e.target.value)}
+            placeholder="128k"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`provider-output-${providerId}`}>Max output tokens (optional)</Label>
+          <Input
+            id={`provider-output-${providerId}`}
+            type="number"
+            min={1}
+            value={output ?? ""}
+            onChange={(e) => setOutput(e.target.value)}
+            placeholder="4096"
+          />
+        </div>
       </div>
 
       <HeadersEditor

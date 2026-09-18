@@ -1,29 +1,22 @@
 import { Hono } from "hono"
 import { streamSSE } from "hono/streaming"
 import { zValidator } from "@hono/zod-validator"
-import {
-  KnowledgeDeleteRequestSchema,
-  KnowledgeImportRequestSchema,
-  KnowledgeIndexRequestSchema,
-  KnowledgeReadQuerySchema,
-  KnowledgeSearchRequestSchema,
-} from "@nyx/agent/schema"
 import { validationHook } from "../validation"
-import type { KnowledgeService } from "@nyx/agent"
+import { Agent } from "@nyx/agent"
 
 /**
  * /v1/knowledge — manage the local knowledge base: list/read documents,
  * import (with an explicit overwrite decision), delete, rebuild the index, and
  * try a search. The index run streams progress over SSE like model pulls.
  */
-export function knowledge(service: KnowledgeService) {
+export function knowledge(service: Agent.Services.Knowledge) {
   return new Hono()
     .get("/", async (c) => c.json(await service.status()))
 
     .get("/documents", async (c) => c.json(await service.list()))
 
     /** One document's Markdown source, for the preview pane. */
-    .get("/document", zValidator("query", KnowledgeReadQuerySchema, validationHook), async (c) => {
+    .get("/document", zValidator("query", Agent.Services.KnowledgeReadQuerySchema, validationHook), async (c) => {
       try {
         return c.json({ path: c.req.valid("query").path, content: await service.read(c.req.valid("query").path) })
       } catch (error) {
@@ -35,7 +28,7 @@ export function knowledge(service: KnowledgeService) {
      * Import documents. `overwrite` applies to every conflict in the batch; the
      * caller asks the user first and re-posts with `overwrite: true` to replace.
      */
-    .post("/documents", zValidator("json", KnowledgeImportRequestSchema, validationHook), async (c) => {
+    .post("/documents", zValidator("json", Agent.Services.KnowledgeImportRequestSchema, validationHook), async (c) => {
       const { documents, overwrite } = c.req.valid("json")
       try {
         return c.json(await service.importDocuments(documents, overwrite ?? false))
@@ -44,7 +37,7 @@ export function knowledge(service: KnowledgeService) {
       }
     })
 
-    .delete("/documents", zValidator("json", KnowledgeDeleteRequestSchema, validationHook), async (c) => {
+    .delete("/documents", zValidator("json", Agent.Services.KnowledgeDeleteRequestSchema, validationHook), async (c) => {
       try {
         await service.removeDocument(c.req.valid("json").path)
         return c.json({ ok: true })
@@ -58,7 +51,7 @@ export function knowledge(service: KnowledgeService) {
      * Not `/index`: the Hono RPC client strips a trailing `index` segment from
      * the URL (Next.js convention), which would collide with `GET /`.
      */
-    .post("/build", zValidator("json", KnowledgeIndexRequestSchema, validationHook), (c) => {
+    .post("/build", zValidator("json", Agent.Services.KnowledgeIndexRequestSchema, validationHook), (c) => {
       const rebuild = c.req.valid("json").rebuild === true
       let controller: AbortController
       try {
@@ -99,7 +92,7 @@ export function knowledge(service: KnowledgeService) {
     .post("/build/cancel", (c) => c.json({ cancelled: service.cancelIndex() }))
 
     /** POST /search — retrieval, so the page can check what the index answers. */
-    .post("/search", zValidator("json", KnowledgeSearchRequestSchema, validationHook), async (c) => {
+    .post("/search", zValidator("json", Agent.Services.KnowledgeSearchRequestSchema, validationHook), async (c) => {
       const { query, topK } = c.req.valid("json")
       try {
         return c.json(await service.search(query, topK ?? 6))

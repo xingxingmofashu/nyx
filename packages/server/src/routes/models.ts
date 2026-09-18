@@ -2,17 +2,16 @@ import { Hono } from "hono"
 import { streamSSE } from "hono/streaming"
 import { zValidator } from "@hono/zod-validator"
 import { LLM } from "@nyx/llm"
-import { ModelIdRequestSchema, ModelPullRequestSchema } from "@nyx/agent/schema"
 import { validationHook } from "../validation"
-import type { ModelsService } from "@nyx/agent"
+import { Agent } from "@nyx/agent"
 
 /** /v1/models — list, download, cancel, and delete cached models. */
-export function models(store: ModelsService) {
+export function models(store: Agent.Services.Models) {
   return new Hono()
     .get("/", async (c) => c.json(await store.listModels()))
 
     /** POST /pull — SSE stream of download progress; ends with done/cancelled/error. */
-    .post("/pull", zValidator("json", ModelPullRequestSchema, validationHook), (c) => {
+    .post("/pull", zValidator("json", Agent.Services.ModelPullRequestSchema, validationHook), (c) => {
       const { model, task } = c.req.valid("json")
 
       return streamSSE(c, async (stream) => {
@@ -64,12 +63,12 @@ export function models(store: ModelsService) {
     })
 
     /** POST /pull/cancel — stop an in-flight pull by model id. */
-    .post("/pull/cancel", zValidator("json", ModelIdRequestSchema, validationHook), (c) => {
+    .post("/pull/cancel", zValidator("json", Agent.Services.ModelIdRequestSchema, validationHook), (c) => {
       const cancelled = store.cancelPull(c.req.valid("json").model)
       return c.json({ ok: true, cancelled })
     })
 
-    .delete("/", zValidator("json", ModelIdRequestSchema, validationHook), async (c) => {
+    .delete("/", zValidator("json", Agent.Services.ModelIdRequestSchema, validationHook), async (c) => {
       const { model } = c.req.valid("json")
       if (!(await store.removeModel(model))) {
         return c.json({ error: `model not cached: ${model}` }, 404)

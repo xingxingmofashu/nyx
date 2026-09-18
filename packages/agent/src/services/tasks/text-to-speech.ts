@@ -1,19 +1,42 @@
 import { LLM } from "@nyx/llm"
+import { z } from "zod/v4"
 import { Provider } from "../../provider.ts"
 
-/** One synthesized clip: WAV bytes plus the waveform's sample rate. */
+export const TextToSpeechInputSchema = z.object({
+  text: z.string().trim().min(1),
+  speaker: z.string().optional(),
+  speed: z.number().optional(),
+})
+export type TextToSpeechInput = z.infer<typeof TextToSpeechInputSchema>
+
+export const TextToSpeechRequestSchema = z.object({
+  model: z.string().min(1),
+  text: z.string().trim().min(1),
+  speaker: z.string().optional(),
+  speed: z.number().optional(),
+})
+export type TextToSpeechRequest = z.infer<typeof TextToSpeechRequestSchema>
+
+export interface AudioResult {
+  data: Uint8Array
+  mimeType: string
+  samplingRate: number
+}
+
 export interface GeneratedAudio {
   data: Buffer
   mimeType: string
   samplingRate: number
 }
 
-/** Runs text-to-speech synthesis against cached model providers. */
-export class TextToSpeechService {
+export class TextToSpeech {
   constructor(private readonly cache: Provider = new Provider()) {}
 
-  /** Synthesize speech from `text` with a text-to-speech model. */
-  async generate(modelId: string, text: string, options: LLM.TextToSpeechOptions = {}): Promise<GeneratedAudio> {
+  async generate(
+    modelId: string,
+    text: string,
+    options: LLM.TextToSpeechOptions = {},
+  ): Promise<GeneratedAudio> {
     const provider = this.cache.get(modelId, () => new LLM.OnnxTextToSpeechProvider({ model: modelId }))
     const audio = await provider.generate(text, options)
 

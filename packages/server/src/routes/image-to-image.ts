@@ -1,12 +1,11 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
-import { ImageToImageRequestSchema } from "@nyx/agent/schema"
 import { validationHook } from "../validation"
-import type { ImageToImageService } from "@nyx/agent"
+import { Agent } from "@nyx/agent"
 
 /** POST /v1/tasks/image-to-image — transform an image; responds with image bytes. */
-export function imageToImage(service: ImageToImageService) {
-  return new Hono().post("/", zValidator("json", ImageToImageRequestSchema, validationHook), async (c) => {
+export function imageToImage(service: Agent.Services.ImageToImage) {
+  return new Hono().post("/", zValidator("json", Agent.Services.ImageToImageRequestSchema, validationHook), async (c) => {
     const { model, image } = c.req.valid("json")
     try {
       const result = await service.generate(model, image)

@@ -3,63 +3,35 @@
  * structured-cloneable across the contextBridge (no classes/Errors).
  */
 
-// HTTP wire types live in @nyx/server/schema.
-import type {
-  AudioResult,
-  AudioSamples,
-  ChatMessageMetadata,
-  ContextCheckpoint,
-  ImageBytes,
-  ImageResult,
-  KnowledgeDocument,
-  KnowledgeDocumentStatus,
-  KnowledgeImportResult,
-  KnowledgeIndexProgress,
-  KnowledgeSearchHit,
-  KnowledgeStatus,
-  SavedAttachment,
-  TextToSpeechInput,
-  TokenUsage,
-  TranscriptResult,
-  UIMessage,
-  UIMessageChunk,
-} from "@nyx/server/schema"
-import type {
-  AgentProviderEntry,
-  AgentSettings,
-  ChatSessionMeta,
-  ModelInfo,
-  ModelLimit,
-  Settings,
-} from "@nyx/server/schema"
+// HTTP wire types live in the @nyx/agent namespace.
+import type { UIMessage, UIMessageChunk } from "ai"
 import type { LLM } from "@nyx/llm"
-type LLMTask = LLM.LLMTask
-export type {
-  AgentProviderEntry,
-  AgentSettings,
-  AudioResult,
-  AudioSamples,
-  ChatMessageMetadata,
-  ChatSessionMeta,
-  ContextCheckpoint,
-  ImageBytes,
-  ImageResult,
-  KnowledgeDocument,
-  KnowledgeDocumentStatus,
-  KnowledgeImportResult,
-  KnowledgeIndexProgress,
-  KnowledgeSearchHit,
-  KnowledgeStatus,
-  SavedAttachment,
-  TextToSpeechInput,
-  TokenUsage,
-  TranscriptResult,
-  UIMessage,
-  UIMessageChunk,
-  LLMTask,
-  ModelInfo,
-  Settings,
-}
+import type { Global } from "@nyx/global"
+import type { Agent } from "@nyx/agent"
+
+export type LLMTask = LLM.LLMTask
+export type AgentProviderEntry = Global.AgentProviderEntrySchemaType
+export type AgentSettings = Global.AgentSettingsSchemaType
+export type AudioResult = Agent.Services.AudioResult
+export type AudioSamples = Agent.Services.AudioSamples
+export type ChatMessageMetadata = Agent.ChatMessageMetadata
+export type ChatSessionMeta = Agent.ChatSessionMeta
+export type ContextCheckpoint = Agent.ContextCheckpoint
+export type ImageBytes = Agent.Services.ImageBytes
+export type ImageResult = Agent.Services.ImageResult
+export type KnowledgeDocument = Agent.Services.KnowledgeDocument
+export type KnowledgeDocumentStatus = Agent.Services.KnowledgeDocumentStatus
+export type KnowledgeImportResult = Agent.Services.KnowledgeImportResult
+export type KnowledgeIndexProgress = Agent.Services.KnowledgeIndexProgress
+export type KnowledgeSearchHit = Agent.Services.KnowledgeSearchHit
+export type KnowledgeStatus = Agent.Services.KnowledgeStatus
+export type ModelInfo = Agent.Services.ModelInfo
+export type SavedAttachment = Agent.SavedAttachment
+export type Settings = Global.SettingsSchemaType
+export type TextToSpeechInput = Agent.Services.TextToSpeechInput
+export type TokenUsage = Agent.TokenUsage
+export type TranscriptResult = Agent.Services.TranscriptResult
+export type { UIMessage, UIMessageChunk }
 
 /** Start an agent chat stream; `body` is the `/v1/agent` JSON request body. */
 export interface ChatSendRequest {
@@ -141,8 +113,6 @@ export interface ProviderModels {
   error?: string
 }
 
-/** Provider-reported limits for one model (models.dev), for the context meter. */
-export type ModelLimits = ModelLimit
 /** Progress pushed main → renderer while one knowledge index run is in flight. */
 export interface KnowledgeIndexEvent extends KnowledgeIndexProgress {
   /** True on the run's last frame (done, cancelled or error). */
@@ -234,8 +204,6 @@ export interface NyxApi {
     getEnvironment: () => Promise<AppEnvironment>
     /** List a provider's models via the main process (no CORS). */
     listModels: (provider: AgentProviderEntry) => Promise<ProviderModels>
-    /** Context window etc. from the cached models.dev catalog; null when unknown. */
-    modelLimits: (providerId: string, modelId: string) => Promise<ModelLimits | null>
     /** Restart the inference server (needed after changing the HF endpoint). */
     restartServer: () => Promise<void>
   }

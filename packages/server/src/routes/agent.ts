@@ -1,9 +1,8 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { safeValidateUIMessages } from "ai"
-import { AgentRequestSchema, CompactRequestSchema, type AgentRequest, type CompactRequest } from "@nyx/agent/schema"
 import { validationHook } from "../validation"
-import type { AgentService } from "@nyx/agent"
+import { Agent } from "@nyx/agent"
 
 /**
  * POST /v1/agent — runs the agent and returns the AI SDK UI message stream
@@ -11,9 +10,9 @@ import type { AgentService } from "@nyx/agent"
  * POST /v1/agent/compact — summarizes the transcript right away (no turn) and
  * returns the checkpoint; the client persists it as message metadata.
  */
-export function agent(service: AgentService) {
+export function agent(service: Agent.Services.Agent) {
   return new Hono()
-    .post("/", zValidator("json", AgentRequestSchema, validationHook), async (c) => {
+    .post("/", zValidator("json", Agent.Services.AgentRequestSchema, validationHook), async (c) => {
       const { messages, workspaceDir, sessionId, inlineAudio, forceCompact } = c.req.valid("json")
 
       const validated = await safeValidateUIMessages({ messages })
@@ -25,7 +24,7 @@ export function agent(service: AgentService) {
       c.req.raw.signal.addEventListener("abort", () => controller.abort())
 
       try {
-        const request: AgentRequest = {
+        const request: Agent.Services.AgentRequest = {
           messages: validated.data,
           ...(workspaceDir !== undefined ? { workspaceDir } : {}),
           ...(sessionId !== undefined ? { sessionId } : {}),
@@ -37,7 +36,7 @@ export function agent(service: AgentService) {
         return c.json({ error: error instanceof Error ? error.message : String(error) }, 500)
       }
     })
-    .post("/compact", zValidator("json", CompactRequestSchema, validationHook), async (c) => {
+    .post("/compact", zValidator("json", Agent.Services.CompactRequestSchema, validationHook), async (c) => {
       const { messages, workspaceDir, sessionId } = c.req.valid("json")
 
       const validated = await safeValidateUIMessages({ messages })
@@ -46,7 +45,7 @@ export function agent(service: AgentService) {
       }
 
       try {
-        const request: CompactRequest = {
+        const request: Agent.Services.CompactRequest = {
           messages: validated.data,
           ...(workspaceDir !== undefined ? { workspaceDir } : {}),
           ...(sessionId !== undefined ? { sessionId } : {}),

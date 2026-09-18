@@ -1,25 +1,25 @@
 import type { LLM } from "@nyx/llm"
-import type {
-  AgentRequestInput,
-  AppEnvironment,
-  AttachmentSaveRequest,
-  ChatSession,
-  ChatSessionMeta,
-  CompactRequestInput,
-  KnowledgeImportRequestInput,
-  KnowledgeIndexRequestInput,
-  KnowledgeSearchRequestInput,
-  ModelInfo,
-  ModelLimit,
-  SavedAttachment,
-  SessionSaveRequest,
-  Settings,
-} from "@nyx/server/schema"
+import type { Agent } from "@nyx/agent"
+import type { Global } from "@nyx/global"
 import type { AppType } from "@nyx/server/api"
+
+type AgentRequestInput = Agent.Services.AgentRequestInput
+type AttachmentSaveRequest = Agent.AttachmentSaveRequest
+type ChatSession = Agent.ChatSession
+type ChatSessionMeta = Agent.ChatSessionMeta
+type CompactRequestInput = Agent.Services.CompactRequestInput
+type KnowledgeImportRequestInput = Agent.Services.KnowledgeImportRequestInput
+type KnowledgeIndexRequestInput = Agent.Services.KnowledgeIndexRequestInput
+type KnowledgeSearchRequestInput = Agent.Services.KnowledgeSearchRequestInput
+type ModelInfo = Agent.Services.ModelInfo
+type SavedAttachment = Agent.SavedAttachment
+type SessionSaveRequest = Agent.SessionSaveRequest
+type Settings = Global.SettingsSchemaType
 import { parseJsonEventStream, uiMessageChunkSchema } from "ai"
 import { createParser } from "eventsource-parser"
 import { hc } from "hono/client"
 import type {
+  AppEnvironment,
   AudioResult,
   AudioSamples,
   CompactionResult,
@@ -155,12 +155,6 @@ export class NyxServerClient {
     const res = await this.client.v1.settings.$put({ json: settings })
     if (!res.ok) throw new Error(await errorMessage(res, "settings"))
     return (await res.json()) as Settings
-  }
-
-  async catalogLimit(provider: string, model: string): Promise<ModelLimit | null> {
-    const res = await this.client.v1.catalog.limit.$get({ query: { provider, model } })
-    if (!res.ok) throw new Error(await errorMessage(res, "catalog/limit"))
-    return (await res.json()) as ModelLimit | null
   }
 
   async listSessions(workspaceDir?: string): Promise<ChatSessionMeta[]> {

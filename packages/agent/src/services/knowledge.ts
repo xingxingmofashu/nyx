@@ -1,16 +1,88 @@
 import { Global } from "@nyx/global"
-import { Knowledge } from "@nyx/knowledge"
+import { Knowledge as KnowledgeBase } from "@nyx/knowledge"
 import { LLM } from "@nyx/llm"
-import type { KnowledgeSearchHit, KnowledgeStatus } from "../schema"
+import { z } from "zod/v4"
 
-export class KnowledgeService {
+export interface KnowledgeSearchHit {
+  file: string
+  heading: string
+  text: string
+  score: number
+}
+
+export type KnowledgeDocumentStatus = "indexed" | "stale" | "new"
+
+export interface KnowledgeDocument {
+  file: string
+  size: number
+  modifiedAt: string
+  status: KnowledgeDocumentStatus
+}
+
+export interface KnowledgeStatus {
+  dir: string
+  embeddingModel?: string
+  indexedModel?: string
+  modelDownloaded: boolean
+  availableEmbeddingModels: string[]
+  documents: number
+  indexed: number
+  chunks: number
+  updatedAt?: string
+  indexing: boolean
+}
+
+export const KnowledgeDocumentInputSchema = z.object({
+  path: z.string().min(1),
+  content: z.string(),
+})
+export type KnowledgeDocumentInput = z.infer<typeof KnowledgeDocumentInputSchema>
+
+export const KnowledgeImportRequestSchema = z.object({
+  documents: z.array(KnowledgeDocumentInputSchema).min(1),
+  overwrite: z.boolean().optional(),
+})
+export type KnowledgeImportRequestInput = z.infer<typeof KnowledgeImportRequestSchema>
+
+export interface KnowledgeImportResult {
+  written: string[]
+  overwritten: string[]
+  skipped: string[]
+}
+
+export const KnowledgeDeleteRequestSchema = z.object({
+  path: z.string().min(1),
+})
+export type KnowledgeDeleteRequestInput = z.infer<typeof KnowledgeDeleteRequestSchema>
+
+export const KnowledgeReadQuerySchema = z.object({
+  path: z.string().min(1),
+})
+export type KnowledgeReadQueryInput = z.infer<typeof KnowledgeReadQuerySchema>
+
+export const KnowledgeIndexRequestSchema = z.object({
+  rebuild: z.boolean().optional(),
+})
+export type KnowledgeIndexRequestInput = z.infer<typeof KnowledgeIndexRequestSchema>
+
+export const KnowledgeSearchRequestSchema = z.object({
+  query: z.string().min(1),
+  topK: z.number().int().positive().max(20).optional(),
+})
+export type KnowledgeSearchRequestInput = z.infer<typeof KnowledgeSearchRequestSchema>
+
+export interface KnowledgeIndexProgress {
+  phase: "embed" | "done"
+  file?: string
+  filesDone: number
+  filesTotal: number
+  chunks: number
+}
+
+export class Knowledge {
   private controller?: AbortController
 
   constructor(private readonly log: (message: string) => void) {}
-
-  private open(): Promise<Knowledge.Base> {
-    return Knowledge.Base.open(Global.Path.knowledge)
-  }
 
   async hasDocuments(): Promise<boolean> {
     return await (await this.open()).hasDocuments()
@@ -28,7 +100,7 @@ export class KnowledgeService {
 
   async status(): Promise<KnowledgeStatus> {
     const kb = await this.open()
-    const embeddingModel = await Knowledge.Base.embeddingModel()
+    const embeddingModel = await KnowledgeBase.Base.embeddingModel()
     const { indexedModel, updatedAt } = kb.config
     const chunks = await kb.countChunks().catch(() => 0)
     return {
@@ -47,7 +119,7 @@ export class KnowledgeService {
     }
   }
 
-  async list(): Promise<Knowledge.Document[]> {
+  async list(): Promise<KnowledgeBase.Document[]> {
     return await (await this.open()).listDocuments()
   }
 
@@ -55,7 +127,10 @@ export class KnowledgeService {
     return await (await this.open()).readDocument(path)
   }
 
-  async importDocuments(documents: Knowledge.DocumentImport[], overwrite = false): Promise<Knowledge.ImportResult> {
+  async importDocuments(
+    documents: KnowledgeBase.DocumentImport[],
+    overwrite = false,
+  ): Promise<KnowledgeBase.ImportResult> {
     return await (await this.open()).writeDocuments(documents, { overwrite })
   }
 
@@ -85,8 +160,12 @@ export class KnowledgeService {
   }
 
   async index(
-    options: { rebuild?: boolean; onProgress?: (progress: Knowledge.IndexProgress) => void; signal?: AbortSignal } = {},
-  ): Promise<Knowledge.IndexStats> {
+    options: {
+      rebuild?: boolean
+      onProgress?: (progress: KnowledgeBase.IndexProgress) => void
+      signal?: AbortSignal
+    } = {},
+  ): Promise<KnowledgeBase.IndexStats> {
     await this.requireModel()
     const kb = await this.open()
     const stats = options.rebuild === true ? await kb.rebuild(options) : await kb.index(options)
@@ -96,8 +175,12 @@ export class KnowledgeService {
     return stats
   }
 
+  private open(): Promise<KnowledgeBase.Base> {
+    return KnowledgeBase.Base.open(Global.Path.knowledge)
+  }
+
   private async requireModel(): Promise<string> {
-    const model = await Knowledge.Base.embeddingModel()
+    const model = await KnowledgeBase.Base.embeddingModel()
     if (!model) {
       throw new Error(
         'No embedding model is selected. Download one from the Local models page (task "feature-extraction") and pick it above.',

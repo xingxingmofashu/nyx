@@ -35,5 +35,3 @@ export function start(options: {
     server.on("error", reject)
   })
 }
-
-export * from "./schema"

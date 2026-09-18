@@ -1,9 +1,8 @@
 import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { extname, isAbsolute, join, resolve } from "node:path";
 import { Global } from "@nyx/global";
-import { isWithinPath, mimeFor } from "@nyx/agent";
+import { Agent } from "@nyx/agent";
 import { nanoid } from "nanoid";
-import type { AttachmentSaveRequest, SavedAttachment } from "@nyx/agent/schema";
 
 const MAX_BYTES = 20 * 1024 * 1024;
 
@@ -31,12 +30,12 @@ export async function readGeneratedFileDataUrl(path: string, workspaceDir?: stri
   const target = isAbsolute(path) ? resolve(path) : resolve(workspaceRoot, path);
   try {
     for (const root of [workspaceRoot, Global.Path.sessions]) {
-      if (!isWithinPath(root, target)) continue;
+      if (!Agent.Workspace.isWithin(root, target)) continue;
       const realRoot = await realpath(root).catch(() => root);
       const realTarget = await realpath(target);
-      if (!isWithinPath(realRoot, realTarget)) continue;
+      if (!Agent.Workspace.isWithin(realRoot, realTarget)) continue;
       const bytes = await readFile(realTarget);
-      return `data:${mimeFor(path)};base64,${bytes.toString("base64")}`;
+      return `data:${Bun.file(path).type};base64,${bytes.toString("base64")}`;
     }
     return null;
   } catch {
@@ -44,7 +43,7 @@ export async function readGeneratedFileDataUrl(path: string, workspaceDir?: stri
   }
 }
 
-export async function saveAttachment(input: AttachmentSaveRequest): Promise<SavedAttachment> {
+export async function saveAttachment(input: Agent.AttachmentSaveRequest): Promise<Agent.SavedAttachment> {
   if (!input.workspaceDir) throw new Error("Choose a workspace before attaching files");
   if (!Global.Session.isValidId(input.sessionId)) throw new Error("Invalid session id");
   if (!input.mimeType.startsWith("image/")) {

@@ -1,126 +1,109 @@
 import { LLM } from "@nyx/llm"
-import { lookupModelLimit } from "./models-dev.ts";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { LanguageModel } from "ai";
-import type { Global } from "@nyx/global";
-import type { ResolvedAgentModel } from "./types.ts";
+import { createAnthropic } from "@ai-sdk/anthropic"
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
+import type { LanguageModel } from "ai"
+import type { Global } from "@nyx/global"
 
-const OPENAI_COMPATIBLE = "@ai-sdk/openai-compatible";
-const ANTHROPIC = "@ai-sdk/anthropic";
-
-/**
- * Parse a context-window limit: a raw token count, or a `"128k"` / `"1m"` style
- * string. Returns `undefined` for anything unusable, so callers can tell "not
- * configured" apart from a real value (a made-up default would silently compact
- * the wrong amount).
- */
-function parseContextLimit(value: number | string | undefined): number | undefined {
-  if (typeof value === "number" && Number.isFinite(value) && value > 0) return Math.round(value);
-  if (typeof value === "string") {
-    const match = /^\s*([\d.]+)\s*([km])?\s*$/i.exec(value);
-    if (match) {
-      const scale = match[2]?.toLowerCase() === "k" ? 1_000 : match[2]?.toLowerCase() === "m" ? 1_000_000 : 1;
-      const scaled = Number(match[1]) * scale;
-      if (Number.isFinite(scaled) && scaled > 0) return Math.round(scaled);
-    }
-  }
-  return undefined;
+export interface ResolvedModel {
+  npm: string
+  model: string
+  apiKey?: string
+  baseURL?: string
+  headers?: Record<string, string>
+  maxOutputTokens?: number
+  contextLimit?: number
 }
 
-/**
- * The agent's provider layer, in one place:
- * - builds the resolved agent model config from settings and turns it into an AI SDK
- *   model (the remote provider registry);
- * - caches loaded local ONNX model providers, keyed by model id, so expensive
- *   weights are created once and reused across every inference task.
- */
+interface RemoteProvider {
+  required: ReadonlyArray<"apiKey" | "baseURL">
+  create: (config: ResolvedModel) => LanguageModel
+}
+
 export class Provider {
+  private static readonly ANTHROPIC = "@ai-sdk/anthropic"
+  private static readonly OPENAI_COMPATIBLE = "@ai-sdk/openai-compatible"
+  private static readonly SCALE: Record<string, number> = { k: 1_000, m: 1_000_000 }
+
+  private static readonly REMOTE: Record<string, RemoteProvider> = {
+    [Provider.ANTHROPIC]: {
+      required: ["apiKey"],
+      create: ({ apiKey, baseURL, headers, model }) => createAnthropic({ apiKey, baseURL, headers })(model),
+    },
+    [Provider.OPENAI_COMPATIBLE]: {
+      required: ["apiKey", "baseURL"],
+      create: ({ apiKey, baseURL, headers, model }) => {
+        if (!baseURL) throw new Error(`Provider "${Provider.OPENAI_COMPATIBLE}" needs options.baseURL`)
+        return createOpenAICompatible({ name: "nyx", baseURL, apiKey, headers })(model)
+      },
+    },
+  }
+
   private readonly cache = new Map<string, LLM.LLMProvider>()
 
-  /** Get a cached provider or create (and cache) it via `create`. */
   get<T extends LLM.LLMProvider>(modelId: string, create: () => T): T {
-    let provider = this.cache.get(modelId) as T | undefined
-    if (!provider) {
-      provider = create()
-      this.cache.set(modelId, provider)
-    }
+    const cached = this.cache.get(modelId) as T | undefined
+    if (cached) return cached
+    const provider = create()
+    this.cache.set(modelId, provider)
     return provider
   }
 
-  /** Evict a model's provider (and the underlying pipeline); true when loaded. */
   evict(modelId: string): boolean {
     if (!this.cache.delete(modelId)) return false
     LLM.Runtime.clear()
     return true
   }
 
-  /**
-   * Build a resolved model config from settings: `model` is a
-   * `<providerId>/<modelId>` ref resolved against the `provider` map. Throws with
-   * an actionable message when the ref is missing/malformed or unknown.
-   */
-  static resolveModelConfig(settings: Global.AgentSettingsSchemaType): ResolvedAgentModel {
-    const ref = settings.model;
-    const slash = ref ? ref.indexOf("/") : -1;
-    if (!ref || slash <= 0) {
-      throw new Error('agent.model must be "<providerId>/<modelId>" (e.g. "opencode/mimo-v2.5")');
+  static resolveModelConfig(settings: Global.AgentSettingsSchemaType): ResolvedModel {
+    const { providerId, model } = Provider.parseRef(settings.model)
+    const entry = settings.provider?.[providerId]
+    if (!entry) throw new Error(`agent.provider.${providerId} is not configured`)
+    const remote = Provider.REMOTE[entry.npm]
+    if (!remote) throw new Error(Provider.unsupported(entry.npm))
+
+    const options = entry.options ?? {}
+    for (const field of remote.required) {
+      if (!options[field]) throw new Error(`agent.provider.${providerId}.options.${field} is required`)
     }
-    const providerId = ref.slice(0, slash);
-    const model = ref.slice(slash + 1);
-    const provider = settings.provider?.[providerId];
-    if (!provider) {
-      throw new Error(`agent.provider.${providerId} is not configured`);
-    }
-    const options = provider.options ?? {};
-    if (!options.apiKey) {
-      throw new Error(`agent.provider.${providerId}.options.apiKey is required`);
-    }
-    if (provider.npm === OPENAI_COMPATIBLE && !options.baseURL) {
-      throw new Error(`agent.provider.${providerId}.options.baseURL is required for ${OPENAI_COMPATIBLE}`);
-    }
-    // Limits: the provider's own config wins; otherwise fall back to the
-    // models.dev catalog (by provider id, then by model id anywhere). Unknown
-    // limits stay undefined so the agent never guesses a context window.
-    const catalog = lookupModelLimit(providerId, model);
+
     const context =
-      provider.limit?.context !== undefined
-        ? parseContextLimit(provider.limit.context)
-        : (catalog?.context ?? catalog?.input);
-    const output = provider.limit?.output ?? catalog?.output;
+      entry.limit?.context === undefined ? undefined : Provider.parseLimit(entry.limit.context)
+    const output = entry.limit?.output
     return {
-      npm: provider.npm,
+      npm: entry.npm,
       model,
       apiKey: options.apiKey,
       baseURL: options.baseURL,
       headers: options.headers,
       ...(output === undefined ? {} : { maxOutputTokens: output }),
       ...(context === undefined ? {} : { contextLimit: context }),
-    };
+    }
   }
 
-  /**
-   * Resolve the agent's remote model. The provider is selected by its AI SDK npm
-   * package; new providers are added here (one case) — the agent stays
-   * provider-agnostic.
-   */
-  static resolveModel(config: ResolvedAgentModel): LanguageModel {
-    const { npm, model, apiKey, baseURL, headers } = config;
-    if (!apiKey) {
-      throw new Error(`Missing API key for "${npm}" (set provider options.apiKey)`);
-    }
+  static resolveModel(config: ResolvedModel): LanguageModel {
+    const remote = Provider.REMOTE[config.npm]
+    if (!remote) throw new Error(Provider.unsupported(config.npm))
+    if (!config.apiKey) throw new Error(`Missing API key for "${config.npm}" (set provider options.apiKey)`)
+    return remote.create(config)
+  }
 
-    switch (npm) {
-      case ANTHROPIC:
-        return createAnthropic({ apiKey, baseURL, headers })(model);
-      case OPENAI_COMPATIBLE: {
-        if (!baseURL) {
-          throw new Error(`Provider "${npm}" needs options.baseURL (set it in agent.provider.<id>.options)`);
-        }
-        return createOpenAICompatible({ name: "nyx", baseURL, apiKey, headers })(model);
-      }
-      default:
-        throw new Error(`Unsupported provider package "${npm}". Supported: ${OPENAI_COMPATIBLE}, ${ANTHROPIC}.`);
+  private static parseRef(ref: string | undefined): { providerId: string; model: string } {
+    const slash = ref?.indexOf("/") ?? -1
+    if (!ref || slash <= 0 || slash === ref.length - 1) {
+      throw new Error('agent.model must be "<providerId>/<modelId>" (e.g. "opencode/mimo-v2.5")')
     }
+    return { providerId: ref.slice(0, slash), model: ref.slice(slash + 1) }
+  }
+
+  private static parseLimit(value: number | string): number | undefined {
+    const match = typeof value === "string" ? /^\s*([\d.]+)\s*([km])?\s*$/i.exec(value) : null
+    if (typeof value === "string" && !match) return undefined
+    const scaled = match ? Number(match[1]) * (Provider.SCALE[match[2]?.toLowerCase() ?? ""] ?? 1) : value
+    if (typeof scaled === "number" && Number.isFinite(scaled) && scaled > 0) return Math.round(scaled)
+    return undefined
+  }
+
+  private static unsupported(npm: string): string {
+    return `unsupported provider package "${npm}". Supported: ${Object.keys(Provider.REMOTE).join(", ")}.`
   }
 }

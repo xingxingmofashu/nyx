@@ -1,36 +1,38 @@
 import { LLM } from "@nyx/llm"
 import type { Global } from "@nyx/global"
+import { z } from "zod/v4"
 import { Provider } from "../provider.ts"
 
-/**
- * Model lifecycle: list cached models, download (pull) with progress, cancel an
- * in-flight pull, and remove models from disk + the provider cache. Each pull
- * is tracked by model id so a cancel can abort it.
- */
-export class ModelsService {
-  /** modelId → controller for the in-flight pull; lets cancelPull abort it. */
+export type ModelInfo = Global.ModelInfoSchemaType
+
+export const ModelPullRequestSchema = z.object({
+  model: z.string().min(1),
+  task: z.enum(LLM.LLM_TASKS),
+})
+export type ModelPullRequest = z.infer<typeof ModelPullRequestSchema>
+
+export const ModelIdRequestSchema = z.object({ model: z.string().min(1) })
+export type ModelIdRequest = z.infer<typeof ModelIdRequestSchema>
+
+export class Models {
   private readonly activePulls = new Map<string, AbortController>()
 
   constructor(private readonly cache: Provider = new Provider()) {}
 
-  /** True when a pull for this model is already running. */
   isPulling(modelId: string): boolean {
     return this.activePulls.has(modelId)
   }
 
-  /** Register a pull in flight; returns its controller. */
   beginPull(modelId: string): AbortController {
     const controller = new AbortController()
     this.activePulls.set(modelId, controller)
     return controller
   }
 
-  /** Clear the in-flight marker; safe to call more than once. */
   endPull(modelId: string): void {
     this.activePulls.delete(modelId)
   }
 
-  /** Abort the in-flight pull for a model; false when none is running. */
   cancelPull(modelId: string): boolean {
     const controller = this.activePulls.get(modelId)
     if (!controller) return false
@@ -38,12 +40,10 @@ export class ModelsService {
     return true
   }
 
-  /** List locally installed models. */
   listModels(): Promise<Global.ModelInfoSchemaType[]> {
     return LLM.Model.list()
   }
 
-  /** Download a model into the local cache, streaming progress when a callback is given. */
   async pullModel(
     modelId: string,
     task: LLM.LLMTask,
@@ -53,7 +53,6 @@ export class ModelsService {
     await LLM.Model.pull(modelId, task, onProgress, undefined, signal)
   }
 
-  /** Remove a model from disk and the provider cache; true when it was cached. */
   removeModel(modelId: string): Promise<boolean> {
     this.cache.evict(modelId)
     return LLM.Model.remove(modelId)

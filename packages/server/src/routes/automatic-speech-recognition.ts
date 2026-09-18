@@ -1,12 +1,11 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
-import { AutomaticSpeechRecognitionRequestSchema } from "@nyx/agent/schema"
 import { validationHook } from "../validation"
-import type { AutomaticSpeechRecognitionService } from "@nyx/agent"
+import { Agent } from "@nyx/agent"
 
 /** POST /v1/tasks/automatic-speech-recognition — transcribe PCM samples; responds with JSON text. */
-export function automaticSpeechRecognition(service: AutomaticSpeechRecognitionService) {
-  return new Hono().post("/", zValidator("json", AutomaticSpeechRecognitionRequestSchema, validationHook), async (c) => {
+export function automaticSpeechRecognition(service: Agent.Services.AutomaticSpeechRecognition) {
+  return new Hono().post("/", zValidator("json", Agent.Services.AutomaticSpeechRecognitionRequestSchema, validationHook), async (c) => {
     const { model, audio, language, task } = c.req.valid("json")
     try {
       // Copy into a fresh, 4-byte-aligned buffer: base64-decoded Buffers may sit

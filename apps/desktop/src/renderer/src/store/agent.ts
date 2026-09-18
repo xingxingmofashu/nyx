@@ -8,7 +8,7 @@ interface AgentSettingsState {
   configured: boolean
   /** Workspace the agent's coding tools are confined to. */
   workspaceDir: string
-  /** Context window from the provider config, when set (the server also resolves it from models.dev). */
+  /** Context window from the provider config, when set. */
   contextLimit?: number
   initialized: boolean
   init: () => Promise<void>
@@ -53,17 +53,10 @@ async function readAgentState(): Promise<
   if (ref) {
     const slash = ref.indexOf("/")
     const providerId = slash > 0 ? ref.slice(0, slash) : ""
-    const modelId = slash > 0 ? ref.slice(slash + 1) : ""
     const provider = providerId ? agent?.provider?.[providerId] : undefined
     const name = provider?.name
     modelLabel = name ? `${name} · ${ref}` : ref
     contextLimit = parseContextLimit(provider?.limit?.context)
-    // No configured window: fall back to the cached models.dev catalog, the same
-    // source the server resolves it from, so the meter has a scale from the start.
-    if (contextLimit === undefined && providerId && modelId) {
-      const limits = await window.nyx.config.modelLimits(providerId, modelId).catch(() => null)
-      contextLimit = parseContextLimit(limits?.context ?? limits?.input)
-    }
   }
   return { modelLabel, configured: Boolean(ref), workspaceDir: agent?.workspaceDir ?? "", contextLimit }
 }

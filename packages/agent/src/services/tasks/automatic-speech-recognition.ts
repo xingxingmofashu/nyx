@@ -1,15 +1,31 @@
 import { LLM } from "@nyx/llm"
+import { z } from "zod/v4"
 import { Provider } from "../../provider.ts"
 
-/** Runs automatic-speech-recognition inference against cached model providers. */
-export class AutomaticSpeechRecognitionService {
+export interface AudioSamples {
+  samples: Float32Array
+  samplingRate: number
+}
+
+export const AutomaticSpeechRecognitionInputSchema = z.object({
+  audio: z.object({ data: z.string(), samplingRate: z.number() }),
+  language: z.string().optional(),
+  task: z.enum(["transcribe", "translate"]).optional(),
+})
+export type AutomaticSpeechRecognitionInput = z.infer<typeof AutomaticSpeechRecognitionInputSchema>
+
+export const AutomaticSpeechRecognitionRequestSchema = AutomaticSpeechRecognitionInputSchema.extend({
+  model: z.string().min(1),
+})
+export type AutomaticSpeechRecognitionRequest = z.infer<typeof AutomaticSpeechRecognitionRequestSchema>
+
+export interface TranscriptResult {
+  text: string
+}
+
+export class AutomaticSpeechRecognition {
   constructor(private readonly cache: Provider = new Provider()) {}
 
-  /**
-   * Transcribe mono 16 kHz PCM samples with an automatic-speech-recognition
-   * model. Whisper expects 16 kHz input; other rates are rejected rather than
-   * silently mistranscribed.
-   */
   async transcribe(
     modelId: string,
     samples: Float32Array,
@@ -19,7 +35,10 @@ export class AutomaticSpeechRecognitionService {
     if (samplingRate !== 16000) {
       throw new Error(`automatic-speech-recognition expects 16 kHz audio, got ${samplingRate} Hz`)
     }
-    const provider = this.cache.get(modelId, () => new LLM.OnnxAutomaticSpeechRecognitionProvider({ model: modelId }))
+    const provider = this.cache.get(
+      modelId,
+      () => new LLM.OnnxAutomaticSpeechRecognitionProvider({ model: modelId }),
+    )
     return provider.transcribe(samples, options)
   }
 }

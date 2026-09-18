@@ -1,18 +1,8 @@
 import { Hono } from "hono"
-import {
-  AgentService,
-  AutomaticSpeechRecognitionService,
-  ensureModelsCatalog,
-  ImageToImageService,
-  KnowledgeService,
-  ModelsService,
-  Provider,
-  TextToSpeechService,
-} from "@nyx/agent"
+import { Agent } from "@nyx/agent"
 import { auth } from "./middleware/auth"
 import { agent } from "./routes/agent"
 import { automaticSpeechRecognition } from "./routes/automatic-speech-recognition"
-import { catalog } from "./routes/catalog"
 import { environment } from "./routes/environment"
 import { files } from "./routes/files"
 import { imageToImage } from "./routes/image-to-image"
@@ -25,17 +15,17 @@ import { textToSpeech } from "./routes/text-to-speech"
 /** Service dependencies shared by every route, wired once per app instance. */
 export interface ServerServices {
   /** Downloads/removes models: list, pull, cancel, remove. */
-  models: ModelsService
+  models: Agent.Services.Models
   /** Runs image-to-image transforms. */
-  imageToImage: ImageToImageService
+  imageToImage: Agent.Services.ImageToImage
   /** Synthesizes speech from text. */
-  textToSpeech: TextToSpeechService
+  textToSpeech: Agent.Services.TextToSpeech
   /** Transcribes speech into text. */
-  automaticSpeechRecognition: AutomaticSpeechRecognitionService
+  automaticSpeechRecognition: Agent.Services.AutomaticSpeechRecognition
   /** Manages and searches the local knowledge base (RAG). */
-  knowledge: KnowledgeService
+  knowledge: Agent.Services.Knowledge
   /** Runs the agent loop against the remote model. */
-  agent: AgentService
+  agent: Agent.Services.Agent
 }
 
 /**
@@ -45,25 +35,21 @@ export interface ServerServices {
 export function createApp(options: { token: string; onLog: (message: string) => void }) {
   // Share one provider cache between the task services and the model service so
   // removing a model also evicts its loaded weights.
-  const cache = new Provider()
-  const knowledgeService = new KnowledgeService(options.onLog)
+  const cache = new Agent.Provider()
+  const knowledgeService = new Agent.Services.Knowledge(options.onLog)
   const services: ServerServices = {
-    models: new ModelsService(cache),
-    imageToImage: new ImageToImageService(cache),
-    textToSpeech: new TextToSpeechService(cache),
-    automaticSpeechRecognition: new AutomaticSpeechRecognitionService(cache),
+    models: new Agent.Services.Models(cache),
+    imageToImage: new Agent.Services.ImageToImage(cache),
+    textToSpeech: new Agent.Services.TextToSpeech(cache),
+    automaticSpeechRecognition: new Agent.Services.AutomaticSpeechRecognition(cache),
     knowledge: knowledgeService,
-    agent: new AgentService(cache, knowledgeService),
+    agent: new Agent.Services.Agent(cache, knowledgeService),
   }
 
   // The knowledge index is not built here on purpose: opening the app should
   // not start an embedding pass. Only the desktop's Knowledge page starts one
   // (Update index / Rebuild); `search_knowledge` reports an empty index instead
   // of filling it.
-
-  // Model limits (context window) for the agent's context compaction: cached in
-  // ~/.nyx/cache, refreshed in the background. No-op when it is already fresh.
-  void ensureModelsCatalog().catch(() => {})
 
   const handle = auth(options.token)
 
@@ -72,7 +58,6 @@ export function createApp(options: { token: string; onLog: (message: string) => 
     .get("/health", (c) => c.json({ ok: true }))
     .route("/settings", settings())
     .route("/environment", environment())
-    .route("/catalog", catalog())
     .route("/sessions", sessions())
     .route("/files", files())
     .route("/models", models(services.models))

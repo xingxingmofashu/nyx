@@ -97,8 +97,6 @@ const api: NyxApi = {
       ipcRenderer.invoke(IPC.config.getEnvironment),
     listModels: (provider) =>
       ipcRenderer.invoke(IPC.config.listModels, provider),
-    modelLimits: (providerId: string, modelId: string) =>
-      ipcRenderer.invoke(IPC.config.modelLimits, providerId, modelId),
     restartServer: (): Promise<void> =>
       ipcRenderer.invoke(IPC.config.restartServer),
   },

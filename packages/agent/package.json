@@ -6,8 +6,7 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./schema": "./src/schema.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -23,7 +22,6 @@
     "ai": "catalog:",
     "htmlparser2": "catalog:",
     "is-path-inside": "catalog:",
-    "mrmime": "catalog:",
     "turndown": "catalog:",
     "zod": "catalog:"
   },

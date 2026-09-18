@@ -16,7 +16,7 @@ interface ContextMeterProps {
  * the most recent turn (the AI SDK's `finish` usage). Always rendered so the
  * budget is visible from the very first turn (at 0), and it drops visibly after a
  * compaction, which is the point of showing it. Without a known window
- * (no `limit.context` and no models.dev entry) only the count is shown.
+ * (no `limit.context`) only the count is shown.
  */
 export function ContextMeter({ used = 0, limit, estimated, className }: ContextMeterProps) {
   const count = Math.max(0, used)
