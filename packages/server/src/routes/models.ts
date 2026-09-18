@@ -2,77 +2,74 @@ import { Hono } from "hono"
 import { streamSSE } from "hono/streaming"
 import { zValidator } from "@hono/zod-validator"
 import { LLM } from "@nyx/llm"
-import { validationHook } from "../validation"
 import { Agent } from "@nyx/agent"
+import { Errors } from "../errors.ts"
 
-/** /v1/models — list, download, cancel, and delete cached models. */
-export function models(store: Agent.Services.Models) {
-  return new Hono()
-    .get("/", async (c) => c.json(await store.listModels()))
+export class Models {
+  static create(store: Agent.Services.Models) {
+    return new Hono()
+      .get("/", async (c) => c.json(await store.listModels()))
 
-    /** POST /pull — SSE stream of download progress; ends with done/cancelled/error. */
-    .post("/pull", zValidator("json", Agent.Services.ModelPullRequestSchema, validationHook), (c) => {
-      const { model, task } = c.req.valid("json")
+      .post("/pull", zValidator("json", Agent.Services.ModelPullRequestSchema, Errors.hook), (c) => {
+        const { model, task } = c.req.valid("json")
 
-      return streamSSE(c, async (stream) => {
-        if (store.isPulling(model)) {
-          await stream.writeSSE({
-            event: "error",
-            data: JSON.stringify({ message: `already pulling ${model}` }),
-          })
-          return
-        }
-
-        const controller = store.beginPull(model)
-
-        const onProgress = (info: LLM.ProgressInfo) => {
-          if (info.status === "progress" && info.total > 0) {
-            void stream.writeSSE({
-              event: "progress",
-              data: JSON.stringify({
-                file: info.file,
-                loaded: info.loaded,
-                total: info.total,
-                percent: Math.round((info.loaded / info.total) * 100),
-              }),
-            })
-          } else if (info.status === "done") {
-            void stream.writeSSE({ event: "done", data: JSON.stringify({ file: info.file }) })
-          }
-        }
-
-        try {
-          await store.pullModel(model, task, onProgress, controller.signal)
-          await stream.writeSSE({ event: "done", data: JSON.stringify({ file: undefined }) })
-        } catch (error) {
-          if (error instanceof LLM.PullAbortedError) {
-            // The download was cancelled: drop any partial files so a truncated
-            // model is never mistaken for a complete one.
-            await store.removeModel(model)
-            await stream.writeSSE({ event: "cancelled", data: JSON.stringify({ file: undefined }) })
-          } else {
+        return streamSSE(c, async (stream) => {
+          if (store.isPulling(model)) {
             await stream.writeSSE({
               event: "error",
-              data: JSON.stringify({ message: error instanceof Error ? error.message : String(error) }),
+              data: JSON.stringify({ message: `already pulling ${model}` }),
             })
+            return
           }
-        } finally {
-          store.endPull(model)
-        }
+
+          const controller = store.beginPull(model)
+
+          const onProgress = (info: LLM.ProgressInfo) => {
+            if (info.status === "progress" && info.total > 0) {
+              void stream.writeSSE({
+                event: "progress",
+                data: JSON.stringify({
+                  file: info.file,
+                  loaded: info.loaded,
+                  total: info.total,
+                  percent: Math.round((info.loaded / info.total) * 100),
+                }),
+              })
+            } else if (info.status === "done") {
+              void stream.writeSSE({ event: "done", data: JSON.stringify({ file: info.file }) })
+            }
+          }
+
+          try {
+            await store.pullModel(model, task, onProgress, controller.signal)
+            await stream.writeSSE({ event: "done", data: JSON.stringify({ file: undefined }) })
+          } catch (error) {
+            if (error instanceof LLM.PullAbortedError) {
+              await store.removeModel(model)
+              await stream.writeSSE({ event: "cancelled", data: JSON.stringify({ file: undefined }) })
+            } else {
+              await stream.writeSSE({
+                event: "error",
+                data: JSON.stringify({ message: Errors.message(error) }),
+              })
+            }
+          } finally {
+            store.endPull(model)
+          }
+        })
       })
-    })
 
-    /** POST /pull/cancel — stop an in-flight pull by model id. */
-    .post("/pull/cancel", zValidator("json", Agent.Services.ModelIdRequestSchema, validationHook), (c) => {
-      const cancelled = store.cancelPull(c.req.valid("json").model)
-      return c.json({ ok: true, cancelled })
-    })
+      .post("/pull/cancel", zValidator("json", Agent.Services.ModelIdRequestSchema, Errors.hook), (c) => {
+        const cancelled = store.cancelPull(c.req.valid("json").model)
+        return c.json({ ok: true, cancelled })
+      })
 
-    .delete("/", zValidator("json", Agent.Services.ModelIdRequestSchema, validationHook), async (c) => {
-      const { model } = c.req.valid("json")
-      if (!(await store.removeModel(model))) {
-        return c.json({ error: `model not cached: ${model}` }, 404)
-      }
-      return c.json({ ok: true })
-    })
+      .delete("/", zValidator("json", Agent.Services.ModelIdRequestSchema, Errors.hook), async (c) => {
+        const { model } = c.req.valid("json")
+        if (!(await store.removeModel(model))) {
+          throw Errors.status(404, new Error(`model not cached: ${model}`))
+        }
+        return c.json({ ok: true })
+      })
+  }
 }

@@ -1,74 +1,102 @@
+import { serve } from "@hono/node-server"
 import { Hono } from "hono"
+import { HTTPException } from "hono/http-exception"
 import { Agent } from "@nyx/agent"
-import { auth } from "./middleware/auth"
-import { agent } from "./routes/agent"
-import { automaticSpeechRecognition } from "./routes/automatic-speech-recognition"
-import { environment } from "./routes/environment"
-import { files } from "./routes/files"
-import { imageToImage } from "./routes/image-to-image"
-import { knowledge } from "./routes/knowledge"
-import { models } from "./routes/models"
-import { sessions } from "./routes/sessions"
-import { settings } from "./routes/settings"
-import { textToSpeech } from "./routes/text-to-speech"
+import { Auth } from "./middleware/auth.ts"
+import { Errors } from "./errors.ts"
+import { Agent as AgentRoute } from "./routes/agent.ts"
+import { AutomaticSpeechRecognition } from "./routes/automatic-speech-recognition.ts"
+import { Environment } from "./routes/environment.ts"
+import { Files } from "./routes/files.ts"
+import { ImageToImage } from "./routes/image-to-image.ts"
+import { Knowledge } from "./routes/knowledge.ts"
+import { Models } from "./routes/models.ts"
+import { Sessions } from "./routes/sessions.ts"
+import { Settings } from "./routes/settings.ts"
+import { TextToSpeech } from "./routes/text-to-speech.ts"
 
-/** Service dependencies shared by every route, wired once per app instance. */
-export interface ServerServices {
-  /** Downloads/removes models: list, pull, cancel, remove. */
+export interface Services {
   models: Agent.Services.Models
-  /** Runs image-to-image transforms. */
   imageToImage: Agent.Services.ImageToImage
-  /** Synthesizes speech from text. */
   textToSpeech: Agent.Services.TextToSpeech
-  /** Transcribes speech into text. */
   automaticSpeechRecognition: Agent.Services.AutomaticSpeechRecognition
-  /** Manages and searches the local knowledge base (RAG). */
   knowledge: Agent.Services.Knowledge
-  /** Runs the agent loop against the remote model. */
   agent: Agent.Services.Agent
 }
 
-/**
- * Assemble a fully-wired app: mount services under `/v1`. The return type is
- * intentionally inferred so `@nyx/server/api` can expose it to the Hono RPC client.
- */
-export function createApp(options: { token: string; onLog: (message: string) => void }) {
-  // Share one provider cache between the task services and the model service so
-  // removing a model also evicts its loaded weights.
-  const cache = new Agent.Provider()
-  const knowledgeService = new Agent.Services.Knowledge(options.onLog)
-  const services: ServerServices = {
-    models: new Agent.Services.Models(cache),
-    imageToImage: new Agent.Services.ImageToImage(cache),
-    textToSpeech: new Agent.Services.TextToSpeech(cache),
-    automaticSpeechRecognition: new Agent.Services.AutomaticSpeechRecognition(cache),
-    knowledge: knowledgeService,
-    agent: new Agent.Services.Agent(cache, knowledgeService),
+export interface AppOptions {
+  token: string
+  onLog: (message: string) => void
+}
+
+export interface ServeOptions extends AppOptions {
+  port?: number
+  host?: string
+}
+
+export interface Handle {
+  url: string
+  port: number
+  stop: () => Promise<void>
+}
+
+export class App {
+  static create(options: AppOptions) {
+    const cache = new Agent.Provider()
+    const knowledge = new Agent.Services.Knowledge(options.onLog)
+    const services: Services = {
+      models: new Agent.Services.Models(cache),
+      imageToImage: new Agent.Services.ImageToImage(cache),
+      textToSpeech: new Agent.Services.TextToSpeech(cache),
+      automaticSpeechRecognition: new Agent.Services.AutomaticSpeechRecognition(cache),
+      knowledge,
+      agent: new Agent.Services.Agent(cache, knowledge),
+    }
+
+    const v1 = new Hono()
+      .use("*", Auth.middleware(options.token))
+      .onError((error, c) =>
+        c.json({ error: Errors.message(error) }, error instanceof HTTPException ? error.status : 500),
+      )
+      .get("/health", (c) => c.json({ ok: true }))
+      .route("/settings", Settings.create())
+      .route("/environment", Environment.create())
+      .route("/sessions", Sessions.create())
+      .route("/files", Files.create())
+      .route("/models", Models.create(services.models))
+      .route("/tasks/image-to-image", ImageToImage.create(services.imageToImage))
+      .route("/tasks/text-to-speech", TextToSpeech.create(services.textToSpeech))
+      .route(
+        "/tasks/automatic-speech-recognition",
+        AutomaticSpeechRecognition.create(services.automaticSpeechRecognition),
+      )
+      .route("/agent", AgentRoute.create(services.agent))
+      .route("/knowledge", Knowledge.create(services.knowledge))
+
+    return new Hono().route("/v1", v1)
   }
 
-  // The knowledge index is not built here on purpose: opening the app should
-  // not start an embedding pass. Only the desktop's Knowledge page starts one
-  // (Update index / Rebuild); `search_knowledge` reports an empty index instead
-  // of filling it.
+  static serve(options: ServeOptions): Promise<Handle> {
+    const app = App.create(options)
+    const port = options.port ?? 0
+    const host = options.host ?? "127.0.0.1"
 
-  const handle = auth(options.token)
-
-  const v1 = new Hono()
-    .use("*", handle)
-    .get("/health", (c) => c.json({ ok: true }))
-    .route("/settings", settings())
-    .route("/environment", environment())
-    .route("/sessions", sessions())
-    .route("/files", files())
-    .route("/models", models(services.models))
-    .route("/tasks/image-to-image", imageToImage(services.imageToImage))
-    .route("/tasks/text-to-speech", textToSpeech(services.textToSpeech))
-    .route(
-      "/tasks/automatic-speech-recognition",
-      automaticSpeechRecognition(services.automaticSpeechRecognition),
-    )
-    .route("/agent", agent(services.agent))
-    .route("/knowledge", knowledge(services.knowledge))
-
-  return new Hono().route("/v1", v1)
+    return new Promise((resolve, reject) => {
+      const server = serve(
+        { fetch: app.fetch, port, hostname: host, overrideGlobalObjects: false },
+        (info) => {
+          const actualPort = typeof info === "object" && info !== null ? info.port : port
+          resolve({
+            url: `http://${host}:${actualPort}`,
+            port: actualPort,
+            stop: () =>
+              new Promise<void>((res) => {
+                server.close(() => res())
+              }),
+          })
+        },
+      )
+      server.on("error", reject)
+    })
+  }
 }

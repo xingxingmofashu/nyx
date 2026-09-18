@@ -1,7 +1,7 @@
 import type { LLM } from "@nyx/llm"
 import type { Agent } from "@nyx/agent"
 import type { Global } from "@nyx/global"
-import type { AppType } from "@nyx/server/api"
+import type { Server } from "@nyx/server"
 
 type AgentRequestInput = Agent.Services.AgentRequestInput
 type AttachmentSaveRequest = Agent.AttachmentSaveRequest
@@ -37,7 +37,7 @@ import type {
 } from "../../shared/types"
 
 /** Route-typed Hono client; paths, methods, and JSON bodies are inferred. */
-type NyxClient = ReturnType<typeof hc<AppType>>
+type NyxClient = ReturnType<typeof hc<Server.AppType>>
 
 /** Thrown when a pull was cancelled (server sent the `cancelled` SSE event). */
 export class PullCancelledError extends Error {
@@ -73,7 +73,7 @@ export class NyxServerClient {
   private readonly client: NyxClient
 
   constructor(baseURL: string, token: string) {
-    this.client = hc<AppType>(baseURL, { headers: { Authorization: `Bearer ${token}` } })
+    this.client = hc<Server.AppType>(baseURL, { headers: { Authorization: `Bearer ${token}` } })
   }
 
   async listModels(): Promise<ModelInfo[]> {

@@ -1,37 +1,41 @@
-import { serve } from "@hono/node-server"
-import { createApp } from "./app"
+import * as appModule from "./app.ts"
+import * as authModule from "./middleware/auth.ts"
+import * as errorsModule from "./errors.ts"
+import * as agentRouteModule from "./routes/agent.ts"
+import * as automaticSpeechRecognitionRouteModule from "./routes/automatic-speech-recognition.ts"
+import * as environmentRouteModule from "./routes/environment.ts"
+import * as filesRouteModule from "./routes/files.ts"
+import * as imageToImageRouteModule from "./routes/image-to-image.ts"
+import * as knowledgeRouteModule from "./routes/knowledge.ts"
+import * as modelsRouteModule from "./routes/models.ts"
+import * as sessionsRouteModule from "./routes/sessions.ts"
+import * as settingsRouteModule from "./routes/settings.ts"
+import * as textToSpeechRouteModule from "./routes/text-to-speech.ts"
 
-export interface NyxServerHandle {
-  url: string
-  port: number
-  stop: () => Promise<void>
-}
+export namespace Server {
+  export import App = appModule.App
+  export import Errors = errorsModule.Errors
 
-/** Start the inference server; resolves once listening. */
-export function start(options: {
-  token: string
-  onLog: (message: string) => void
-  port?: number
-  host?: string
-}): Promise<NyxServerHandle> {
-  const app = createApp({ token: options.token, onLog: options.onLog })
-  const port = options.port ?? 0 // 0 = OS-assigned ephemeral port
-  const host = options.host ?? "127.0.0.1"
+  export type AppType = ReturnType<typeof appModule.App.create>
+  export type Services = appModule.Services
+  export type Handle = appModule.Handle
+  export type AppOptions = appModule.AppOptions
+  export type ServeOptions = appModule.ServeOptions
 
-  return new Promise((resolve, reject) => {
-    const server = serve(
-      { fetch: app.fetch, port, hostname: host, overrideGlobalObjects: false },
-      (info) => {
-      const actualPort = typeof info === "object" && info !== null ? info.port : port
-      resolve({
-        url: `http://${host}:${actualPort}`,
-        port: actualPort,
-        stop: () =>
-          new Promise<void>((res) => {
-            server.close(() => res())
-          }),
-      })
-    })
-    server.on("error", reject)
-  })
+  export namespace Middleware {
+    export import Auth = authModule.Auth
+  }
+
+  export namespace Routes {
+    export import Agent = agentRouteModule.Agent
+    export import AutomaticSpeechRecognition = automaticSpeechRecognitionRouteModule.AutomaticSpeechRecognition
+    export import Environment = environmentRouteModule.Environment
+    export import Files = filesRouteModule.Files
+    export import ImageToImage = imageToImageRouteModule.ImageToImage
+    export import Knowledge = knowledgeRouteModule.Knowledge
+    export import Models = modelsRouteModule.Models
+    export import Sessions = sessionsRouteModule.Sessions
+    export import Settings = settingsRouteModule.Settings
+    export import TextToSpeech = textToSpeechRouteModule.TextToSpeech
+  }
 }

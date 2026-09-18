@@ -1,23 +1,24 @@
 import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import { Agent } from "@nyx/agent"
-import { validationHook } from "../validation"
+import { Errors } from "../errors.ts"
 
-/** POST /v1/tasks/text-to-speech — synthesize speech; responds with WAV bytes. */
-export function textToSpeech(service: Agent.Services.TextToSpeech) {
-  return new Hono().post("/", zValidator("json", Agent.Services.TextToSpeechRequestSchema, validationHook), async (c) => {
-    const { model, text, speaker, speed } = c.req.valid("json")
-    try {
-      const result = await service.generate(model, text, {
-        ...(speaker ? { speaker } : {}),
-        ...(speed !== undefined ? { speed } : {}),
-      })
-      return c.body(new Uint8Array(result.data), 200, {
-        "Content-Type": result.mimeType,
-        "X-Audio-Sampling-Rate": String(result.samplingRate),
-      })
-    } catch (error) {
-      return c.json({ error: error instanceof Error ? error.message : String(error) }, 500)
-    }
-  })
+export class TextToSpeech {
+  static create(service: Agent.Services.TextToSpeech) {
+    return new Hono().post(
+      "/",
+      zValidator("json", Agent.Services.TextToSpeechRequestSchema, Errors.hook),
+      async (c) => {
+        const { model, text, speaker, speed } = c.req.valid("json")
+        const result = await service.generate(model, text, {
+          ...(speaker ? { speaker } : {}),
+          ...(speed !== undefined ? { speed } : {}),
+        })
+        return c.body(new Uint8Array(result.data), 200, {
+          "Content-Type": result.mimeType,
+          "X-Audio-Sampling-Rate": String(result.samplingRate),
+        })
+      },
+    )
+  }
 }
