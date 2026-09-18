@@ -45,13 +45,10 @@ export const IPC = {
     progress: "knowledge:progress",
   },
   config: {
-    getModelsDir: "config:getModelsDir",
     getSettings: "config:getSettings",
     setSettings: "config:setSettings",
     /** Replace settings.json wholesale (can delete keys; `setSettings` deep-merges). */
     writeSettings: "config:writeSettings",
-    /** Paths + which env vars are overriding settings, for the Settings page. */
-    getEnvironment: "config:getEnvironment",
     /** List a provider's models from its `/models` endpoint (main-process fetch). */
     listModels: "config:listModels",
     /** Restart the inference-server child (applies a changed HF endpoint). */

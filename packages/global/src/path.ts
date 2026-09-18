@@ -9,11 +9,11 @@ export class Path {
   }
 
   static get models(): string {
-    return Bun.env.NYX_MODELS_DIR ?? join(Path.root, "models")
+    return join(Path.root, "models")
   }
 
   static get knowledge(): string {
-    return Bun.env.NYX_KNOWLEDGE_DIR ?? join(Path.root, "knowledge")
+    return join(Path.root, "knowledge")
   }
 
   static get sessions(): string {

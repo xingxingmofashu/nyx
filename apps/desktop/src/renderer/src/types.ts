@@ -101,12 +101,6 @@ export interface AttachmentInput {
   mimeType: string
 }
 
-/** Read-only environment info for the Settings page. */
-export interface AppEnvironment {
-  modelsDir: string
-  knowledgeDir: string
-}
-
 /** Model ids available from one provider, or why the list couldn't be fetched. */
 export interface ProviderModels {
   ids: string[]
@@ -196,12 +190,10 @@ export interface NyxApi {
     onProgress: (cb: (e: KnowledgeIndexEvent) => void) => () => void
   }
   config: {
-    getModelsDir: () => Promise<string>
     getSettings: () => Promise<Settings>
     setSettings: (patch: Settings) => Promise<Settings>
     /** Replace settings.json wholesale; can remove keys. */
     writeSettings: (settings: Settings) => Promise<Settings>
-    getEnvironment: () => Promise<AppEnvironment>
     /** List a provider's models via the main process (no CORS). */
     listModels: (provider: AgentProviderEntry) => Promise<ProviderModels>
     /** Restart the inference server (needed after changing the HF endpoint). */

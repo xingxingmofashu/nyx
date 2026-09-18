@@ -69,16 +69,24 @@ export const AgentSettingsSchema = z
   })
   .loose()
 
+export const HuggingFaceSettingsSchema = z
+  .object({
+    remoteHost: z.string().optional(),
+    cacheDir: z.string().optional(),
+    allowRemoteModels: z.boolean().optional(),
+  })
+  .loose()
+
 export const SettingsSchema = z
   .object({
-    hubBaseUrl: z.string().optional(),
-    allowRemoteModels: z.boolean().optional(),
+    huggingface: HuggingFaceSettingsSchema.optional(),
     agent: AgentSettingsSchema.optional(),
     knowledge: KnowledgeSettingsSchema.optional(),
   })
   .loose()
 
 export type SettingsSchemaType = z.infer<typeof SettingsSchema>
+export type HuggingFaceSettingsSchemaType = z.infer<typeof HuggingFaceSettingsSchema>
 
 export type AgentSettingsSchemaType = z.infer<typeof AgentSettingsSchema>
 export type AgentToolsSettingsSchemaType = z.infer<typeof AgentToolsSettingsSchema>

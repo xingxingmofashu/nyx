@@ -9,7 +9,7 @@ if (!token) {
 const port = process.env.NYX_SERVER_PORT ? Number(process.env.NYX_SERVER_PORT) : 0
 const host = process.env.NYX_SERVER_HOST ?? "127.0.0.1"
 
-const hub = (await Global.Settings.read()).hubBaseUrl?.replace(/\/$/, "")
+const hub = (await Global.Settings.read()).huggingface?.remoteHost?.replace(/\/$/, "")
 if (hub) {
   process.env.HF_ENDPOINT = hub
 }

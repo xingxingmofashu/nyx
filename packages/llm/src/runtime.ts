@@ -21,10 +21,16 @@ export interface RuntimeOptions {
 export class Runtime {
   private static readonly pipelines = new Map<string, Promise<unknown>>()
 
-  static async configure(options: RuntimeOptions = {}): Promise<void> {
-    const cacheDir = options.cacheDir ?? Global.Path.models
+  static async cacheDir(): Promise<string> {
     const settings = await Global.Settings.read()
-    const allowDownload = options.allowDownload ?? settings.allowRemoteModels !== false
+    return settings.huggingface?.cacheDir ?? Global.Path.models
+  }
+
+  static async configure(options: RuntimeOptions = {}): Promise<void> {
+    const settings = await Global.Settings.read()
+    const huggingface = settings.huggingface ?? {}
+    const cacheDir = options.cacheDir ?? huggingface.cacheDir ?? Global.Path.models
+    const allowDownload = options.allowDownload ?? huggingface.allowRemoteModels !== false
 
     Runtime.applyEnv({
       allowRemoteModels: allowDownload,
@@ -37,8 +43,8 @@ export class Runtime {
       Runtime.applyEnv({ remoteHost: explicit })
     } else if (process.env.HF_ENDPOINT) {
       Runtime.applyEnv({ remoteHost: process.env.HF_ENDPOINT })
-    } else if (settings.hubBaseUrl) {
-      Runtime.applyEnv({ remoteHost: settings.hubBaseUrl })
+    } else if (huggingface.remoteHost) {
+      Runtime.applyEnv({ remoteHost: huggingface.remoteHost })
     }
 
     const { remoteHost: _rh, ...rest } = options.env ?? {}

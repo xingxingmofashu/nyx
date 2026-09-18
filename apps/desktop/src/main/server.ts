@@ -10,7 +10,6 @@ import { parseJsonEventStream, uiMessageChunkSchema } from "ai"
 import { createParser } from "eventsource-parser"
 import { hc } from "hono/client"
 import type {
-  AppEnvironment,
   AudioResult,
   AudioSamples,
   CompactionResult,
@@ -191,10 +190,6 @@ export class NyxServer {
 
   async removeModel(modelId: string): Promise<void> {
     await this.client.v1.models.$delete({ json: { model: modelId } })
-  }
-
-  async environment(): Promise<AppEnvironment> {
-    return (await this.client.v1.settings.environment.$get()).json()
   }
 
   async settings(): Promise<Settings> {

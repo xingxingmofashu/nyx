@@ -19,6 +19,7 @@ export namespace Global {
   export import AgentToolsSettingsSchema = settingsModule.AgentToolsSettingsSchema
   export import AgentCompactionSchema = settingsModule.AgentCompactionSchema
   export import KnowledgeSettingsSchema = settingsModule.KnowledgeSettingsSchema
+  export import HuggingFaceSettingsSchema = settingsModule.HuggingFaceSettingsSchema
   export import ModelInfoSchema = modelsModule.ModelInfoSchema
   export import ModelsSchema = modelsModule.ModelsSchema
   export import ChatSessionMetaSchema = sessionModule.ChatSessionMetaSchema
@@ -29,6 +30,7 @@ export namespace Global {
   export type AgentToolsSettingsSchemaType = settingsModule.AgentToolsSettingsSchemaType
   export type AgentCompactionSchemaType = settingsModule.AgentCompactionSchemaType
   export type KnowledgeSettingsSchemaType = settingsModule.KnowledgeSettingsSchemaType
+  export type HuggingFaceSettingsSchemaType = settingsModule.HuggingFaceSettingsSchemaType
   export type AgentProviderEntrySchemaType = settingsModule.AgentProviderEntrySchemaType
   export type AgentProviderOptionsSchemaType = settingsModule.AgentProviderOptionsSchemaType
   export type AgentProviderLimitSchemaType = settingsModule.AgentProviderLimitSchemaType

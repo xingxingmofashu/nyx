@@ -35,7 +35,7 @@ bun run dev                           # 启动桌面应用
 
 ### 本地模型
 
-模型缓存在 `~/.nyx/models/`，首次使用时自动从 Hugging Face 下载。可在 **Local models** 页面预下载。如需通过镜像下载（例如网络受限环境），设置 `HF_ENDPOINT`（如 `https://hf-mirror.com`），或在 **Settings → Hugging Face** 选择镜像地址。该区块还提供离线开关（`allowRemoteModels: false`）：只用本地缓存，不再访问 hub。
+模型缓存在 `~/.nyx/models/`（可在 `settings.json` 里设置 `huggingface.cacheDir` 更换），首次使用时自动从 Hugging Face 下载。可在 **Local models** 页面预下载。如需通过镜像下载（例如网络受限环境），设置 `HF_ENDPOINT`（如 `https://hf-mirror.com`），或在 **Settings → Hugging Face** 选择镜像地址（保存为 `huggingface.remoteHost`）。该区块还提供离线开关（`huggingface.allowRemoteModels: false`）：只用本地缓存，不再访问 hub。
 
 ## 页面
 
@@ -126,7 +126,7 @@ cp ~/notes/*.md ~/.nyx/knowledge/     # 手动放入的文件会显示为「待�
 
 片段存在 [LanceDB](https://lancedb.com/) 中并建立原生全文索引；查询使用向量 + 关键词的混合检索，并以 RRF 融合排序。全程在本机运行。
 
-索引是增量的（按内容哈希跳过未变文件），存放在 `~/.nyx/knowledge/.index/`（可用 `NYX_KNOWLEDGE_DIR` 覆盖知识库目录）。它不会自己跑——启动时不会，检索时也不会——所以打开应用没有额外开销：需要时在桌面端 **Knowledge** 页面点 `Update index` / `Rebuild`。若嵌入模型尚未下载，索引会停下并给出提示，不会自动下载——去 **Local models** 页面用 `feature-extraction` 任务下载一次即可。只要存在 Markdown 文件，agent 就会获得只读的 `search_knowledge` 工具，从而基于你的文档回答（在 `settings.json` 中设 `agent.tools.knowledge: false` 可关闭）。
+索引是增量的（按内容哈希跳过未变文件），存放在 `~/.nyx/knowledge/.index/`。它不会自己跑——启动时不会，检索时也不会——所以打开应用没有额外开销：需要时在桌面端 **Knowledge** 页面点 `Update index` / `Rebuild`。若嵌入模型尚未下载，索引会停下并给出提示，不会自动下载——去 **Local models** 页面用 `feature-extraction` 任务下载一次即可。只要存在 Markdown 文件，agent 就会获得只读的 `search_knowledge` 工具，从而基于你的文档回答（在 `settings.json` 中设 `agent.tools.knowledge: false` 可关闭）。
 
 桌面端的 **Knowledge** 页面管理同一个知识库：文档以文件树展示并带一个状态圆点（绿色：已在向量库；琥珀：正在嵌入；灰色：还没建），选中后直接预览 Markdown；可以把文件或整个文件夹导入到知识库里的指定目录（从已有目录树里选，默认根目录；同名文件只在确认后才覆盖）、右键删除文档、在工具栏里选择本地嵌入模型（本地已安装的 `feature-extraction` 模型；没选之前不会嵌入任何内容）、点 **Update index** 只嵌入变更部分，或点 **Rebuild** 丢弃索引并全量重嵌（换模型后必须重建）。页面底部的检索框跑的就是 agent 那个工具用的同一套混合检索。手动放进 `~/.nyx/knowledge/` 的文件会显示为灰色"待索引"，点 **Update index** 即被收录。
 

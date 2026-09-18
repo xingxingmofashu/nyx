@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { FolderOpen, RotateCw } from "lucide-react"
+import { RotateCw } from "lucide-react"
 import { Button } from "../ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Field, FieldDescription, FieldLabel } from "../ui/field"
@@ -11,20 +11,22 @@ import { Switch } from "../ui/switch"
 const HF_EXAMPLES = ["https://huggingface.co", "https://hf-mirror.com"]
 
 export interface HuggingFaceSettingsCardProps {
-  hubBaseUrl: string | undefined
+  remoteHost: string | undefined
+  cacheDir: string | undefined
   allowRemoteModels: boolean
-  modelsDir: string
-  onHubBaseUrlChange: (value: string | undefined) => void
+  onRemoteHostChange: (value: string | undefined) => void
+  onCacheDirChange: (value: string | undefined) => void
   onAllowRemoteModelsChange: (value: boolean) => void
   onRestartServer: () => Promise<void>
 }
 
-/** Hugging Face download settings: endpoint/mirror, offline mode, cache path. */
+/** Hugging Face download settings: endpoint/mirror, cache dir, offline mode. */
 export function HuggingFaceSettingsCard({
-  hubBaseUrl,
+  remoteHost,
+  cacheDir,
   allowRemoteModels,
-  modelsDir,
-  onHubBaseUrlChange,
+  onRemoteHostChange,
+  onCacheDirChange,
   onAllowRemoteModelsChange,
   onRestartServer,
 }: HuggingFaceSettingsCardProps) {
@@ -47,15 +49,15 @@ export function HuggingFaceSettingsCard({
     <Card>
       <CardHeader>
         <CardTitle>Hugging Face</CardTitle>
-        <CardDescription>Where model downloads come from, and whether they are allowed at all.</CardDescription>
+        <CardDescription>Where model downloads come from, and where they are cached.</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <Field>
           <FieldLabel htmlFor="hub-url">Base URL / mirror</FieldLabel>
           <Input
             id="hub-url"
-            value={hubBaseUrl ?? ""}
-            onChange={(e) => onHubBaseUrlChange(e.target.value || undefined)}
+            value={remoteHost ?? ""}
+            onChange={(e) => onRemoteHostChange(e.target.value || undefined)}
             placeholder="https://huggingface.co"
             className="max-w-105"
           />
@@ -70,12 +72,28 @@ export function HuggingFaceSettingsCard({
                 variant="outline"
                 size="sm"
                 className="text-xs"
-                onClick={() => onHubBaseUrlChange(ex)}
+                onClick={() => onRemoteHostChange(ex)}
               >
                 {ex}
               </Button>
             ))}
           </div>
+        </Field>
+
+        <Separator />
+
+        <Field>
+          <FieldLabel htmlFor="cache-dir">Cache directory</FieldLabel>
+          <Input
+            id="cache-dir"
+            value={cacheDir ?? ""}
+            onChange={(e) => onCacheDirChange(e.target.value || undefined)}
+            placeholder="~/.nyx/models"
+            className="max-w-105"
+          />
+          <FieldDescription>
+            Where downloaded models are stored. Defaults to ~/.nyx/models; use an absolute path.
+          </FieldDescription>
         </Field>
 
         <Separator />
@@ -96,22 +114,16 @@ export function HuggingFaceSettingsCard({
 
         <Separator />
 
-        <div className="flex items-center gap-2">
-          <FolderOpen className="size-4 text-muted-foreground" />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium">Local model cache</p>
-            <p className="truncate text-xs text-muted-foreground">{modelsDir}</p>
-          </div>
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-xs text-muted-foreground">
+            Endpoint, cache and offline changes apply to the inference server at startup —{" "}
+            <strong>Restart server</strong> saves pending changes first, then restarts it.
+          </p>
           <Button variant="outline" size="sm" onClick={() => void restart()} disabled={restarting}>
             <RotateCw data-icon="inline-start" className={restarting ? "animate-spin" : undefined} />
             {restarting ? "Restarting…" : "Restart server"}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Endpoint and offline changes apply to the inference server at startup — <strong>Restart server</strong>
-          {" "}saves pending changes first, then restarts it. The cache path is set with{" "}
-          <code className="rounded bg-muted px-1">NYX_MODELS_DIR</code> before launch.
-        </p>
         {restartError && <p className="text-sm text-destructive">{restartError}</p>}
       </CardContent>
     </Card>

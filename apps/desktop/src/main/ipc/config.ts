@@ -8,11 +8,9 @@ export class Config {
   private static readonly ANTHROPIC_VERSION = "2023-06-01"
 
   static register(server: NyxServer): void {
-    ipcMain.handle(IPC.config.getModelsDir, async () => (await server.environment()).modelsDir)
     ipcMain.handle(IPC.config.getSettings, () => server.settings())
     ipcMain.handle(IPC.config.setSettings, (_e, patch: Settings) => server.updateSettings(patch))
     ipcMain.handle(IPC.config.writeSettings, (_e, settings: Settings) => server.replaceSettings(settings))
-    ipcMain.handle(IPC.config.getEnvironment, () => server.environment())
     ipcMain.handle(IPC.config.listModels, (_e, provider: AgentProviderEntry) => Config.listProviderModels(provider))
     ipcMain.handle(IPC.config.restartServer, async () => {
       await server.stop()

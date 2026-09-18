@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Save } from "lucide-react"
-import type { AppEnvironment, Settings } from "../types"
+import type { Settings } from "../types"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
 import { Label } from "../components/ui/label"
@@ -43,19 +43,14 @@ export function SettingsPage() {
   const [theme, setThemeState] = useState<Theme>(getTheme)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [snapshot, setSnapshot] = useState("")
-  const [env, setEnv] = useState<AppEnvironment | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     void (async () => {
-      const [loaded, environment] = await Promise.all([
-        window.nyx.config.getSettings(),
-        window.nyx.config.getEnvironment(),
-      ])
+      const loaded = await window.nyx.config.getSettings()
       setSettings(loaded)
       setSnapshot(normalizeSettings(loaded))
-      setEnv(environment)
     })()
   }, [])
 
@@ -150,17 +145,22 @@ export function SettingsPage() {
           />
 
           <HuggingFaceSettingsCard
-            hubBaseUrl={settings.hubBaseUrl}
-            allowRemoteModels={settings.allowRemoteModels !== false}
-            modelsDir={env?.modelsDir ?? ""}
-            onHubBaseUrlChange={(value) =>
+            remoteHost={settings.huggingface?.remoteHost}
+            cacheDir={settings.huggingface?.cacheDir}
+            allowRemoteModels={settings.huggingface?.allowRemoteModels !== false}
+            onRemoteHostChange={(value) =>
               update((draft) => {
-                draft.hubBaseUrl = value
+                draft.huggingface = { ...draft.huggingface, remoteHost: value }
+              })
+            }
+            onCacheDirChange={(value) =>
+              update((draft) => {
+                draft.huggingface = { ...draft.huggingface, cacheDir: value }
               })
             }
             onAllowRemoteModelsChange={(value) =>
               update((draft) => {
-                draft.allowRemoteModels = value
+                draft.huggingface = { ...draft.huggingface, allowRemoteModels: value }
               })
             }
             onRestartServer={() => restartServer()}

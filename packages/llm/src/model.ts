@@ -44,10 +44,11 @@ export interface CachedModel {
 export class Model {
   static async list(): Promise<CachedModel[]> {
     const config = await Global.Models.read()
+    const cacheDir = await Runtime.cacheDir()
     const installed: CachedModel[] = []
     for (const [org, provider] of Object.entries(config.provider)) {
       for (const [name, info] of Object.entries(provider.models)) {
-        if (await fs.pathExists(join(Global.Path.models, org, name))) installed.push(Model.asCached(info))
+        if (await fs.pathExists(join(cacheDir, org, name))) installed.push(Model.asCached(info))
       }
     }
     return installed.sort((a, b) => a.id.localeCompare(b.id))
@@ -110,10 +111,11 @@ export class Model {
     const [org, ...rest] = modelId.split("/")
     const name = rest.join("/")
     if (!org || !name) return false
-    const dir = join(Global.Path.models, org, name)
+    const cacheDir = await Runtime.cacheDir()
+    const dir = join(cacheDir, org, name)
     if (!(await fs.pathExists(dir))) return false
     await fs.remove(dir)
-    const orgDir = join(Global.Path.models, org)
+    const orgDir = join(cacheDir, org)
     if ((await fs.pathExists(orgDir)) && (await Model.readdir(orgDir)).length === 0) {
       await fs.remove(orgDir)
     }
@@ -223,7 +225,7 @@ export class Model {
     const name = rest.join("/")
     if (!org || !name || !tree) return
 
-    const weightsDir = join(Global.Path.models, org, name, "onnx")
+    const weightsDir = join(await Runtime.cacheDir(), org, name, "onnx")
     if (!(await fs.pathExists(weightsDir))) return
 
     const remote = new Map<string, number>()
