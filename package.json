@@ -12,39 +12,13 @@
       "apps/*"
     ],
     "catalog": {
-      "@types/bun": "1.4.0",
       "@types/fs-extra": "11.0.4",
-      "@types/node": "26.4.0",
-      "@types/turndown": "5.0.5",
-      "typescript": "7.0.2",
       "@huggingface/transformers": "3.8.1",
-      "onnxruntime-node": "1.29.0",
       "hono": "4.13.5",
-      "@hono/node-server": "2.1.1",
-      "@hono/zod-openapi": "1.6.3",
-      "sharp": "0.34.5",
       "zod": "4.6.5",
       "ai": "7.0.99",
-      "@ai-sdk/react": "4.0.102",
-      "@ai-sdk/openai-compatible": "3.0.48",
-      "@ai-sdk/anthropic": "4.0.53",
-      "streamdown": "2.6.0",
-      "@streamdown/code": "1.1.1",
-      "@streamdown/cjk": "1.0.3",
-      "@lancedb/lancedb": "0.38.0",
-      "@langchain/core": "1.2.11",
-      "@langchain/textsplitters": "1.0.1",
-      "apache-arrow": "18.1.0",
-      "eventsource-parser": "4.1.0",
-      "date-fns": "4.4.0",
       "fs-extra": "11.4.0",
-      "htmlparser2": "8.0.2",
-      "is-path-inside": "4.0.0",
-      "nanoid": "6.0.1",
-      "pathe": "2.0.3",
-      "turndown": "7.2.0",
-      "fs-xattr": "0.3.1",
-      "macos-alias": "0.2.12"
+      "nanoid": "6.0.1"
     }
   },
   "overrides": {
@@ -55,16 +29,16 @@
     "dev:desktop": "bun run --filter='@nyx/desktop' dev",
     "desktop:make": "bun run --filter='@nyx/desktop' make",
     "typecheck": "bun run --filter='@nyx/*' typecheck",
-    "lint": "bun run --filter='@nyx/*' lint",
-    "test": "bun run --filter='@nyx/*' test"
+    "lint": "bun run --filter='@nyx/*' lint"
   },
   "engines": {
     "node": ">=22"
   },
   "devDependencies": {
     "@tsconfig/bun": "1.0.11",
-    "@types/bun": "catalog:",
-    "@types/node": "catalog:",
-    "typescript": "catalog:"
+    "@types/bun": "1.4.0",
+    "@types/node": "26.4.0",
+    "oxlint": "1.83.0",
+    "typescript": "7.0.2"
   }
 }

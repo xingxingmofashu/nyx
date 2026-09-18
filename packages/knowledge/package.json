@@ -7,15 +7,15 @@
   "types": "src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsc --noEmit"
+    "lint": "oxlint --deny-warnings"
   },
   "dependencies": {
-    "@lancedb/lancedb": "catalog:",
-    "@langchain/core": "catalog:",
-    "@langchain/textsplitters": "catalog:",
+    "@lancedb/lancedb": "0.38.0",
+    "@langchain/core": "1.2.11",
+    "@langchain/textsplitters": "1.0.1",
     "@nyx/global": "workspace:*",
     "@nyx/llm": "workspace:*",
-    "apache-arrow": "catalog:",
+    "apache-arrow": "18.1.0",
     "fs-extra": "catalog:",
     "zod": "catalog:"
   },

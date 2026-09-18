@@ -30,7 +30,7 @@ export class Config {
     const headers: Record<string, string> = {
       Accept: "application/json",
       "User-Agent": "nyx/0.1",
-      ...(options.headers ?? {}),
+      ...options.headers,
     }
     if (provider.npm === "@ai-sdk/anthropic") {
       if (options.apiKey) headers["x-api-key"] = options.apiKey

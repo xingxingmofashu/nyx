@@ -7,12 +7,12 @@
   "types": "src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsc --noEmit"
+    "lint": "oxlint --deny-warnings"
   },
   "dependencies": {
     "@nyx/global": "workspace:*",
     "fs-extra": "catalog:",
-    "onnxruntime-node": "catalog:",
+    "onnxruntime-node": "1.29.0",
     "@huggingface/transformers": "catalog:"
   },
   "devDependencies": {

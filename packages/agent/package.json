@@ -10,22 +10,22 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsc --noEmit"
+    "lint": "oxlint --deny-warnings"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "catalog:",
-    "@ai-sdk/openai-compatible": "catalog:",
+    "@ai-sdk/anthropic": "4.0.53",
+    "@ai-sdk/openai-compatible": "3.0.48",
     "@huggingface/transformers": "catalog:",
     "@nyx/global": "workspace:*",
     "@nyx/knowledge": "workspace:*",
     "@nyx/llm": "workspace:*",
     "ai": "catalog:",
-    "htmlparser2": "catalog:",
-    "is-path-inside": "catalog:",
-    "turndown": "catalog:",
+    "htmlparser2": "8.0.2",
+    "is-path-inside": "4.0.0",
+    "turndown": "7.2.0",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/turndown": "catalog:"
+    "@types/turndown": "5.0.5"
   }
 }

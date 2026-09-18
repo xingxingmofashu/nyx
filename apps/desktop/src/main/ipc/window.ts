@@ -7,7 +7,8 @@ export class Window {
     ipcMain.on(IPC.window.toggleMaximize, (e) => {
       const win = BrowserWindow.fromWebContents(e.sender)
       if (!win) return
-      win.isMaximized() ? win.unmaximize() : win.maximize()
+      if (win.isMaximized()) win.unmaximize()
+      else win.maximize()
     })
     ipcMain.on(IPC.window.close, (e) => BrowserWindow.fromWebContents(e.sender)?.close())
   }

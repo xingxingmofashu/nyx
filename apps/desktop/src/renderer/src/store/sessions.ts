@@ -188,7 +188,7 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
         // drives both the fold below it and the next request's transcript.
         const patched = {
           ...last,
-          metadata: { ...((last.metadata as Record<string, unknown> | undefined) ?? {}), compaction: result.checkpoint },
+          metadata: { ...(last.metadata as Record<string, unknown> | undefined), compaction: result.checkpoint },
         }
         agentChat.messages = [...agentChat.messages.slice(0, -1), patched]
         const tokens = scaleEstimate(result, messages)

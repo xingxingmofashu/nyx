@@ -3,7 +3,7 @@ import { FilePlus, FolderPlus, HardDrive, Library, RefreshCw, Search, Trash2 } f
 import { useNavigate } from "react-router-dom"
 import { relativeTime } from "../lib/format"
 import { useKnowledgeStore } from "../store/knowledge"
-import type { KnowledgeDocument, KnowledgeImportResult, KnowledgeIndexEvent } from "../types"
+import type { KnowledgeImportResult, KnowledgeIndexEvent } from "../types"
 import { ImportTargetPicker } from "../components/knowledge/ImportTargetPicker"
 import { KnowledgeTree } from "../components/knowledge/KnowledgeTree"
 import { MarkdownText } from "../components/chat/MarkdownText"

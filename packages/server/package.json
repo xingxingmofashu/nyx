@@ -10,12 +10,13 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "lint": "oxlint --deny-warnings",
     "build": "tsc --noEmit && bun run scripts/build.ts",
     "dev": "bun run src/bin.ts"
   },
   "dependencies": {
-    "@hono/node-server": "catalog:",
-    "@hono/zod-openapi": "catalog:",
+    "@hono/node-server": "2.1.1",
+    "@hono/zod-openapi": "1.6.3",
     "@nyx/agent": "workspace:*",
     "@nyx/global": "workspace:*",
     "@nyx/llm": "workspace:*",

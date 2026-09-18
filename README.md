@@ -147,6 +147,7 @@ The Agent page keeps a chat history (sidebar **Chats**, grouped by workspace): n
 
 ```bash
 bun run typecheck        # type-check all packages
+bun run lint             # lint all packages (oxlint)
 ```
 
-`bun run lint` / `bun run test` exist but no package defines those scripts yet; verification is `bun run typecheck`.
+Both type-checking and linting must pass.

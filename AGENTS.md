@@ -5,9 +5,9 @@ Bun workspace monorepo (`bun@1.3.14`). `README.md` explains the product and arch
 ## Commands
 
 - `bun install`
-- `bun run typecheck` — the only real verification. Runs each `@nyx/*` package's `typecheck` (`tsc --noEmit`).
-- Single package: `bun run --cwd packages/<name> typecheck`.
-- `bun run lint` / `bun run test` are root scripts, but **no package defines `lint`/`test`** — do not claim they pass.
+- `bun run typecheck` — runs each `@nyx/*` package's `typecheck` (`tsc --noEmit`).
+- `bun run lint` — runs each `@nyx/*` package's `lint` (`oxlint --deny-warnings`); shared config at `.oxlintrc.json`.
+- Single package: `bun run --cwd packages/<name> typecheck` (or `lint`).
 - Server binary (required before desktop dev): `bun run --cwd packages/server build` → `packages/server/dist/nyx-server` (a `bun build --compile` executable).
 - Desktop dev: `bun run dev` (alias `bun run dev:desktop`). Package: `bun run desktop:make`.
 
@@ -29,7 +29,7 @@ These apply to every package and the desktop.
 
 ## Dependencies
 
-Versions are exact-pinned through the root `package.json` `catalog` (with `bunfig.toml` `install.exact = true`). To add a dependency, add an exact version to `catalog` and reference `"catalog:"` in the package — never inline a range.
+Versions are exact-pinned (`bunfig.toml` `install.exact = true`). The root `package.json` `catalog` holds only dependencies shared by two or more packages, referenced as `"catalog:"`; a dependency used by a single package is pinned to its exact version in that package's `package.json`. Never use a range.
 
 ## Architecture gotchas
 

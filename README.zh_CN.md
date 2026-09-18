@@ -147,6 +147,7 @@ Agent 页面会保存对话历史（侧栏 **Chats** 分组，按工作区分组
 
 ```bash
 bun run typecheck        # 所有包类型检查
+bun run lint             # 所有包 lint（oxlint）
 ```
 
-`bun run lint` / `bun run test` 虽存在但尚无对应包脚本；验证以 `bun run typecheck` 为准。
+类型检查与 lint 都必须通过。

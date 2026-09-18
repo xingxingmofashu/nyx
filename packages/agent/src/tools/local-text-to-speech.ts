@@ -97,8 +97,6 @@ export class LocalTextToSpeech {
       spawn("afplay", [path], { detached: true, stdio: "ignore" })
         .on("error", () => undefined)
         .unref()
-    } catch {
-      undefined
-    }
+    } catch {}
   }
 }
