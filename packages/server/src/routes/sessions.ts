@@ -5,9 +5,9 @@ import { Global } from "@nyx/global"
 import { Errors } from "../errors.ts"
 import { OkSchema } from "../responses.ts"
 
-const SessionIdParamsSchema = z.object({ id: z.string() })
-
 export class Sessions {
+  private static readonly idParams = z.object({ id: z.string() })
+
   private static readonly listRoute = createRoute({
     method: "get",
     path: "/",
@@ -49,7 +49,7 @@ export class Sessions {
   private static readonly readRoute = createRoute({
     method: "get",
     path: "/{id}",
-    request: { params: SessionIdParamsSchema, query: Agent.WorkspaceQuerySchema },
+    request: { params: Sessions.idParams, query: Agent.WorkspaceQuerySchema },
     responses: {
       200: {
         content: { "application/json": { schema: Global.ChatSessionSchema.nullable() } },
@@ -76,7 +76,7 @@ export class Sessions {
     method: "patch",
     path: "/{id}",
     request: {
-      params: SessionIdParamsSchema,
+      params: Sessions.idParams,
       body: { content: { "application/json": { schema: Agent.SessionPatchRequestSchema } }, required: true },
     },
     responses: {
@@ -90,7 +90,7 @@ export class Sessions {
   private static readonly deleteRoute = createRoute({
     method: "delete",
     path: "/{id}",
-    request: { params: SessionIdParamsSchema, query: Agent.WorkspaceQuerySchema },
+    request: { params: Sessions.idParams, query: Agent.WorkspaceQuerySchema },
     responses: {
       200: {
         content: { "application/json": { schema: OkSchema } },

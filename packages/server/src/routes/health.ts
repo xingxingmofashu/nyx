@@ -1,15 +1,13 @@
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
 import { z } from "zod/v4"
 
-const HealthSchema = z.object({ ok: z.boolean() })
-
 export class Health {
   private static readonly route = createRoute({
     method: "get",
     path: "/",
     responses: {
       200: {
-        content: { "application/json": { schema: HealthSchema } },
+        content: { "application/json": { schema: z.object({ ok: z.boolean() }) } },
         description: "Server readiness",
       },
     },

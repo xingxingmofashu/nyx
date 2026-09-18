@@ -5,7 +5,6 @@ import { Agent } from "@nyx/agent"
 import { Auth } from "./middleware/auth.ts"
 import { Errors } from "./errors.ts"
 import { Agent as AgentRoute } from "./routes/agent.ts"
-import { Environment } from "./routes/environment.ts"
 import { Files } from "./routes/files.ts"
 import { Health } from "./routes/health.ts"
 import { Knowledge } from "./routes/knowledge.ts"
@@ -60,7 +59,6 @@ export class App {
       )
       .route("/health", Health.create())
       .route("/settings", Settings.create())
-      .route("/environment", Environment.create())
       .route("/sessions", Sessions.create())
       .route("/files", Files.create())
       .route("/models", Models.create(services.models))

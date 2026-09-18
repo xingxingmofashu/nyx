@@ -194,7 +194,7 @@ export class NyxServer {
   }
 
   async environment(): Promise<AppEnvironment> {
-    return (await this.client.v1.environment.$get()).json()
+    return (await this.client.v1.settings.environment.$get()).json()
   }
 
   async settings(): Promise<Settings> {
