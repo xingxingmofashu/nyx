@@ -15,9 +15,7 @@ export interface SpeechProvider extends LLMProvider {
 
 export interface OnnxTextToSpeechOptions {
   model: string
-  cacheDir?: string
   dtype?: DataType
-  allowDownload?: boolean
 }
 
 export class OnnxTextToSpeechProvider implements SpeechProvider {
@@ -28,14 +26,10 @@ export class OnnxTextToSpeechProvider implements SpeechProvider {
   readonly task = "text-to-speech" as const
   readonly model: string
   private dtype?: DataType
-  private readonly cacheDir?: string
-  private readonly allowDownload?: boolean
 
   constructor(options: OnnxTextToSpeechOptions) {
     this.model = options.model
     this.dtype = options.dtype
-    this.cacheDir = options.cacheDir
-    this.allowDownload = options.allowDownload
   }
 
   async generate(text: string, options: TextToSpeechOptions = {}): Promise<RawAudio> {
@@ -54,11 +48,7 @@ export class OnnxTextToSpeechProvider implements SpeechProvider {
 
   private async load(): Promise<TextToAudioPipeline> {
     if (this.dtype === undefined) this.dtype = (await Model.find(this.model))?.dtype
-    return Runtime.pipeline<TextToAudioPipeline>("text-to-speech", this.model, {
-      cacheDir: this.cacheDir,
-      allowDownload: this.allowDownload,
-      dtype: this.dtype,
-    })
+    return Runtime.pipeline<TextToAudioPipeline>("text-to-speech", this.model, { dtype: this.dtype })
   }
 
   private static defaultSpeakerUrl(): string {

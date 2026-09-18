@@ -14,9 +14,7 @@ export interface TranscriptionProvider extends LLMProvider {
 
 export interface OnnxAutomaticSpeechRecognitionOptions {
   model: string
-  cacheDir?: string
   dtype?: DataType
-  allowDownload?: boolean
 }
 
 export class OnnxAutomaticSpeechRecognitionProvider implements TranscriptionProvider {
@@ -27,14 +25,10 @@ export class OnnxAutomaticSpeechRecognitionProvider implements TranscriptionProv
   readonly task = "automatic-speech-recognition" as const
   readonly model: string
   private dtype?: DataType
-  private readonly cacheDir?: string
-  private readonly allowDownload?: boolean
 
   constructor(options: OnnxAutomaticSpeechRecognitionOptions) {
     this.model = options.model
     this.dtype = options.dtype
-    this.cacheDir = options.cacheDir
-    this.allowDownload = options.allowDownload
   }
 
   async transcribe(samples: Float32Array, options: AutomaticSpeechRecognitionOptions = {}): Promise<string> {
@@ -50,8 +44,6 @@ export class OnnxAutomaticSpeechRecognitionProvider implements TranscriptionProv
   private async load(): Promise<AutomaticSpeechRecognitionPipeline> {
     if (this.dtype === undefined) this.dtype = (await Model.find(this.model))?.dtype
     return Runtime.pipeline<AutomaticSpeechRecognitionPipeline>("automatic-speech-recognition", this.model, {
-      cacheDir: this.cacheDir,
-      allowDownload: this.allowDownload,
       dtype: this.dtype,
     })
   }

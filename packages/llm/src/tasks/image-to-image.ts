@@ -11,9 +11,7 @@ export interface ImageProvider extends LLMProvider {
 
 export interface OnnxImageToImageOptions {
   model: string
-  cacheDir?: string
   dtype?: DataType
-  allowDownload?: boolean
 }
 
 export class OnnxImageToImageProvider implements ImageProvider {
@@ -21,14 +19,10 @@ export class OnnxImageToImageProvider implements ImageProvider {
   readonly task = "image-to-image" as const
   readonly model: string
   private dtype?: DataType
-  private readonly cacheDir?: string
-  private readonly allowDownload?: boolean
 
   constructor(options: OnnxImageToImageOptions) {
     this.model = options.model
     this.dtype = options.dtype
-    this.cacheDir = options.cacheDir
-    this.allowDownload = options.allowDownload
   }
 
   async generate(input: ImageSource): Promise<RawImage> {
@@ -39,10 +33,6 @@ export class OnnxImageToImageProvider implements ImageProvider {
 
   private async load(): Promise<ImageToImagePipeline> {
     if (this.dtype === undefined) this.dtype = (await Model.find(this.model))?.dtype
-    return Runtime.pipeline<ImageToImagePipeline>("image-to-image", this.model, {
-      cacheDir: this.cacheDir,
-      allowDownload: this.allowDownload,
-      dtype: this.dtype,
-    })
+    return Runtime.pipeline<ImageToImagePipeline>("image-to-image", this.model, { dtype: this.dtype })
   }
 }

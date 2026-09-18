@@ -11,8 +11,6 @@ import { Global } from "@nyx/global"
 export type TransformersEnvironment = typeof env
 
 export interface RuntimeOptions {
-  cacheDir?: string
-  allowDownload?: boolean
   dtype?: DataType
   env?: Partial<TransformersEnvironment>
   onProgress?: ProgressCallback
@@ -29,26 +27,14 @@ export class Runtime {
   static async configure(options: RuntimeOptions = {}): Promise<void> {
     const settings = await Global.Settings.read()
     const huggingface = settings.huggingface ?? {}
-    const cacheDir = options.cacheDir ?? huggingface.cacheDir ?? Global.Path.models
-    const allowDownload = options.allowDownload ?? huggingface.allowRemoteModels !== false
 
     Runtime.applyEnv({
-      allowRemoteModels: allowDownload,
+      allowRemoteModels: huggingface.allowRemoteModels !== false,
       allowLocalModels: true,
-      cacheDir,
+      cacheDir: huggingface.cacheDir ?? Global.Path.models,
+      remoteHost: process.env.HF_ENDPOINT ?? huggingface.remoteHost,
     })
-
-    const explicit = options.env?.remoteHost
-    if (explicit) {
-      Runtime.applyEnv({ remoteHost: explicit })
-    } else if (process.env.HF_ENDPOINT) {
-      Runtime.applyEnv({ remoteHost: process.env.HF_ENDPOINT })
-    } else if (huggingface.remoteHost) {
-      Runtime.applyEnv({ remoteHost: huggingface.remoteHost })
-    }
-
-    const { remoteHost: _rh, ...rest } = options.env ?? {}
-    Runtime.applyEnv(rest as Partial<TransformersEnvironment>)
+    Runtime.applyEnv(options.env ?? {})
   }
 
   static async pipeline<T>(task: PipelineType, model: string, options: RuntimeOptions = {}): Promise<T> {

@@ -14,9 +14,7 @@ export interface EmbeddingProvider extends LLMProvider {
 
 export interface OnnxFeatureExtractionOptions {
   model: string
-  cacheDir?: string
   dtype?: DataType
-  allowDownload?: boolean
 }
 
 export class OnnxFeatureExtractionProvider implements EmbeddingProvider {
@@ -26,14 +24,10 @@ export class OnnxFeatureExtractionProvider implements EmbeddingProvider {
   readonly task = "feature-extraction" as const
   readonly model: string
   private dtype?: DataType
-  private readonly cacheDir?: string
-  private readonly allowDownload?: boolean
 
   constructor(options: OnnxFeatureExtractionOptions) {
     this.model = options.model
     this.dtype = options.dtype
-    this.cacheDir = options.cacheDir
-    this.allowDownload = options.allowDownload
   }
 
   async embed(texts: string[], options: EmbeddingOptions = {}): Promise<Float32Array[]> {
@@ -55,11 +49,7 @@ export class OnnxFeatureExtractionProvider implements EmbeddingProvider {
 
   private async load(): Promise<FeatureExtractionPipeline> {
     if (this.dtype === undefined) this.dtype = (await Model.find(this.model))?.dtype
-    return Runtime.pipeline<FeatureExtractionPipeline>("feature-extraction", this.model, {
-      cacheDir: this.cacheDir,
-      allowDownload: this.allowDownload,
-      dtype: this.dtype,
-    })
+    return Runtime.pipeline<FeatureExtractionPipeline>("feature-extraction", this.model, { dtype: this.dtype })
   }
 
   private static prefix(model: string, type: "query" | "passage"): string {
