@@ -313,13 +313,6 @@ export function AgentPage() {
                         >
                           <Message align={message.role === "user" ? "end" : "start"}>
                             <MessageContent>
-                              {meta?.compaction && (
-                                <CompactionCard checkpoint={meta.compaction}>
-                                  {folded ? (
-                                    <FoldedMessages messages={messages.slice(0, folded.end + 1)} />
-                                  ) : undefined}
-                                </CompactionCard>
-                              )}
                               {userAttachments.length > 0 && (
                                 <AttachmentStrip attachments={userAttachments} />
                               )}
@@ -415,6 +408,13 @@ export function AgentPage() {
                                   />
                                 )
                               })}
+                              {meta?.compaction && (
+                                <CompactionCard checkpoint={meta.compaction}>
+                                  {folded ? (
+                                    <FoldedMessages messages={messages.slice(0, folded.end + 1)} />
+                                  ) : undefined}
+                                </CompactionCard>
+                              )}
                             </MessageContent>
                           </Message>
                         </MessageScrollerItem>
