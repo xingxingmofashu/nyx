@@ -31,9 +31,7 @@ export class SearchKnowledge {
             return error instanceof Error ? error.message : String(error)
           }
           if (hits.length === 0) return "No relevant passages found in the knowledge base."
-          return SearchKnowledge.truncate(
-            hits.map((hit, index) => SearchKnowledge.format(hit, index + 1)).join("\n\n"),
-          )
+          return SearchKnowledge.truncate(hits.map((hit) => hit.text).join("\n\n"))
         },
       }),
     }
@@ -43,9 +41,5 @@ export class SearchKnowledge {
     return value.length > SearchKnowledge.MAX_OUTPUT
       ? `${value.slice(0, SearchKnowledge.MAX_OUTPUT)}\n… (truncated)`
       : value
-  }
-
-  private static format(hit: KnowledgeSearchHit, index: number): string {
-    return `[${index}] ${hit.file} (score ${hit.score.toFixed(4)})\n${hit.text}`
   }
 }

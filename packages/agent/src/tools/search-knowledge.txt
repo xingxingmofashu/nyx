@@ -1,10 +1,10 @@
-Search the user's local knowledge base (their own Markdown documents) and return the most relevant passages with their sources. Use it to ground answers in the user's documents.
+Search the user's local knowledge base (their own Markdown documents) and return the most relevant passages. Use it to ground answers in the user's documents.
 
 Usage:
 - The knowledge base is the user's personal document collection, not the workspace and not the web; prefer this tool over grep/read for the user's notes and other reference material.
 - It is also the authoritative source for facts about this project (nyx) and its author, so answer questions like "who created you", "what is nyx", or "what can you do" by searching here first instead of relying on memory.
 - Retrieval is hybrid: semantic embedding similarity combined with exact full-text matching, so both paraphrases and literal terms (including CJK) are found; the results are fused and reranked by relevance.
 - query is a natural-language phrase or question; topK caps the number of passages returned (default 6, max 20).
-- Each result is a passage prefixed with its source file and a relevance score.
+- Results are returned as passages only; file names and scores are not included.
 - Requires a built index and a downloaded embedding model; if the index is empty or still building, the tool returns an error.
 - Output is truncated at 40000 characters.
