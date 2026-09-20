@@ -1,6 +1,7 @@
 import { Chat } from "@ai-sdk/react"
 import { lastAssistantMessageIsCompleteWithApprovalResponses, type ChatTransport, type UIMessage, type UIMessageChunk } from "ai"
 import { useAgentStore } from "../store/agent"
+import { useApprovalsStore } from "../store/approvals"
 import { useSessionsStore } from "../store/sessions"
 
 function streamId(): string {
@@ -64,14 +65,18 @@ class IpcChatTransport implements ChatTransport<UIMessage> {
 export const agentChat = new Chat<UIMessage>({
   transport: new IpcChatTransport(() => {
     const agent = useAgentStore.getState()
-    return {
+    const approvals = useApprovalsStore.getState()
+    const sessionId = useSessionsStore.getState().ensureId()
+    const body = {
       workspaceDir: agent.workspaceDir || undefined,
-      
-      sessionId: useSessionsStore.getState().ensureId(),
-      
-      
+
+      sessionId,
+
       inlineAudio: true,
+      ...approvals.request(sessionId),
     }
+    approvals.consume(sessionId)
+    return body
   }),
   sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses,
 })

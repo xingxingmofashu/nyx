@@ -37,6 +37,18 @@ export const AgentToolsSettingsSchema = z
   })
   .loose()
 
+export const AgentPermissionActionSchema = z.enum(["allow", "ask", "deny"])
+
+export const AgentPermissionRuleSchema = z.union([
+  AgentPermissionActionSchema,
+  z.record(z.string(), AgentPermissionActionSchema),
+])
+
+export const AgentPermissionSchema = z.union([
+  AgentPermissionActionSchema,
+  z.record(z.string(), AgentPermissionRuleSchema),
+])
+
 export const AgentCompactionSchema = z
   .object({
     auto: z.boolean().optional(),
@@ -64,6 +76,7 @@ export const AgentSettingsSchema = z
     model: z.string().optional(),
     provider: z.record(z.string(), AgentProviderEntrySchema).optional(),
     tools: AgentToolsSettingsSchema.optional(),
+    permission: AgentPermissionSchema.optional(),
     compaction: AgentCompactionSchema.optional(),
     workspaceDir: z.string().optional(),
     systemPrompt: z.string().optional(),
@@ -92,6 +105,8 @@ export type HuggingFaceSettingsSchemaType = z.infer<typeof HuggingFaceSettingsSc
 
 export type AgentSettingsSchemaType = z.infer<typeof AgentSettingsSchema>
 export type AgentToolsSettingsSchemaType = z.infer<typeof AgentToolsSettingsSchema>
+export type AgentPermissionSchemaType = z.infer<typeof AgentPermissionSchema>
+export type AgentPermissionAction = z.infer<typeof AgentPermissionActionSchema>
 export type AgentCompactionSchemaType = z.infer<typeof AgentCompactionSchema>
 export type KnowledgeSettingsSchemaType = z.infer<typeof KnowledgeSettingsSchema>
 export type AgentProviderEntrySchemaType = z.infer<typeof AgentProviderEntrySchema>

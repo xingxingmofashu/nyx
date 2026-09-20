@@ -1,6 +1,7 @@
 import * as attachmentModule from "./attachment.ts"
 import * as compactionModule from "./compaction.ts"
 import * as loopModule from "./loop.ts"
+import * as permissionModule from "./permission.ts"
 import * as providerModule from "./provider.ts"
 import * as sessionModule from "./session.ts"
 import * as workspaceModule from "./workspace.ts"
@@ -26,6 +27,7 @@ export namespace Agent {
   export import Attachment = attachmentModule.Attachment
   export import Compaction = compactionModule.Compaction
   export import Loop = loopModule.Loop
+  export import Permission = permissionModule.Permission
   export import Provider = providerModule.Provider
   export import Workspace = workspaceModule.Workspace
 
@@ -128,6 +130,13 @@ export namespace Agent {
 
   export type ResolvedModel = providerModule.ResolvedModel
   export type RunOptions = loopModule.RunOptions
+  export import PermissionActionSchema = permissionModule.PermissionActionSchema
+  export import PermissionRuleSchema = permissionModule.PermissionRuleSchema
+  export import PermissionRulesetSchema = permissionModule.PermissionRulesetSchema
+  export type PermissionAction = permissionModule.PermissionAction
+  export type PermissionRule = permissionModule.PermissionRule
+  export type PermissionRuleset = permissionModule.PermissionRuleset
+  export type PermissionTarget = permissionModule.PermissionTarget
   export import TokenUsageSchema = compactionModule.TokenUsageSchema
   export import ContextCheckpointSchema = compactionModule.ContextCheckpointSchema
   export type TokenUsage = compactionModule.TokenUsage

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Bot, FolderOpen, Minimize2, RotateCcw, Settings2 } from "lucide-react"
+import { Bot, FolderOpen, Minimize2, RotateCcw, Settings2, ShieldCheck } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useChat } from "@ai-sdk/react"
 import { getToolName, isReasoningUIPart, isToolUIPart } from "ai"
@@ -8,6 +8,7 @@ import { agentChat } from "../lib/chat"
 import { isSupportedAttachment } from "../lib/attachments"
 import { baseName } from "../lib/format"
 import { useAgentStore } from "../store/agent"
+import { useApprovalsStore } from "../store/approvals"
 import { useModelsStore } from "../store/models"
 import { useSessionsStore } from "../store/sessions"
 import type { ChatMessageMetadata, SavedAttachment } from "../types"
@@ -63,6 +64,10 @@ export function AgentPage() {
   const setWorkspace = useAgentStore((s) => s.setWorkspace)
   const voiceModel = useModelsStore((s) => s.selected["automatic-speech-recognition"])
   const activeId = useSessionsStore((s) => s.activeId)
+  const autoMap = useApprovalsStore((s) => s.auto)
+  const markAlways = useApprovalsStore((s) => s.mark)
+  const clearApprovals = useApprovalsStore((s) => s.clear)
+  const autoAllow = activeId ? autoMap[activeId] === true : false
   const sessions = useSessionsStore((s) => s.sessions)
   const createSession = useSessionsStore((s) => s.create)
   const compact = useSessionsStore((s) => s.compact)
@@ -230,6 +235,17 @@ export function AgentPage() {
               {configured ? modelLabel : "No agent model configured"}
             </CardDescription>
             <CardAction className="flex items-center gap-2">
+              {autoAllow && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => activeId && clearApprovals(activeId)}
+                  title="Approvals are remembered for this session — click to ask again"
+                >
+                  <ShieldCheck data-icon="inline-start" />
+                  Auto
+                </Button>
+              )}
               <ContextMeter
                 used={estimated ?? contextUsed}
                 limit={contextWindow}
@@ -358,6 +374,7 @@ export function AgentPage() {
                                       key={part.toolCallId}
                                       name={name}
                                       input={part.input}
+                                      reason={part.approval.requestReason}
                                       onApprove={() =>
                                         addToolApprovalResponse({ id: part.approval.id, approved: true })
                                       }
@@ -368,6 +385,10 @@ export function AgentPage() {
                                           reason: "user denied",
                                         })
                                       }
+                                      onAlwaysAllow={() => {
+                                        if (activeId) markAlways(activeId, part.toolCallId)
+                                        addToolApprovalResponse({ id: part.approval.id, approved: true })
+                                      }}
                                     />
                                   )
                                 }

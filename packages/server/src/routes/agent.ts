@@ -32,7 +32,7 @@ export class Agent {
   static create(service: AgentApi.Services.Agent) {
     return new OpenAPIHono({ defaultHook: Errors.hook })
       .openapi(Agent.runRoute, async (c) => {
-        const { messages, workspaceDir, sessionId, inlineAudio, forceCompact } = c.req.valid("json")
+        const { messages, workspaceDir, sessionId, inlineAudio, forceCompact, always, revoke } = c.req.valid("json")
         const validated = await Agent.validate(messages)
 
         const controller = new AbortController()
@@ -44,6 +44,8 @@ export class Agent {
           ...(sessionId !== undefined ? { sessionId } : {}),
           ...(inlineAudio !== undefined ? { inlineAudio } : {}),
           ...(forceCompact !== undefined ? { forceCompact } : {}),
+          ...(always !== undefined ? { always } : {}),
+          ...(revoke !== undefined ? { revoke } : {}),
         }
         return service.run(request, controller.signal)
       })

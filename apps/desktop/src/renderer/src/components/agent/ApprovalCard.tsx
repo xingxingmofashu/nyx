@@ -8,9 +8,11 @@ interface ApprovalCardProps {
   name: string
   input: unknown
   
+  reason?: string
   decision?: "approved" | "denied"
   onApprove: () => void
   onDeny: () => void
+  onAlwaysAllow: () => void
 }
 
 function bashCommand(name: string, input: unknown): string | null {
@@ -41,7 +43,7 @@ function HighlightedCommand({ command, escapes }: { command: string; escapes: st
   )
 }
 
-export function ApprovalCard({ name, input, decision, onApprove, onDeny }: ApprovalCardProps) {
+export function ApprovalCard({ name, input, reason, decision, onApprove, onDeny, onAlwaysAllow }: ApprovalCardProps) {
   const workspaceDir = useAgentStore((s) => s.workspaceDir)
   const command = bashCommand(name, input)
   const escapes = command ? findWorkspaceEscapes(command, workspaceDir) : []
@@ -57,6 +59,9 @@ export function ApprovalCard({ name, input, decision, onApprove, onDeny }: Appro
         <span className="font-medium">Approval required</span>
         <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">{name}</span>
       </div>
+      {reason !== undefined && reason.length > 0 && (
+        <p className="mt-1 text-xs text-muted-foreground">{reason}</p>
+      )}
       {escapes.length > 0 && (
         <p className="mt-2 rounded bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300">
           References paths outside the workspace: {escapes.join(", ")}
@@ -77,9 +82,17 @@ export function ApprovalCard({ name, input, decision, onApprove, onDeny }: Appro
           {decision === "approved" ? "Approved" : "Denied"}
         </p>
       ) : (
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2 flex items-center gap-2">
           <Button size="sm" onClick={onApprove}>
             Approve
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onAlwaysAllow}
+            title="Remember this approval for the session"
+          >
+            Always allow
           </Button>
           <Button size="sm" variant="outline" onClick={onDeny}>
             Deny
