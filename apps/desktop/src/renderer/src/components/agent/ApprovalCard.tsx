@@ -62,7 +62,7 @@ export function ApprovalCard({ name, input, decision, onApprove, onDeny }: Appro
           References paths outside the workspace: {escapes.join(", ")}
         </p>
       )}
-      <pre className="mt-2 max-h-40 overflow-auto rounded bg-muted/60 p-2 text-xs whitespace-pre">
+      <pre className="mt-2 max-h-40 overflow-y-auto rounded bg-muted/60 p-2 text-xs whitespace-pre-wrap [overflow-wrap:anywhere]">
         {command ? (
           <>
             <HighlightedCommand command={command} escapes={escapes} />

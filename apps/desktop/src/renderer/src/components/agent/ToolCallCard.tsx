@@ -74,12 +74,12 @@ export function ToolCallCard({ name, input, state, output, errorText }: ToolCall
   return (
     <ToolCardShell name={name} state={state}>
       {input !== undefined && (
-        <pre className="max-h-40 overflow-auto rounded bg-background/60 p-2 text-xs whitespace-pre">
+        <pre className="max-h-40 overflow-y-auto rounded bg-background/60 p-2 text-xs whitespace-pre-wrap [overflow-wrap:anywhere]">
           {formatJson(input)}
         </pre>
       )}
       {result && (
-        <pre className="max-h-64 overflow-auto rounded bg-background/60 p-2 text-xs whitespace-pre">
+        <pre className="max-h-64 overflow-y-auto rounded bg-background/60 p-2 text-xs whitespace-pre-wrap [overflow-wrap:anywhere]">
           {result}
         </pre>
       )}
