@@ -26,7 +26,7 @@ export const AgentOptionsSchema = z.object({
   sessionId: z.string().optional(),
   inlineAudio: z.boolean().optional(),
   forceCompact: z.boolean().optional(),
-  always: z.array(z.string()).optional(),
+  allowAll: z.boolean().optional(),
   revoke: z.boolean().optional(),
 })
 export type AgentOptions = z.infer<typeof AgentOptionsSchema>
@@ -95,7 +95,7 @@ export class Agent {
     }
 
     const workspaceDir = resolve(request.workspaceDir)
-    const ruleset = Agent.ruleset(settings, request, workspaceDir)
+    const ruleset = Agent.ruleset(settings, request)
     const tools = Permission.visible(
       await this.tools(settings, workspaceDir, request.sessionId, request.inlineAudio),
       ruleset,
@@ -148,24 +148,11 @@ export class Agent {
     }
   }
 
-  private static ruleset(
-    settings: Global.AgentSettingsSchemaType,
-    request: AgentRequest,
-    workspaceDir: string,
-  ): PermissionRuleset {
+  private static ruleset(settings: Global.AgentSettingsSchemaType, request: AgentRequest): PermissionRuleset {
     const sessionId = request.sessionId
     if (sessionId && request.revoke) Permission.revoke(sessionId)
-    if (sessionId && request.always) {
-      for (const toolCallId of request.always) {
-        const call = Agent.toolCall(request.messages, toolCallId)
-        if (!call) continue
-        for (const target of Permission.targets(call.toolName, call.input, workspaceDir)) {
-          Permission.allow(
-            sessionId,
-            target.always.map((pattern) => ({ permission: target.permission, pattern, action: "allow" as const })),
-          )
-        }
-      }
+    if (sessionId && request.allowAll) {
+      Permission.allow(sessionId, [{ permission: "*", pattern: "*", action: "allow" }])
     }
     return Permission.merge(
       Permission.fromConfig(Agent.DEFAULT_PERMISSION),
@@ -184,25 +171,9 @@ export class Agent {
     const decision = Permission.decide(targets, ruleset)
     if (decision.action === "deny") return { type: "denied", reason: `Denied by the ${decision.permission} permission rules` }
     if (decision.action === "ask") {
-      const always = targets.find((target) => target.permission === decision.permission)?.always ?? []
-      return {
-        type: "user-approval",
-        reason: always.length === 0 ? `Approval required for ${decision.permission}` : `Always allows ${always.join(", ")}`,
-      }
+      return { type: "user-approval", reason: `Approval required for ${decision.permission}` }
     }
     return "not-applicable"
-  }
-
-  private static toolCall(messages: UIMessage[], toolCallId: string): { toolName: string; input: unknown } | undefined {
-    for (const message of messages) {
-      for (const part of message.parts) {
-        const value = part as { type?: string; toolCallId?: string; toolName?: string; input?: unknown }
-        if (value.toolCallId !== toolCallId) continue
-        if (value.type === "dynamic-tool") return { toolName: value.toolName ?? "", input: value.input }
-        if (value.type?.startsWith("tool-")) return { toolName: value.type.slice(5), input: value.input }
-      }
-    }
-    return undefined
   }
 
   private async tools(

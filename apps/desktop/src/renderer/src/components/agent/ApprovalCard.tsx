@@ -90,7 +90,7 @@ export function ApprovalCard({ name, input, reason, decision, onApprove, onDeny,
             size="sm"
             variant="outline"
             onClick={onAlwaysAllow}
-            title="Remember this approval for the session"
+            title="Allow every tool for the rest of this session"
           >
             Always allow
           </Button>

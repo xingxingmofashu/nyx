@@ -65,7 +65,7 @@ export function AgentPage() {
   const voiceModel = useModelsStore((s) => s.selected["automatic-speech-recognition"])
   const activeId = useSessionsStore((s) => s.activeId)
   const autoMap = useApprovalsStore((s) => s.auto)
-  const markAlways = useApprovalsStore((s) => s.mark)
+  const allowAll = useApprovalsStore((s) => s.allow)
   const clearApprovals = useApprovalsStore((s) => s.clear)
   const autoAllow = activeId ? autoMap[activeId] === true : false
   const sessions = useSessionsStore((s) => s.sessions)
@@ -386,7 +386,7 @@ export function AgentPage() {
                                         })
                                       }
                                       onAlwaysAllow={() => {
-                                        if (activeId) markAlways(activeId, part.toolCallId)
+                                        if (activeId) allowAll(activeId)
                                         addToolApprovalResponse({ id: part.approval.id, approved: true })
                                       }}
                                     />

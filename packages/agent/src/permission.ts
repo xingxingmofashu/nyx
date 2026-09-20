@@ -1,5 +1,5 @@
 import { homedir } from "node:os"
-import { dirname, resolve } from "node:path"
+import { resolve } from "node:path"
 import { z } from "zod/v4"
 import type { Global } from "@nyx/global"
 
@@ -20,7 +20,6 @@ export type PermissionRuleset = z.infer<typeof PermissionRulesetSchema>
 export interface PermissionTarget {
   permission: string
   patterns: string[]
-  always: string[]
 }
 
 export interface PermissionDecision {
@@ -29,65 +28,6 @@ export interface PermissionDecision {
 }
 
 export class Permission {
-  private static readonly ARITY: Record<string, number> = {
-    git: 2,
-    "git branch": 3,
-    "git config": 3,
-    "git remote": 3,
-    "git stash": 3,
-    gh: 2,
-    npm: 2,
-    "npm exec": 3,
-    "npm run": 3,
-    pnpm: 2,
-    "pnpm run": 3,
-    yarn: 2,
-    "yarn run": 3,
-    bun: 2,
-    "bun run": 3,
-    npx: 1,
-    bunx: 1,
-    deno: 2,
-    cargo: 2,
-    "cargo run": 3,
-    rustup: 2,
-    uv: 2,
-    poetry: 2,
-    pip: 1,
-    pip3: 1,
-    python: 1,
-    python3: 1,
-    node: 1,
-    docker: 2,
-    "docker compose": 3,
-    kubectl: 2,
-    helm: 2,
-    brew: 2,
-    apt: 2,
-    "apt-get": 2,
-    systemctl: 2,
-    make: 1,
-    cmake: 1,
-    swift: 2,
-    xcodebuild: 1,
-    gem: 2,
-    bundle: 2,
-    dotnet: 2,
-    gradle: 1,
-    mvn: 1,
-    psql: 1,
-    mysql: 1,
-    sqlite3: 1,
-    ffmpeg: 1,
-    curl: 1,
-    wget: 1,
-    ssh: 1,
-    scp: 1,
-    rsync: 1,
-    tar: 1,
-    unzip: 1,
-  }
-
   private static readonly APPROVALS = new Map<string, PermissionRuleset>()
 
   static match(value: string, pattern: string): boolean {
@@ -154,55 +94,34 @@ export class Permission {
     if (toolName !== "bash") return [primary]
     const escapes = Permission.escapes(Permission.text(Permission.record(input).command), workspaceDir)
     if (escapes.length === 0) return [primary]
-    return [
-      primary,
-      {
-        permission: "external_directory",
-        patterns: escapes,
-        always: escapes.map((path) => {
-          const directory = dirname(path)
-          return directory === "/" ? "/*" : `${directory}/*`
-        }),
-      },
-    ]
+    return [primary, { permission: "external_directory", patterns: escapes }]
   }
 
   static target(toolName: string, input: unknown): PermissionTarget {
-    const fields = Permission.record(input)
+    return { permission: toolName, patterns: Permission.patterns(toolName, Permission.record(input)) }
+  }
+
+  private static patterns(toolName: string, fields: Record<string, unknown>): string[] {
     switch (toolName) {
       case "bash": {
         const commands = Permission.commands(Permission.text(fields.command))
-        return {
-          permission: toolName,
-          patterns: commands.length > 0 ? commands : ["*"],
-          always: commands.length > 0 ? commands.map((command) => Permission.prefix(command)) : ["*"],
-        }
+        return commands.length > 0 ? commands : ["*"]
       }
       case "write_file":
       case "edit_file":
-        return { permission: toolName, patterns: [Permission.path(Permission.text(fields.path))], always: ["*"] }
       case "read_file":
-        return { permission: toolName, patterns: [Permission.path(Permission.text(fields.path))], always: ["*"] }
-      case "glob":
-        return { permission: toolName, patterns: [Permission.text(fields.pattern) || "*"], always: ["*"] }
-      case "grep":
-        return {
-          permission: toolName,
-          patterns: [Permission.path(Permission.text(fields.path)) || "*"],
-          always: ["*"],
-        }
-      case "web_fetch":
-        return { permission: toolName, patterns: [Permission.text(fields.url) || "*"], always: ["*"] }
-      case "web_search":
-        return { permission: toolName, patterns: [Permission.text(fields.query) || "*"], always: ["*"] }
       case "local_image_to_image":
-        return {
-          permission: toolName,
-          patterns: [Permission.path(Permission.text(fields.inputPath))],
-          always: ["*"],
-        }
+        return [Permission.path(Permission.text(fields.path) || Permission.text(fields.inputPath))]
+      case "glob":
+        return [Permission.text(fields.pattern) || "*"]
+      case "grep":
+        return [Permission.path(Permission.text(fields.path)) || "*"]
+      case "web_fetch":
+        return [Permission.text(fields.url) || "*"]
+      case "web_search":
+        return [Permission.text(fields.query) || "*"]
       default:
-        return { permission: toolName, patterns: ["*"], always: ["*"] }
+        return ["*"]
     }
   }
 
@@ -313,16 +232,6 @@ export class Permission {
       .split(/\s*(?:&&|\|\||;|\|)\s*/)
       .map((part) => part.trim())
       .filter((part) => part.length > 0)
-  }
-
-  private static prefix(command: string): string {
-    const tokens = command.split(/\s+/).filter((token) => token.length > 0)
-    if (tokens.length === 0) return "*"
-    for (let length = tokens.length; length > 0; length--) {
-      const arity = Permission.ARITY[tokens.slice(0, length).join(" ")]
-      if (arity !== undefined) return `${tokens.slice(0, arity).join(" ")} *`
-    }
-    return `${tokens[0]} *`
   }
 
   private static path(value: string): string {
