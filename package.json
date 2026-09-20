@@ -28,6 +28,7 @@
     "dev": "bun run dev:desktop",
     "dev:desktop": "bun run --filter='@nyx/desktop' dev",
     "desktop:make": "bun run --filter='@nyx/desktop' make",
+    "build:server": "bun run --filter='@nyx/server' build",
     "typecheck": "bun run --filter='@nyx/*' typecheck",
     "lint": "bun run --filter='@nyx/*' lint"
   },
