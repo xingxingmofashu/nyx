@@ -8,18 +8,13 @@ import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitl
 import { cn } from "#lib/utils.ts"
 
 interface ImportTargetPickerProps {
-  /** Target folder inside the knowledge dir; "" means its root. */
+  
   value: string
-  /** Documents whose folders the target can be picked from. */
+  
   documents: KnowledgeDocument[]
   onChange: (value: string) => void
 }
 
-/**
- * Where imports land: the tree of folders the knowledge base already has, root
- * at the top, filtered by name. The label always shows the current target, so
- * a forgotten choice cannot send files somewhere unseen.
- */
 export function ImportTargetPicker({ value, documents, onChange }: ImportTargetPickerProps) {
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState("")
@@ -32,7 +27,7 @@ export function ImportTargetPicker({ value, documents, onChange }: ImportTargetP
       open={open}
       onOpenChange={(next) => {
         setOpen(next)
-        // Reopening starts from the whole tree, not from the last search.
+        
         if (next) setFilter("")
       }}
     >
@@ -76,7 +71,6 @@ export function ImportTargetPicker({ value, documents, onChange }: ImportTargetP
   )
 }
 
-/** One target row and its children, nested one indent level per depth. */
 function FolderNode({
   folder,
   value,
@@ -122,7 +116,6 @@ function TargetRow({
   )
 }
 
-/** Folders whose path matches the needle, plus the ancestors of any match. */
 function filterFolders(folders: TreeFolder[], needle: string): TreeFolder[] {
   return folders.flatMap((folder) => {
     const children = filterFolders(folder.folders, needle)

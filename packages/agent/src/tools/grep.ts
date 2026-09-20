@@ -12,6 +12,7 @@ interface WalkEntry {
 
 export class Grep {
   private static readonly MAX_FILES = 20_000
+  private static readonly MAX_FILE_BYTES = 5 * 1024 * 1024
   private static readonly IGNORED = new Set(["node_modules", ".git"])
   private static readonly MAX_OUTPUT = 40_000
 
@@ -28,7 +29,13 @@ export class Grep {
             .optional()
             .describe("Directory or file to search, relative to the workspace (default: root)"),
           glob: z.string().optional().describe("Only search files matching this glob (e.g. '**/*.ts')"),
-          maxResults: z.number().int().positive().optional().describe("Maximum matches (default 100)"),
+          maxResults: z
+            .number()
+            .int()
+            .positive()
+            .max(1000)
+            .optional()
+            .describe("Maximum matches (default 100, max 1000)"),
         }),
         execute: async ({ pattern, path, glob, maxResults }) => {
           let matcher: RegExp
@@ -47,6 +54,8 @@ export class Grep {
             if (out.length >= max) break
             let content: string
             try {
+              const info = await stat(file)
+              if (!info.isFile() || info.size > Grep.MAX_FILE_BYTES) continue
               content = await readFile(file, "utf8")
             } catch {
               continue

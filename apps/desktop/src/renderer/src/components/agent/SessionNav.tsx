@@ -32,7 +32,6 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu"
 
-/** Sidebar section listing saved agent chats for the active workspace. */
 export function SessionNav() {
   const navigate = useNavigate()
   const workspaceDir = useAgentStore((s) => s.workspaceDir)
@@ -112,8 +111,8 @@ export function SessionNav() {
                         value={renameValue}
                         onChange={(e) => setRenameValue(e.target.value)}
                         onBlur={() => {
-                          // Base UI returns focus to the menu trigger right after
-                          // closing; don't mistake that for "clicked away".
+                          
+                          
                           if (Date.now() - renameOpenedAt.current < 300) {
                             requestAnimationFrame(() => renameInput.current?.focus())
                             return

@@ -2,16 +2,14 @@ import { useEffect, useState } from "react"
 import { baseName } from "../../lib/format"
 import { ToolCardShell, type ToolPartState } from "./ToolCallCard"
 
-/** Output shape of the `local_text_to_speech` agent tool. */
 interface SpeechOutput {
   path?: string
   seconds?: number
   samplingRate?: number
-  /** Legacy inline `data:` URL (older sessions); new results carry only `path`. */
+  
   audio?: string
 }
 
-/** Load the generated WAV: inline when present, else read it back from the workspace. */
 function useSpeechDataUrl(output: SpeechOutput | undefined): { url?: string; missing: boolean } {
   const [url, setUrl] = useState<string>()
   const [missing, setMissing] = useState(false)
@@ -45,7 +43,6 @@ function useSpeechDataUrl(output: SpeechOutput | undefined): { url?: string; mis
   return { url, missing }
 }
 
-/** Decode a `data:` URL to an object URL so the CSP can keep `media-src` at `blob:`. */
 function useObjectUrl(dataUrl: string | undefined): string | undefined {
   const [url, setUrl] = useState<string>()
   useEffect(() => {
@@ -63,7 +60,6 @@ function useObjectUrl(dataUrl: string | undefined): string | undefined {
   return url
 }
 
-/** Tool call ids whose audio already played, so remounting the page doesn't replay old replies. */
 const played = new Set<string>()
 
 interface SpeechCardProps {
@@ -74,7 +70,6 @@ interface SpeechCardProps {
   errorText?: string
 }
 
-/** Tool card for `local_text_to_speech`: plays the agent's spoken reply inline. */
 export function SpeechCard({ toolCallId, name, state, output, errorText }: SpeechCardProps) {
   const data = (output ?? undefined) as SpeechOutput | undefined
   const { url: dataUrl, missing } = useSpeechDataUrl(data)

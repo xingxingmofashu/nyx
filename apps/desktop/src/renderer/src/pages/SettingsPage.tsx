@@ -18,11 +18,6 @@ const THEME_OPTIONS: Array<{ id: Theme; label: string }> = [
   { id: "system", label: "System" },
 ]
 
-/**
- * Canonical JSON for change detection. Tool toggles default to on whether the
- * key is absent or explicitly `true`, so collapse the two to compare equal —
- * otherwise flipping a switch off and back on leaves "Save changes" enabled.
- */
 function normalizeSettings(settings: Settings): string {
   const tools = settings.agent?.tools
   if (!tools) return JSON.stringify(settings)
@@ -39,7 +34,6 @@ function normalizeSettings(settings: Settings): string {
   return JSON.stringify(normalized)
 }
 
-/** App settings: theme, the agent model, and Hugging Face downloads. */
 export function SettingsPage() {
   const [theme, setThemeState] = useState<Theme>(getTheme)
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -60,8 +54,8 @@ export function SettingsPage() {
     setThemeState(t)
   }
 
-  // Mutate a clone so React sees a new object; `writeSettings` replaces the file
-  // wholesale, so deletions (providers, keys) work.
+  
+  
   const update = (mutate: (draft: Settings) => void) =>
     setSettings((prev) => {
       if (!prev) return prev
@@ -91,7 +85,7 @@ export function SettingsPage() {
     }
   }
 
-  // Restarting re-reads settings.json, so flush pending edits first.
+  
   const restartServer = async () => {
     if (!(await save())) throw new Error("Fix the settings error above, then restart.")
     await window.nyx.config.restartServer()
@@ -111,7 +105,6 @@ export function SettingsPage() {
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
         <>
-          {/* Appearance */}
           <Card>
             <CardHeader>
               <CardTitle>Appearance</CardTitle>

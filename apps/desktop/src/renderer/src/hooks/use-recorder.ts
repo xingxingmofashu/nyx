@@ -1,21 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { AudioSamples } from "../types"
 
-/** Whisper expects 16 kHz mono input; the recorder always produces that. */
 const TARGET_SAMPLE_RATE = 16000
 
-/**
- * Capture microphone audio and hand it back as mono 16 kHz PCM samples.
- * Recording is decode-on-stop: `MediaRecorder` yields a compressed blob which
- * the renderer's `AudioContext` decodes and resamples to `TARGET_SAMPLE_RATE`.
- */
 export function useRecorder() {
   const [recording, setRecording] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const chunksRef = useRef<Blob[]>([])
-  /** True while `getUserMedia` is in flight, so a second tap can't open two streams. */
+  
   const startingRef = useRef(false)
   const unmountedRef = useRef(false)
 
@@ -26,9 +20,9 @@ export function useRecorder() {
     chunksRef.current = []
   }, [])
 
-  // Stop the mic if the component unmounts while recording or opening. Reset the
-  // flag in the effect body: StrictMode mounts/unmounts/remounts in dev, and the
-  // simulated unmount would otherwise leave the hook permanently "unmounted".
+  
+  
+  
   useEffect(() => {
     unmountedRef.current = false
     return () => {
@@ -53,7 +47,7 @@ export function useRecorder() {
           autoGainControl: true,
         },
       })
-      // Unmounted while the permission prompt was up: don't leave the mic hot.
+      
       if (unmountedRef.current) {
         stream.getTracks().forEach((track) => track.stop())
         return
@@ -74,7 +68,7 @@ export function useRecorder() {
     }
   }, [])
 
-  /** Stop recording and resolve the captured audio, or null on failure/empty. */
+  
   const stop = useCallback(async (): Promise<AudioSamples | null> => {
     const recorder = recorderRef.current
     if (!recorder) return null
@@ -101,10 +95,9 @@ export function useRecorder() {
   return { recording, error, start, stop }
 }
 
-/** Decode any browser-supported audio blob into mono Float32 samples at 16 kHz. */
 async function decodeMono16k(blob: Blob): Promise<Float32Array> {
   const bytes = await blob.arrayBuffer()
-  // Constructing the context at the target rate makes decodeAudioData resample.
+  
   const context = new AudioContext({ sampleRate: TARGET_SAMPLE_RATE })
   try {
     const buffer = await context.decodeAudioData(bytes)

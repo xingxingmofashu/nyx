@@ -40,8 +40,14 @@ export class Models {
     return true
   }
 
-  listModels(): Promise<Global.ModelInfoSchemaType[]> {
-    return LLM.Model.list()
+  async listModels(): Promise<Global.ModelInfoSchemaType[]> {
+    return (await LLM.Model.list()).map((model) => ({
+      id: model.id,
+      name: model.name,
+      task: model.task,
+      ...(model.dtype ? { dtype: model.dtype } : {}),
+      createdAt: model.createdAt,
+    }))
   }
 
   async pullModel(

@@ -52,8 +52,8 @@ export class LocalImageToImage {
           )
           abortSignal?.throwIfAborted()
 
-          const provider = cache.get(model, () => new LLM.OnnxImageToImageProvider({ model }))
-          const output = await provider.generate(image)
+          const provider = cache.get(() => new LLM.OnnxImageToImageProvider({ model }))
+          const output = await LocalImageToImage.race(provider.generate(image), abortSignal)
           abortSignal?.throwIfAborted()
 
           const target = LocalImageToImage.unique(
@@ -68,6 +68,16 @@ export class LocalImageToImage {
         },
       }),
     }
+  }
+
+  private static race<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+    if (!signal) return promise
+    return Promise.race([
+      promise,
+      new Promise<never>((_resolve, reject) => {
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true })
+      }),
+    ])
   }
 
   private static fileName(sessionId: string | undefined, model: string, inputPath: string): string {

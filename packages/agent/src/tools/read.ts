@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises"
+import { readFile, stat } from "node:fs/promises"
 import { resolve } from "node:path"
 import { tool, type ToolSet } from "ai"
 import { z } from "zod/v4"
@@ -7,6 +7,7 @@ import DESCRIPTION from "./read.txt"
 
 export class Read {
   private static readonly MAX_OUTPUT = 40_000
+  private static readonly MAX_FILE_BYTES = 10 * 1024 * 1024
 
   static create(workspaceDir: string): ToolSet {
     const root = Workspace.realpathNearest(resolve(workspaceDir))
@@ -21,6 +22,11 @@ export class Read {
         }),
         execute: async ({ path, offset, limit }) => {
           const file = Workspace.resolve(root, path)
+          const info = await stat(file)
+          if (!info.isFile()) throw new Error(`not a file: ${path}`)
+          if (info.size > Read.MAX_FILE_BYTES) {
+            throw new Error(`file too large to read (max ${Read.MAX_FILE_BYTES / 1024 / 1024} MB)`)
+          }
           const lines = (await readFile(file, "utf8")).split("\n")
           const start = (offset ?? 1) - 1
           const end = limit ? start + limit : lines.length

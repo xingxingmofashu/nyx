@@ -8,19 +8,13 @@ const plugins = { code, cjk }
 
 interface MarkdownTextProps {
   text: string
-  /** Streaming assistant output: shows the caret and disables interactive controls. */
+  
   isAnimating?: boolean
-  /** `static` renders complete markdown (previews) instead of streaming-safe parsing. */
+  
   mode?: "static" | "streaming"
   className?: string
 }
 
-/**
- * Renders assistant markdown with Streamdown (incomplete-block parsing) plus the
- * code-highlight and CJK plugins. Mirrors ai-elements' `MessageResponse`: the
- * default `memo` shallow compare keeps it from re-rendering on unrelated parent
- * updates while streaming.
- */
 export const MarkdownText = memo(function MarkdownText({
   text,
   isAnimating = false,

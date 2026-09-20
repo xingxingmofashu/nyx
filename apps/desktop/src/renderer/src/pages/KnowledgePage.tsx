@@ -20,11 +20,6 @@ import { toast } from "../components/ui/toast"
 import { formatBytes } from "../lib/format"
 import { cn } from "../lib/utils"
 
-/**
- * Manage the local knowledge base: browse documents as a file tree, preview the
- * Markdown, import files or a folder, delete documents, and build/rebuild the
- * vector index (with progress and a retrieval test).
- */
 export function KnowledgePage() {
   const status = useKnowledgeStore((s) => s.status)
   const documents = useKnowledgeStore((s) => s.documents)
@@ -70,8 +65,8 @@ export function KnowledgePage() {
     status.indexedModel !== undefined &&
     status.indexedModel !== status.embeddingModel
   const current = documents.find((doc) => doc.file === selected)
-  // A selected model that is not installed (or none at all) still has to show
-  // in the picker, so the trigger never renders blank.
+  
+  
   const modelOptions = useMemo(() => {
     const installed = status?.availableEmbeddingModels ?? []
     const selectedModel = status?.embeddingModel
@@ -80,12 +75,7 @@ export function KnowledgePage() {
       : installed
   }, [status])
 
-  /**
-   * The embedding model being unset, not downloaded, or different from the one
-   * that built the index blocks indexing/search. Each is a standing condition
-   * rather than the result of one action, so it is announced as a toast once per
-   * condition instead of as a banner the page keeps repeating.
-   */
+  
   const reminded = useRef<string | null>(null)
   useEffect(() => {
     if (status === null) return
@@ -99,7 +89,7 @@ export function KnowledgePage() {
             : null
     if (key === reminded.current) return
     reminded.current = key
-    // A condition that no longer holds must not linger next to the new one.
+    
     toast.close("knowledge-embedding-model")
     toast.close("knowledge-index-model")
 
@@ -130,11 +120,7 @@ export function KnowledgePage() {
     }
   }, [status, modelChanged, navigate, updateIndex])
 
-  /**
-   * A finished index run is reported as a toast; the card below only carries the
-   * progress of a run in flight. `reported` keeps the terminal frame from being
-   * announced twice, since the store holds it until the page clears it.
-   */
+  
   const reported = useRef<KnowledgeIndexEvent | null>(null)
   useEffect(() => {
     if (indexing === null || !indexing.done || reported.current === indexing) return
@@ -145,8 +131,8 @@ export function KnowledgePage() {
         type: "error",
         title: "Index build failed",
         description: indexing.error,
-        // A failure is usually a leftover index from another model, which
-        // Rebuild clears.
+        
+        
         actionProps: { children: "Rebuild", onClick: () => void updateIndex(true) },
       })
     } else if (indexing.cancelled === true) {
@@ -448,7 +434,6 @@ export function KnowledgePage() {
   )
 }
 
-/** One-line summary of an import for the toast. */
 function importSummary(result: KnowledgeImportResult): string {
   const total = result.written.length + result.overwritten.length + result.skipped.length
   if (total === 0) return "No Markdown files found"
@@ -458,7 +443,6 @@ function importSummary(result: KnowledgeImportResult): string {
   return parts.join(", ")
 }
 
-/** Validate an import target folder inside the knowledge dir; null when it could escape. */
 function normalizeImportTarget(target: string): string | null {
   const segments = target
     .trim()

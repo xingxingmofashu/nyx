@@ -2,14 +2,12 @@ import { useEffect, useState } from "react"
 import { baseName } from "../../lib/format"
 import { ToolCardShell, type ToolPartState } from "./ToolCallCard"
 
-/** Output shape of the `local_image_to_image` agent tool. */
 interface ImageOutput {
   path?: string
   width?: number
   height?: number
 }
 
-/** Read the generated image back from the session's image folder. */
 function useImageDataUrl(output: ImageOutput | undefined): { url?: string; missing: boolean } {
   const [url, setUrl] = useState<string>()
   const [missing, setMissing] = useState(false)
@@ -45,9 +43,8 @@ interface ImageCardProps {
   errorText?: string
 }
 
-/** Tool card for `local_image_to_image`: shows the transformed image inline. */
 export function ImageCard({ name, state, output, errorText }: ImageCardProps) {
-  // Older transcripts stored a one-line string instead of the path/size object.
+  
   const data = (typeof output === "string" ? undefined : output) as ImageOutput | undefined
   const { url, missing } = useImageDataUrl(data)
   const detail =

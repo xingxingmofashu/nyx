@@ -2,22 +2,21 @@ import { create } from "zustand"
 import { parseContextLimit } from "../lib/model"
 
 interface AgentSettingsState {
-  /** Current agent model, e.g. "OpenCode Go · opencode/mimo-v2.5". */
+  
   modelLabel: string
-  /** True when agent.model is configured in settings.json. */
+  
   configured: boolean
-  /** Workspace the agent's coding tools are confined to. */
+  
   workspaceDir: string
-  /** Context window from the provider config, when set. */
+  
   contextLimit?: number
   initialized: boolean
   init: () => Promise<void>
-  /** Re-read settings (after the Settings page saves); no one-shot guard. */
+  
   refresh: () => Promise<void>
   setWorkspace: (dir: string) => Promise<void>
 }
 
-/** Agent settings shown read-only in the UI; the transcript lives in `agentChat`. */
 export const useAgentStore = create<AgentSettingsState>((set, get) => ({
   modelLabel: "",
   configured: false,
@@ -41,7 +40,6 @@ export const useAgentStore = create<AgentSettingsState>((set, get) => ({
   },
 }))
 
-/** Derive the display state from the persisted settings. */
 async function readAgentState(): Promise<
   Pick<AgentSettingsState, "modelLabel" | "configured" | "workspaceDir" | "contextLimit">
 > {

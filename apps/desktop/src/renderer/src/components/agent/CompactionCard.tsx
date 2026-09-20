@@ -10,18 +10,10 @@ import type { ContextCheckpoint } from "../../types"
 
 interface CompactionCardProps {
   checkpoint: ContextCheckpoint
-  /** The summarized messages themselves, revealed on demand (folded away by default). */
+  
   children?: ReactNode
 }
 
-/**
- * Marker for a context checkpoint: shows that earlier turns were summarized
- * (and how many), with the summary itself behind a disclosure. Rendered inline
- * where the assistant message carrying the checkpoint sits, so it reads as the
- * boundary between summarized and verbatim history. Everything the checkpoint
- * covers is folded into this card, so the visible conversation matches what the
- * model actually receives.
- */
 export function CompactionCard({ checkpoint, children }: CompactionCardProps) {
   const [open, setOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -68,11 +60,6 @@ export function CompactionCard({ checkpoint, children }: CompactionCardProps) {
   )
 }
 
-/**
- * Compact, read-only rendering of messages folded into a {@link CompactionCard}:
- * just role, text and the names of the tools that ran. They are summarized
- * history at this point, so the full transcript isn't worth the weight.
- */
 export function FoldedMessages({ messages }: { messages: UIMessage[] }) {
   return (
     <div className="space-y-1.5">

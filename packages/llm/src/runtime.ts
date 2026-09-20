@@ -10,6 +10,10 @@ import { Global } from "@nyx/global"
 
 export type TransformersEnvironment = typeof env
 
+interface DisposablePipeline {
+  dispose?: () => unknown
+}
+
 export interface RuntimeOptions {
   dtype?: DataType
   env?: Partial<TransformersEnvironment>
@@ -18,6 +22,7 @@ export interface RuntimeOptions {
 
 export class Runtime {
   private static readonly pipelines = new Map<string, Promise<unknown>>()
+  private static readonly loaded = new Map<string, DisposablePipeline>()
 
   static async cacheDir(): Promise<string> {
     const settings = await Global.Settings.read()
@@ -43,17 +48,45 @@ export class Runtime {
     const key = `${task}:${options.dtype ?? "default"}:${model}`
     let pending = Runtime.pipelines.get(key) as Promise<T> | undefined
     if (!pending) {
-      pending = createPipeline(task, model, {
+      let tracked: Promise<T>
+      tracked = createPipeline(task, model, {
         ...(options.dtype ? { dtype: options.dtype } : {}),
         ...(options.onProgress ? { progress_callback: options.onProgress } : {}),
-      }) as Promise<T>
-      Runtime.pipelines.set(key, pending)
+      })
+        .then((instance) => {
+          if (Runtime.pipelines.get(key) === tracked) Runtime.loaded.set(key, instance as DisposablePipeline)
+          return instance
+        })
+        .catch((error) => {
+          Runtime.pipelines.delete(key)
+          Runtime.drop(key)
+          throw error
+        }) as Promise<T>
+      Runtime.pipelines.set(key, tracked)
+      pending = tracked
     }
     return pending
   }
 
+  static evict(model: string): void {
+    for (const key of Runtime.pipelines.keys()) {
+      if (!key.endsWith(`:${model}`)) continue
+      Runtime.pipelines.delete(key)
+      Runtime.drop(key)
+    }
+  }
+
   static clear(): void {
-    Runtime.pipelines.clear()
+    for (const key of Runtime.pipelines.keys()) {
+      Runtime.pipelines.delete(key)
+      Runtime.drop(key)
+    }
+  }
+
+  private static drop(key: string): void {
+    const instance = Runtime.loaded.get(key)
+    Runtime.loaded.delete(key)
+    if (instance?.dispose) void instance.dispose()
   }
 
   private static applyEnv(partial: Partial<TransformersEnvironment>): void {

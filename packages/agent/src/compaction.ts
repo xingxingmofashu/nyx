@@ -53,6 +53,7 @@ export interface CompactionResult {
   checkpoint?: ContextCheckpoint
   compacted: boolean
   skipped?: "too-short"
+  error?: string
 }
 
 export class Compaction {
@@ -120,8 +121,8 @@ When combining:
       coveredIndex = newestUser - 1
     }
 
-    const head = pruned.slice(0, coveredIndex + 1).map(Compaction.serializeMessage).filter(Boolean)
-    const coveredThroughId = pruned[coveredIndex]!.id
+    const head = region.slice(0, coveredIndex + 1).map(Compaction.serializeMessage).filter(Boolean)
+    const coveredThroughId = region[coveredIndex]!.id
     const prompt = Compaction.buildSummaryPrompt({ previousSummary: checkpoint?.summary, context: head })
     const summaryOutput = Math.min(maxOutputTokens || Compaction.SUMMARY_OUTPUT_TOKENS, Compaction.SUMMARY_OUTPUT_TOKENS)
     if (contextLimit !== undefined && Compaction.estimateTokens(prompt) > contextLimit - summaryOutput) {
@@ -138,8 +139,10 @@ When combining:
         ...(signal ? { abortSignal: signal } : {}),
       })
       summary = result.text.trim()
-    } catch {
-      return { messages: modelFacing, checkpoint, compacted: false }
+    } catch (error) {
+      if (signal?.aborted) throw error
+      const reason = error instanceof Error ? error.message : String(error)
+      return { messages: modelFacing, checkpoint, compacted: false, error: reason }
     }
     if (!summary) return { messages: modelFacing, checkpoint, compacted: false }
 

@@ -25,7 +25,6 @@ const TASK_OPTIONS: Array<{ id: LLMTask; label: string }> = [
 
 const TASK_LABEL: Record<string, string> = Object.fromEntries(TASK_OPTIONS.map((t) => [t.id, t.label]))
 
-/** Manage installed models: pull new ones with live progress, or remove cached ones. */
 export function ModelsPage() {
   const models = useModelsStore((s) => s.models)
   const pulling = useModelsStore((s) => s.pulling)
@@ -43,13 +42,13 @@ export function ModelsPage() {
       await startPull(id, task)
       setModelId("")
     } catch {
-      // Errors are toasted from the IPC progress broadcast; nothing more to do.
+      
     }
   }
 
   const cancelDownload = (id: string) => {
     void cancelPull(id).catch(() => {
-      // The pull will also end on its own (server-side); ignore races.
+      
     })
   }
 
@@ -69,7 +68,6 @@ export function ModelsPage() {
 
   return (
     <div className="min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto p-4">
-      {/* Pull form */}
       <Card>
         <CardHeader>
           <CardTitle>Pull model</CardTitle>
@@ -116,7 +114,6 @@ export function ModelsPage() {
         </CardContent>
       </Card>
 
-      {/* Active downloads */}
       {downloads.length > 0 && (
         <Card>
           <CardHeader>
@@ -130,7 +127,6 @@ export function ModelsPage() {
         </Card>
       )}
 
-      {/* Installed models */}
       <Card>
         <CardHeader>
           <CardTitle>Installed models</CardTitle>

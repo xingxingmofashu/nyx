@@ -6,7 +6,16 @@ if (!token) {
   process.exit(1)
 }
 
-const port = process.env.NYX_SERVER_PORT ? Number(process.env.NYX_SERVER_PORT) : 0
+function parsePort(raw: string | undefined): number {
+  if (raw === undefined || raw.trim() === "") return 0
+  const port = Number(raw)
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    throw new Error(`invalid NYX_SERVER_PORT: ${raw}`)
+  }
+  return port
+}
+
+const port = parsePort(process.env.NYX_SERVER_PORT)
 const host = process.env.NYX_SERVER_HOST ?? "127.0.0.1"
 
 const hub = (await Global.Settings.read()).huggingface?.remoteHost?.replace(/\/$/, "")

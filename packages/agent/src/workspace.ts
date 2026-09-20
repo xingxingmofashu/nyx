@@ -27,7 +27,9 @@ export class Workspace {
   static realpathNearest(path: string): string {
     try {
       return realpathSync(path)
-    } catch {
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code
+      if (code !== "ENOENT" && code !== "ENOTDIR") throw error
       const parent = dirname(path)
       if (parent === path) return path
       return join(Workspace.realpathNearest(parent), basename(path))

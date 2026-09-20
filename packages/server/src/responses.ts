@@ -8,6 +8,3 @@ export type CancelledSchemaType = z.infer<typeof CancelledSchema>
 
 export const PullCancelledSchema = z.object({ ok: z.boolean(), cancelled: z.boolean() })
 export type PullCancelledSchemaType = z.infer<typeof PullCancelledSchema>
-
-export const ErrorSchema = z.object({ error: z.string() })
-export type ErrorSchemaType = z.infer<typeof ErrorSchema>

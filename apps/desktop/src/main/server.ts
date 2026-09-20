@@ -77,7 +77,6 @@ export class NyxServer {
         ...process.env,
         NYX_SERVER_TOKEN: this.token,
         NYX_SERVER_PORT: "0",
-        NODE_PATH: join(cwd, "node_modules"),
       },
       stdio: ["ignore", "pipe", "pipe"],
     })
@@ -91,15 +90,17 @@ export class NyxServer {
       )
 
       let stdoutBuf = ""
-      child.stdout?.on("data", (chunk: Buffer) => {
+      const onStdout = (chunk: Buffer) => {
         stdoutBuf += chunk.toString()
         const match = stdoutBuf.match(/nyx-server-ready (\S+)/)
         if (match) {
           clearTimeout(timer)
+          child.stdout?.off("data", onStdout)
           this.baseURL = match[1]!
           resolve()
         }
-      })
+      }
+      child.stdout?.on("data", onStdout)
       child.stderr?.on("data", (chunk: Buffer) => {
         process.stderr.write(`[nyx-server] ${chunk.toString()}`)
       })

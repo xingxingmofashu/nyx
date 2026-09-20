@@ -28,6 +28,7 @@ export interface SessionSaveInput {
 
 export class Session {
   private static readonly SESSION_ID_RE = /^[A-Za-z0-9_-]+$/
+  private static queue: Promise<unknown> = Promise.resolve()
 
   private static readonly StoredMetaSchema = z
     .object({
@@ -64,56 +65,66 @@ export class Session {
     const meta = await Session.readMeta(Session.metaPath(workspace, id), workspace.canonical)
     if (!meta) return undefined
     const text = await Bun.file(Session.transcriptPath(workspace, id)).text().catch(() => "")
-    return { ...meta, messages: Bun.JSONL.parse(text) }
+    return { ...meta, messages: Session.parseTranscript(text) }
   }
 
-  static async save(input: SessionSaveInput): Promise<ChatSessionMeta> {
+  static save(input: SessionSaveInput): Promise<ChatSessionMeta> {
     if (!Session.isValidId(input.id)) throw new Error(`invalid session id: ${input.id}`)
-    const workspace = new Workspace(input.workspaceDir)
-    const existing = await Session.readMeta(Session.metaPath(workspace, input.id), workspace.canonical)
-    const now = new Date().toISOString()
-    const meta: ChatSessionMeta = {
-      id: input.id,
-      title: input.title,
-      workspaceDir: workspace.canonical,
-      createdAt: existing?.createdAt ?? now,
-      updatedAt: now,
-      ...(existing?.pinned ? { pinned: true } : {}),
-    }
-    await Session.writeTranscript(Session.transcriptPath(workspace, input.id), input.messages)
-    await fs.outputJson(Session.metaPath(workspace, input.id), meta, { spaces: 2 })
-    return meta
+    return Session.serialize(async () => {
+      const workspace = new Workspace(input.workspaceDir)
+      const existing = await Session.readMeta(Session.metaPath(workspace, input.id), workspace.canonical)
+      const now = new Date().toISOString()
+      const meta: ChatSessionMeta = {
+        id: input.id,
+        title: input.title,
+        workspaceDir: workspace.canonical,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+        ...(existing?.pinned ? { pinned: true } : {}),
+      }
+      await Session.writeTranscript(Session.transcriptPath(workspace, input.id), input.messages)
+      await fs.outputJson(Session.metaPath(workspace, input.id), meta, { spaces: 2 })
+      return meta
+    })
   }
 
-  static async rename(workspaceDir: string, id: string, title: string): Promise<ChatSessionMeta | undefined> {
-    const workspace = new Workspace(workspaceDir)
-    const meta = await Session.readMeta(Session.metaPath(workspace, id), workspace.canonical)
-    if (!meta) return undefined
-    const next: ChatSessionMeta = { ...meta, title }
-    await fs.outputJson(Session.metaPath(workspace, id), next, { spaces: 2 })
-    return next
+  static rename(workspaceDir: string, id: string, title: string): Promise<ChatSessionMeta | undefined> {
+    if (!Session.isValidId(id)) return Promise.resolve(undefined)
+    return Session.serialize(async () => {
+      const workspace = new Workspace(workspaceDir)
+      const meta = await Session.readMeta(Session.metaPath(workspace, id), workspace.canonical)
+      if (!meta) return undefined
+      const next: ChatSessionMeta = { ...meta, title }
+      await fs.outputJson(Session.metaPath(workspace, id), next, { spaces: 2 })
+      return next
+    })
   }
 
-  static async setPinned(workspaceDir: string, id: string, pinned: boolean): Promise<ChatSessionMeta | undefined> {
-    const workspace = new Workspace(workspaceDir)
-    const meta = await Session.readMeta(Session.metaPath(workspace, id), workspace.canonical)
-    if (!meta) return undefined
-    const next: ChatSessionMeta = { ...meta }
-    if (pinned) next.pinned = true
-    else delete next.pinned
-    await fs.outputJson(Session.metaPath(workspace, id), next, { spaces: 2 })
-    return next
+  static setPinned(workspaceDir: string, id: string, pinned: boolean): Promise<ChatSessionMeta | undefined> {
+    if (!Session.isValidId(id)) return Promise.resolve(undefined)
+    return Session.serialize(async () => {
+      const workspace = new Workspace(workspaceDir)
+      const meta = await Session.readMeta(Session.metaPath(workspace, id), workspace.canonical)
+      if (!meta) return undefined
+      const next: ChatSessionMeta = { ...meta }
+      if (pinned) next.pinned = true
+      else delete next.pinned
+      await fs.outputJson(Session.metaPath(workspace, id), next, { spaces: 2 })
+      return next
+    })
   }
 
-  static async remove(workspaceDir: string, id: string): Promise<void> {
-    if (!Session.isValidId(id)) return
-    const workspace = new Workspace(workspaceDir)
-    await fs.remove(Session.transcriptPath(workspace, id))
-    await fs.remove(Session.metaPath(workspace, id))
-    await Session.removeFiles(workspace.audioDir, id)
-    await Session.removeFiles(workspace.imageDir, id)
-    await Session.removeFiles(workspace.attachmentsDir, id)
-    if ((await Session.activeId(workspaceDir)) === id) await Session.setActiveId(workspaceDir, null)
+  static remove(workspaceDir: string, id: string): Promise<void> {
+    if (!Session.isValidId(id)) return Promise.resolve()
+    return Session.serialize(async () => {
+      const workspace = new Workspace(workspaceDir)
+      await fs.remove(Session.transcriptPath(workspace, id))
+      await fs.remove(Session.metaPath(workspace, id))
+      await Session.removeFiles(workspace.audioDir, id)
+      await Session.removeFiles(workspace.imageDir, id)
+      await Session.removeFiles(workspace.attachmentsDir, id)
+      if ((await Session.activeId(workspaceDir)) === id) await Session.writeActive(workspace, null)
+    })
   }
 
   static async activeId(workspaceDir: string): Promise<string | undefined> {
@@ -122,8 +133,19 @@ export class Session {
     return Session.isValidId(id) ? id : undefined
   }
 
-  static async setActiveId(workspaceDir: string, id: string | null): Promise<void> {
-    const workspace = new Workspace(workspaceDir)
+  static setActiveId(workspaceDir: string, id: string | null): Promise<void> {
+    return Session.serialize(async () => {
+      await Session.writeActive(new Workspace(workspaceDir), id)
+    })
+  }
+
+  private static serialize<T>(operation: () => Promise<T>): Promise<T> {
+    const run = Session.queue.then(operation, operation)
+    Session.queue = run.catch(() => undefined)
+    return run
+  }
+
+  private static async writeActive(workspace: Workspace, id: string | null): Promise<void> {
     if (id === null) {
       await fs.remove(Session.activePath(workspace))
       return
@@ -159,7 +181,7 @@ export class Session {
     const names = await fs.readdir(dir).catch(() => [] as string[])
     const metas: ChatSessionMeta[] = []
     for (const name of names) {
-      if (!name.endsWith(".json") || name === "index.json") continue
+      if (!name.endsWith(".json")) continue
       const meta = await Session.readMeta(join(dir, name), fallbackWorkspaceDir)
       if (meta) metas.push(meta)
     }
@@ -189,6 +211,21 @@ export class Session {
       return
     }
     await Bun.write(path, serialized.map((line) => `${line}\n`).join(""))
+  }
+
+  private static parseTranscript(text: string): unknown[] {
+    const messages: unknown[] = []
+    const lines = text.split("\n")
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]?.trim()
+      if (!line) continue
+      try {
+        messages.push(JSON.parse(line))
+      } catch {
+        throw new Error(`corrupt transcript line ${i + 1}`)
+      }
+    }
+    return messages
   }
 
   private static async removeFiles(dir: string, id: string): Promise<void> {

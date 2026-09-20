@@ -30,7 +30,6 @@ interface ViewDef {
   icon: typeof SquarePen
 }
 
-/** Navigation: chats are primary; local tasks live under Tools. */
 const NAV: Array<{ label?: string; views: ViewDef[] }> = [
   {
     views: [{ id: "agent", path: "/agent", label: "New chat", icon: SquarePen }],
@@ -53,15 +52,14 @@ const NAV: Array<{ label?: string; views: ViewDef[] }> = [
   },
 ]
 
-/** Collapsible sidebar: new/current chat, knowledge, tools, and model management. */
 export function AppSidebar() {
   const location = useLocation()
   const navigate = useNavigate()
   const createChat = useSessionsStore((s) => s.create)
 
-  // The Agent entry doubles as "new chat": opening a saved one is the Chats
-  // list's job. While a turn streams `create` is a no-op, so this degrades to
-  // plain navigation back to the agent instead of dropping the live reply.
+  
+  
+  
   const startNewChat = () => {
     createChat()
     navigate("/agent")

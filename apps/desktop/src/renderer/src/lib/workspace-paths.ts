@@ -1,11 +1,5 @@
-/**
- * Best-effort detection of paths a shell command references outside the
- * workspace, used to warn on the approval card. This is advisory only: values
- * built at runtime (variables, command substitution, globs) cannot be seen
- * here, so a clean result is not proof the command stays inside.
- */
 
-/** POSIX-normalize a path without node:path (the renderer has no fs/path). */
+
 function normalizePath(path: string): string {
   const absolute = path.startsWith("/")
   const out: string[] = []
@@ -27,7 +21,6 @@ function isInside(path: string, root: string): boolean {
   return p === r || p.startsWith(`${r}/`)
 }
 
-/** Candidate path tokens, including the value of `--flag=value` assignments. */
 function pathTokens(command: string): string[] {
   const raw = command.split(/[\s'"`|;&()<>]+/).filter(Boolean)
   const out: string[] = []

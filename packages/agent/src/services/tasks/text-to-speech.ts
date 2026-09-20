@@ -37,7 +37,7 @@ export class TextToSpeech {
     text: string,
     options: LLM.TextToSpeechOptions = {},
   ): Promise<GeneratedAudio> {
-    const provider = this.cache.get(modelId, () => new LLM.OnnxTextToSpeechProvider({ model: modelId }))
+    const provider = this.cache.get(() => new LLM.OnnxTextToSpeechProvider({ model: modelId }))
     const audio = await provider.generate(text, options)
 
     return {

@@ -20,7 +20,6 @@ export interface HuggingFaceSettingsCardProps {
   onRestartServer: () => Promise<void>
 }
 
-/** Hugging Face download settings: endpoint/mirror, cache dir, offline mode. */
 export function HuggingFaceSettingsCard({
   remoteHost,
   cacheDir,

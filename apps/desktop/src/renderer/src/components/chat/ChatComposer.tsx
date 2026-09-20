@@ -8,13 +8,13 @@ import {
   InputGroupTextarea,
 } from "../ui/input-group"
 import { CardFooter } from "../ui/card"
+import { ATTACHMENT_ACCEPT, isSupportedAttachment } from "#lib/attachments.ts"
 import { cn } from "#lib/utils.ts"
 
-/** One file the user picked but has not sent yet (preview URL is an object URL). */
 export interface PendingAttachment {
   id: string
   name: string
-  /** Object URL for the local preview. */
+  
   url: string
   file: File
 }
@@ -24,23 +24,22 @@ interface ChatComposerProps {
   onChange: (value: string) => void
   onSend: () => void
   onAbort?: () => void
-  /** A run is in progress: show the stop button. */
+  
   streaming?: boolean
-  /** Prevent submitting (no model selected, awaiting approval, …). */
+  
   disabled?: boolean
   placeholder?: string
-  /** Optional row rendered above the input (e.g. a model picker). */
+  
   header?: ReactNode
-  /** Optional control rendered before the send/stop button (e.g. a mic). */
+  
   trailing?: ReactNode
-  /** Files picked but not yet sent; rendered as removable chips. */
+  
   attachments?: PendingAttachment[]
-  /** Called with newly picked / dropped / pasted files. */
+  
   onAttach?: (files: File[]) => void
   onRemoveAttachment?: (id: string) => void
 }
 
-/** Chat input with send/stop controls and image attachments; keeps focus after sending. */
 export function ChatComposer({
   value,
   onChange,
@@ -58,8 +57,8 @@ export function ChatComposer({
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
-  // Sending disables the textarea while the agent streams, which blurs it; focus
-  // it again once the composer is editable, but only for a send started here.
+  
+  
   const refocusAfterSend = useRef(false)
 
   const canAttach = Boolean(onAttach) && !disabled && !streaming
@@ -133,14 +132,14 @@ export function ChatComposer({
             onPaste={(e) => {
               if (!canAttach) return
               const files = Array.from(e.clipboardData.files).filter((f) =>
-                f.type.startsWith("image/"),
+                isSupportedAttachment(f.type),
               )
               if (files.length === 0) return
               e.preventDefault()
               addFiles(files)
             }}
             onKeyDown={(e) => {
-              // Skip while an IME composition is in progress (e.g. Chinese input).
+              
               if (e.nativeEvent.isComposing) return
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault()
@@ -155,7 +154,7 @@ export function ChatComposer({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept={ATTACHMENT_ACCEPT}
             multiple
             className="hidden"
             onChange={(e) => {
@@ -191,7 +190,7 @@ export function ChatComposer({
                 size="icon-sm"
                 disabled={disabled || (!value.trim() && attachments.length === 0)}
                 aria-label="Send message"
-                // Don't let the button steal focus from the composer.
+                
                 onMouseDown={(e) => e.preventDefault()}
               >
                 <SendHorizonal />

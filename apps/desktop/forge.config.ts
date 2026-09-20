@@ -11,9 +11,6 @@ const config: ForgeConfig = {
     extendInfo: {
       NSMicrophoneUsageDescription: "Nyx transcribes your speech with local models.",
     },
-    download: {
-      unsafelyDisableChecksums: true,
-    },
     prune: false,
     ignore: (file) => {
       if (!file) return false

@@ -8,7 +8,6 @@ export interface KnowledgeSettingsCardProps {
   onChange: (next: KnowledgeSettings) => void
 }
 
-/** Knowledge base settings: how documents are chunked before embedding. */
 export function KnowledgeSettingsCard({ knowledge, onChange }: KnowledgeSettingsCardProps) {
   const parse = (value: string): number | undefined => {
     const parsed = Number(value)

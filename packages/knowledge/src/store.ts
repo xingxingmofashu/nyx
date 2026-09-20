@@ -26,9 +26,14 @@ export class Store {
   static async open(dir: string): Promise<Store> {
     await fs.ensureDir(dir)
     const db = await lancedb.connect(dir)
-    const names = await db.tableNames()
-    const table = names.includes(Store.TABLE) ? await db.openTable(Store.TABLE) : null
-    return new Store(db, table)
+    try {
+      const names = await db.tableNames()
+      const table = names.includes(Store.TABLE) ? await db.openTable(Store.TABLE) : null
+      return new Store(db, table)
+    } catch (error) {
+      db.close()
+      throw error
+    }
   }
 
   async replaceFile(file: string, rows: ChunkRecord[]): Promise<void> {
@@ -46,19 +51,28 @@ export class Store {
 
   async search(queryVector: Float32Array, queryText: string, topK = 6): Promise<SearchHit[]> {
     if (!this.table) return []
-    const reranker = await lancedb.rerankers.RRFReranker.create()
-    const rows = await this.table
-      .query()
-      .nearestTo(queryVector)
-      .fullTextSearch(queryText)
-      .rerank(reranker)
-      .limit(topK)
-      .toArray()
-    return rows.map((row) => ({
-      file: String(row.file),
-      text: String(row.text),
-      score: Number(row._relevance_score ?? 0),
-    }))
+    try {
+      const reranker = await lancedb.rerankers.RRFReranker.create()
+      const rows = await this.table
+        .query()
+        .nearestTo(queryVector)
+        .fullTextSearch(queryText)
+        .rerank(reranker)
+        .limit(topK)
+        .toArray()
+      return rows.map((row) => ({
+        file: String(row.file),
+        text: String(row.text),
+        score: Number(row._relevance_score ?? 0),
+      }))
+    } catch {
+      const rows = await this.table.query().nearestTo(queryVector).limit(topK).toArray()
+      return rows.map((row) => ({
+        file: String(row.file),
+        text: String(row.text),
+        score: Number(row._distance ?? 0),
+      }))
+    }
   }
 
   async countChunks(): Promise<number> {

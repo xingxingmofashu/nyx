@@ -6,14 +6,13 @@ import { toast } from "../ui/toast"
 import { useRecorder } from "../../hooks/use-recorder"
 
 interface VoiceInputButtonProps {
-  /** Selected automatic-speech-recognition model id. */
+  
   model?: string
   disabled?: boolean
-  /** Receives the transcript once a recording is transcribed. */
+  
   onTranscribed: (text: string) => void
 }
 
-/** Mic button: record, transcribe with the local ASR model, hand the text back. */
 export function VoiceInputButton({ model, disabled, onTranscribed }: VoiceInputButtonProps) {
   const { recording, error, start, stop } = useRecorder()
   const [transcribing, setTranscribing] = useState(false)
@@ -47,8 +46,8 @@ export function VoiceInputButton({ model, disabled, onTranscribed }: VoiceInputB
   }
 
   const noModel = !model
-  // While recording, keep the button enabled so it can always be stopped, even
-  // if the composer became busy (e.g. a typed message was sent mid-recording).
+  
+  
   const stopLocked = disabled && !recording
   return (
     <InputGroupButton

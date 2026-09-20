@@ -40,18 +40,29 @@ export class Provider {
 
   private readonly cache = new Map<string, LLM.LLMProvider>()
 
-  get<T extends LLM.LLMProvider>(modelId: string, create: () => T): T {
-    const cached = this.cache.get(modelId) as T | undefined
-    if (cached) return cached
-    const provider = create()
-    this.cache.set(modelId, provider)
-    return provider
+  get<T extends LLM.LLMProvider>(create: () => T): T {
+    const candidate = create()
+    const key = `${candidate.task}:${candidate.model}`
+    const cached = this.cache.get(key)
+    if (cached && Provider.is(cached, candidate)) return cached
+    this.cache.set(key, candidate)
+    return candidate
   }
 
   evict(modelId: string): boolean {
-    if (!this.cache.delete(modelId)) return false
-    LLM.Runtime.clear()
+    let removed = false
+    for (const key of this.cache.keys()) {
+      if (!key.endsWith(`:${modelId}`)) continue
+      this.cache.delete(key)
+      removed = true
+    }
+    if (!removed) return false
+    LLM.Runtime.evict(modelId)
     return true
+  }
+
+  private static is<T extends LLM.LLMProvider>(cached: LLM.LLMProvider, candidate: T): cached is T {
+    return cached.task === candidate.task && cached.model === candidate.model
   }
 
   static resolveModelConfig(settings: Global.AgentSettingsSchemaType): ResolvedModel {

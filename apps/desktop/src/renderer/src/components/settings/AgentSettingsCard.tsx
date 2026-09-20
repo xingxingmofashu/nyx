@@ -23,10 +23,8 @@ export interface AgentSettingsCardProps {
   onChange: (next: AgentSettings) => void
 }
 
-/** Sentinel Select value that flips the model field to free text. */
 const CUSTOM_MODEL = "__custom__"
 
-/** Editor for `agent`: model ref, providers, prompt, and tool toggles. */
 export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
   const [models, setModels] = useState<Record<string, ProviderModels>>({})
   const [loadingModels, setLoadingModels] = useState(false)
@@ -47,11 +45,11 @@ export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
   const currentModels = modelProviderId ? models[modelProviderId] : undefined
   const modelList = currentModels?.ids ?? []
   const canPick = modelList.length > 0 && !customModel
-  // Keep the current value selectable even when the provider doesn't list it.
+  
   const modelOptions = modelId && !modelList.includes(modelId) ? [modelId, ...modelList] : modelList
 
   const loadModels = async (providerId: string, entry: AgentProviderEntry) => {
-    // Coalesce bursts (e.g. typing an API key fires the effect per keystroke).
+    
     if (inFlight.current.has(providerId)) return
     inFlight.current.add(providerId)
     setLoadingModels(true)
@@ -69,7 +67,7 @@ export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
     }
   }
 
-  // Fetch the active provider's models once, when it is configured enough to try.
+  
   useEffect(() => {
     if (!modelProviderId || !activeEntry || models[modelProviderId]) return
     if (!activeEntry.options?.apiKey) return
@@ -77,7 +75,7 @@ export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelProviderId, activeEntry?.options?.apiKey, activeEntry?.options?.baseURL, activeEntry?.modelsUrl])
 
-  // A picked-from-list value stops making sense when the provider changes.
+  
   useEffect(() => {
     setCustomModel(false)
   }, [modelProviderId])
@@ -92,8 +90,8 @@ export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
 
   const renameProvider = (oldId: string, nextId: string) => {
     const id = nextId.trim()
-    // The id field is controlled, so ignoring these snaps it back: empty ids
-    // and collisions would otherwise corrupt the ref or drop another provider.
+    
+    
     if (!id || id === oldId || providers[id]) return
     const next: Record<string, AgentProviderEntry> = {}
     for (const [key, entry] of Object.entries(providers)) {
@@ -109,7 +107,7 @@ export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
   const removeProvider = (id: string) => {
     const next = { ...providers }
     delete next[id]
-    // Drop the cached model list so re-adding the same id refetches.
+    
     setModels((prev) => {
       if (!(id in prev)) return prev
       const { [id]: _removed, ...rest } = prev

@@ -6,36 +6,36 @@ import { agentChat } from "../lib/chat"
 import { useAgentStore } from "./agent"
 
 interface SessionsState {
-  /** Saved sessions of the active workspace (the sidebar lists them flat). */
+  
   sessions: ChatSessionMeta[]
-  /** Id of the open chat; a fresh id for an unsaved draft (names its audio). */
+  
   activeId: string | null
-  /** True while a turn is streaming; switching sessions is disallowed then. */
+  
   busy: boolean
-  /** True while a manual compaction is in flight. */
+  
   compacting: boolean
-  /** Post-compaction size estimate, shown until the next turn reports real usage. */
+  
   contextOverride?: { tokens: number; forId: string }
-  /** One-line result of the last manual compaction (e.g. nothing to summarize). */
+  
   compactNotice?: string
   load: () => Promise<void>
-  /** Open the last session of `workspaceDir` the user had open, if any. */
+  
   restoreLast: (workspaceDir: string) => Promise<void>
-  /** Start a fresh, unsaved chat in the current workspace. */
+  
   create: () => void
   open: (id: string) => Promise<void>
-  /** Id of the current chat, generating one for an unsaved draft. */
+  
   ensureId: () => string
-  /** Rename a saved session. */
+  
   rename: (id: string, title: string) => Promise<void>
   setPinned: (id: string, pinned: boolean) => Promise<void>
   duplicate: (id: string) => Promise<void>
   remove: (id: string) => Promise<void>
-  /** Export a saved session as Markdown; resolves the saved path, or null. */
+  
   exportSession: (id: string) => Promise<string | null>
-  /** Persist the active transcript (no-op until it has a user message). */
+  
   persist: () => Promise<void>
-  /** Summarize the transcript now, fold it into a checkpoint, and save. */
+  
   compact: () => Promise<CompactionResult>
 }
 
@@ -65,8 +65,8 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
   create: () => {
     if (get().busy) return
     agentChat.messages = []
-    // Both entry points ("Agent" in the sidebar, "New session" in the header)
-    // start a clean slate, so a failed turn's error doesn't follow you over.
+    
+    
     agentChat.clearError()
     set({ activeId: nanoid() })
   },
@@ -184,8 +184,8 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
       })
       const last = agentChat.messages[agentChat.messages.length - 1]
       if (result.compacted && result.checkpoint && last) {
-        // Same spot a live turn puts it: the newest message's metadata, which
-        // drives both the fold below it and the next request's transcript.
+        
+        
         const patched = {
           ...last,
           metadata: { ...(last.metadata as Record<string, unknown> | undefined), compaction: result.checkpoint },
@@ -201,9 +201,11 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
         set({
           contextOverride: undefined,
           compactNotice:
-            result.skipped === "too-short"
-              ? "Nothing new to compact — everything older is already summarized."
-              : undefined,
+            result.error !== undefined
+              ? `Compaction failed: ${result.error}`
+              : result.skipped === "too-short"
+                ? "Nothing new to compact — everything older is already summarized."
+                : undefined,
         })
       }
       return result
@@ -216,11 +218,6 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
   },
 }))
 
-/**
- * Rescale the server's heuristic post-compaction estimate onto the provider's
- * own token scale, using the last reported input tokens as the baseline. Without
- * a baseline (no turn yet) the raw after-estimate is a fine placeholder.
- */
 function scaleEstimate(result: CompactionResult, before: UIMessage[]): number | undefined {
   const after = result.estimatedTokens
   if (after === undefined) return undefined
@@ -231,7 +228,6 @@ function scaleEstimate(result: CompactionResult, before: UIMessage[]): number | 
   return after
 }
 
-/** Input tokens the provider reported for the most recent turn, if any. */
 function lastReportedTokens(messages: UIMessage[]): number | undefined {
   for (let i = messages.length - 1; i >= 0; i--) {
     const usage = (messages[i]?.metadata as { usage?: { inputTokens?: number } } | undefined)?.usage
@@ -242,11 +238,6 @@ function lastReportedTokens(messages: UIMessage[]): number | undefined {
 
 let persistenceInitialized = false
 
-/**
- * Persist the active transcript whenever a turn settles. Module-level (not a
- * hook) so a stream that finishes after the user leaves the Agent page is still
- * saved; the guard keeps React StrictMode from double-subscribing.
- */
 export function initSessionPersistence(): void {
   if (persistenceInitialized) return
   persistenceInitialized = true
@@ -254,7 +245,7 @@ export function initSessionPersistence(): void {
     const status = agentChat.status
     useSessionsStore.setState({
       busy: status === "submitted" || status === "streaming",
-      // The last compaction's notice belongs to the turn it happened in.
+      
       ...(status === "submitted" ? { compactNotice: undefined } : {}),
     })
     if (status === "ready" || status === "error") {

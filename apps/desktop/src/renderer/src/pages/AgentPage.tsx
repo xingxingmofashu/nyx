@@ -5,6 +5,7 @@ import { useChat } from "@ai-sdk/react"
 import { getToolName, isReasoningUIPart, isToolUIPart } from "ai"
 import { nanoid } from "nanoid"
 import { agentChat } from "../lib/chat"
+import { isSupportedAttachment } from "../lib/attachments"
 import { baseName } from "../lib/format"
 import { useAgentStore } from "../store/agent"
 import { useModelsStore } from "../store/models"
@@ -49,7 +50,6 @@ import { CompactionCard, FoldedMessages } from "../components/agent/CompactionCa
 import { ContextMeter } from "../components/chat/ContextMeter"
 import { Spinner } from "../components/ui/spinner"
 
-/** How many images one message may carry (keeps the composer tidy). */
 const MAX_ATTACHMENTS = 5
 
 export function AgentPage() {
@@ -77,7 +77,7 @@ export function AgentPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Restore the last opened session of the current workspace once (StrictMode-safe).
+    
     if (restored.current) return
     restored.current = true
     void (async () => {
@@ -92,7 +92,7 @@ export function AgentPage() {
 
   const busy = status === "submitted" || status === "streaming"
 
-  /** Input tokens + resolved window from the most recent turn (provider-reported). */
+  
   const usage = (() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       const meta = messages[i]?.metadata as ChatMessageMetadata | undefined
@@ -102,17 +102,12 @@ export function AgentPage() {
   })()
   const contextUsed = usage?.usage?.inputTokens ?? 0
   const contextWindow = usage?.contextLimit ?? contextLimit
-  // Right after a manual compaction the last turn's usage is stale, so show the
-  // server's estimate until the next turn reports real numbers.
+  
+  
   const estimated =
     contextOverride && contextOverride.forId === messages[messages.length - 1]?.id ? contextOverride.tokens : undefined
 
-  /**
-   * The newest checkpoint folds every message it covers into its card: those
-   * messages are summarized away for the model, so the UI shows the same thing.
-   * Later messages stay verbatim below the card (which sits on the assistant
-   * reply that produced the checkpoint).
-   */
+  
   const folded = (() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       const checkpoint = (messages[i]?.metadata as ChatMessageMetadata | undefined)?.compaction
@@ -124,7 +119,7 @@ export function AgentPage() {
     return undefined
   })()
 
-  /** Keep object URLs alive until send/remove so unmount never leaks them. */
+  
   const attachmentsRef = useRef(attachments)
   attachmentsRef.current = attachments
   useEffect(() => {
@@ -134,7 +129,7 @@ export function AgentPage() {
   }, [])
 
   const addAttachments = (files: File[]) => {
-    const images = files.filter((file) => file.type.startsWith("image/"))
+    const images = files.filter((file) => isSupportedAttachment(file.type))
     if (images.length === 0) return
     const room = MAX_ATTACHMENTS - attachments.length
     if (room <= 0) {
@@ -167,8 +162,8 @@ export function AgentPage() {
     setAttachError(null)
 
     void (async () => {
-      // Copy attachments into the workspace first: the agent's tools read files
-      // by workspace-relative path, and the agent model only needs that path.
+      
+      
       let saved: SavedAttachment[] = []
       if (pending.length > 0) {
         setUploading(true)
@@ -205,8 +200,8 @@ export function AgentPage() {
     if (busy) return
     const dir = await window.nyx.dialog.selectDirectory()
     if (!dir) return
-    // Sessions are per workspace: switch, reload the sidebar for the new one,
-    // and start a fresh chat.
+    
+    
     await setWorkspace(dir)
     await useSessionsStore.getState().load()
     createSession()
@@ -301,7 +296,7 @@ export function AgentPage() {
                 <MessageScrollerViewport>
                   <MessageScrollerContent className="p-4">
                     {messages.map((message, messageIndex) => {
-                      // Covered by the newest checkpoint: rendered inside its card.
+                      
                       if (folded && messageIndex <= folded.end) return null
                       const animating =
                         status === "streaming" &&
