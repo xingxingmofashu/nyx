@@ -1,6 +1,29 @@
 import { getToolName, isReasoningUIPart, isToolUIPart, type UIMessage } from "ai"
 import { formatJson } from "./format"
 
+export function settledMessages(messages: UIMessage[]): UIMessage[] {
+  const settled: UIMessage[] = []
+  for (const message of messages) {
+    if (message.role !== "assistant") {
+      settled.push(message)
+      continue
+    }
+    const parts = message.parts.filter((part) => {
+      const value = part as { type?: string; state?: string }
+      if (value.type !== "dynamic-tool" && !value.type?.startsWith("tool-")) return true
+      return (
+        value.state === "output-available" ||
+        value.state === "output-error" ||
+        value.state === "output-denied" ||
+        value.state === "approval-requested"
+      )
+    })
+    if (parts.length === 0) continue
+    settled.push(parts.length === message.parts.length ? message : { ...message, parts })
+  }
+  return settled
+}
+
 export function sessionTitle(messages: UIMessage[], fallback = "New chat"): string {
   for (const message of messages) {
     if (message.role !== "user") continue

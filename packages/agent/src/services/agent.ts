@@ -121,7 +121,7 @@ export class Agent {
     const tools = await this.tools(settings, workspaceDir, request.sessionId)
     const systemPrompt = settings.systemPrompt ?? DEFAULT_SYSTEM_PROMPT
 
-    const messages = Attachment.annotate(request.messages)
+    const messages = Loop.repair(Attachment.annotate(request.messages))
     const result = await Compaction.compact({
       model: Provider.resolveModel(model),
       messages,

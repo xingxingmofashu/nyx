@@ -82,11 +82,12 @@ export class Loop {
     const contextLimit =
       options.contextLimit ?? (Loop.isModelConfig(model) ? model.contextLimit : undefined)
     const instructions = systemPrompt ?? DEFAULT_SYSTEM_PROMPT
+    const history = Loop.repair(messages)
 
     const prepare = (force: boolean) =>
       Compaction.compact({
         model: languageModel,
-        messages,
+        messages: history,
         systemPrompt: instructions,
         tools,
         ...(contextLimit === undefined ? {} : { contextLimit }),
@@ -182,6 +183,28 @@ export class Loop {
 
   private static errorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error)
+  }
+
+  static repair(messages: UIMessage[]): UIMessage[] {
+    const repaired: UIMessage[] = []
+    for (const message of messages) {
+      if (message.role !== "assistant") {
+        repaired.push(message)
+        continue
+      }
+      const parts = message.parts.filter((part) => {
+        const value = part as { type?: string; state?: string }
+        if (value.type !== "dynamic-tool" && !value.type?.startsWith("tool-")) return true
+        return Loop.settled(value.state)
+      })
+      if (parts.length === 0) continue
+      repaired.push(parts.length === message.parts.length ? message : { ...message, parts })
+    }
+    return repaired
+  }
+
+  private static settled(state: string | undefined): boolean {
+    return state === "output-available" || state === "output-error" || state === "output-denied"
   }
 
   private static matches(message: string): boolean {

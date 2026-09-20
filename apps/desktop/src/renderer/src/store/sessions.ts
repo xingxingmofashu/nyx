@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import { nanoid } from "nanoid"
-import { messagesToMarkdown, sessionTitle } from "../lib/transcript"
+import { messagesToMarkdown, sessionTitle, settledMessages } from "../lib/transcript"
 import type { ChatSessionMeta, ChatSessionSaveRequest, CompactionResult, UIMessage } from "../types"
 import { agentChat } from "../lib/chat"
 import { useAgentStore } from "./agent"
@@ -150,7 +150,11 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
   },
 
   persist: async () => {
-    const messages = agentChat.messages
+    const settled = settledMessages(agentChat.messages)
+    if (settled.some((message, index) => message !== agentChat.messages[index])) {
+      agentChat.messages = settled
+    }
+    const messages = settled
     if (!messages.some((message) => message.role === "user")) return
     const workspaceDir = useAgentStore.getState().workspaceDir
     if (!workspaceDir) return
