@@ -1,18 +1,19 @@
-import { ipcMain, net } from "electron"
+import { net } from "electron"
 import { IPC } from "../../preload/ipc.ts"
 import type { AgentProviderEntry, ProviderModels as ProviderModelsResult, Settings } from "../../renderer/src/types.ts"
 import type { NyxServer } from "../server.ts"
+import { Guard } from "./guard.ts"
 
 export class Config {
   private static readonly PROVIDER_TIMEOUT_MS = 15_000
   private static readonly ANTHROPIC_VERSION = "2023-06-01"
 
   static register(server: NyxServer): void {
-    ipcMain.handle(IPC.config.getSettings, () => server.settings())
-    ipcMain.handle(IPC.config.setSettings, (_e, patch: Settings) => server.updateSettings(patch))
-    ipcMain.handle(IPC.config.writeSettings, (_e, settings: Settings) => server.replaceSettings(settings))
-    ipcMain.handle(IPC.config.listModels, (_e, provider: AgentProviderEntry) => Config.listProviderModels(provider))
-    ipcMain.handle(IPC.config.restartServer, async () => {
+    Guard.handle(IPC.config.getSettings, () => server.settings())
+    Guard.handle(IPC.config.setSettings, (_e, patch: Settings) => server.updateSettings(patch))
+    Guard.handle(IPC.config.writeSettings, (_e, settings: Settings) => server.replaceSettings(settings))
+    Guard.handle(IPC.config.listModels, (_e, provider: AgentProviderEntry) => Config.listProviderModels(provider))
+    Guard.handle(IPC.config.restartServer, async () => {
       await server.stop()
       await server.start()
     })

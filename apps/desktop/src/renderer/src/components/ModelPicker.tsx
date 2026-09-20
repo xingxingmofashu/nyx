@@ -7,7 +7,6 @@ import { Separator } from "./ui/separator"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { cn } from "../lib/utils"
 
-/** Inline model selector: pick from installed models; management lives in /models. */
 export function ModelPicker({ task, className }: { task: LLMTask; className?: string }) {
   const models = useModelsStore((s) => s.models)
   const selected = useModelsStore((s) => s.selected[task])

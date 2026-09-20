@@ -98,32 +98,44 @@ export type AgentProviderEntrySchemaType = z.infer<typeof AgentProviderEntrySche
 export type AgentProviderOptionsSchemaType = z.infer<typeof AgentProviderOptionsSchema>
 export type AgentProviderLimitSchemaType = z.infer<typeof AgentProviderLimitSchema>
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
 export class Settings {
+  private static queue: Promise<unknown> = Promise.resolve()
+
+  private static isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value)
+  }
+
   private static get file(): string {
     return join(Path.root, "settings.json")
+  }
+
+  private static serialize<T>(operation: () => Promise<T>): Promise<T> {
+    const run = Settings.queue.then(operation, operation)
+    Settings.queue = run.catch(() => undefined)
+    return run
   }
 
   static async read(): Promise<SettingsSchemaType> {
     const raw = await Bun.file(Settings.file).json().catch(() => undefined)
     const parsed = SettingsSchema.safeParse(raw)
     if (parsed.success) return parsed.data
-    return isRecord(raw) ? (raw as SettingsSchemaType) : {}
+    return Settings.isRecord(raw) ? (raw as SettingsSchemaType) : {}
   }
 
-  static async update(patch: SettingsSchemaType): Promise<SettingsSchemaType> {
-    const merged = defu(patch, await Settings.read())
-    await fs.outputJson(Settings.file, merged, { spaces: 2 })
-    return merged
+  static update(patch: SettingsSchemaType): Promise<SettingsSchemaType> {
+    return Settings.serialize(async () => {
+      const merged = defu(patch, await Settings.read())
+      await fs.outputJson(Settings.file, merged, { spaces: 2 })
+      return merged
+    })
   }
 
-  static async replace(settings: SettingsSchemaType): Promise<SettingsSchemaType> {
-    const parsed = SettingsSchema.safeParse(settings)
-    const next = parsed.success ? parsed.data : settings
-    await fs.outputJson(Settings.file, next, { spaces: 2 })
-    return next
+  static replace(settings: SettingsSchemaType): Promise<SettingsSchemaType> {
+    return Settings.serialize(async () => {
+      const parsed = SettingsSchema.safeParse(settings)
+      const next = parsed.success ? parsed.data : settings
+      await fs.outputJson(Settings.file, next, { spaces: 2 })
+      return next
+    })
   }
 }

@@ -1,5 +1,5 @@
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
-import { z } from "zod/v4"
+import { OkSchema } from "../responses.ts"
 
 export class Health {
   private static readonly route = createRoute({
@@ -7,9 +7,11 @@ export class Health {
     path: "/",
     responses: {
       200: {
-        content: { "application/json": { schema: z.object({ ok: z.boolean() }) } },
+        content: { "application/json": { schema: OkSchema } },
         description: "Server readiness",
       },
+      401: { description: "Missing or invalid bearer token" },
+      500: { description: "Unexpected server error" },
     },
   })
 

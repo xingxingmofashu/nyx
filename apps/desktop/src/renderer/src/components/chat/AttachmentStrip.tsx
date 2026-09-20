@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react"
 import type { SavedAttachment } from "../../types"
 
-/** Load one attachment's bytes as a data URL (the workspace is a trusted root). */
 function useAttachmentUrl(path: string): string | null {
   const [url, setUrl] = useState<string | null>(null)
 
@@ -45,7 +44,6 @@ function AttachmentThumb({ attachment }: { attachment: SavedAttachment }) {
   )
 }
 
-/** Thumbnails for the files attached to one user message. */
 export function AttachmentStrip({ attachments }: { attachments: SavedAttachment[] }) {
   if (attachments.length === 0) return null
   return (

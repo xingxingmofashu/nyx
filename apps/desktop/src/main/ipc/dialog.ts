@@ -1,14 +1,15 @@
-import { BrowserWindow, dialog, ipcMain, type MessageBoxOptions } from "electron"
+import { BrowserWindow, dialog, type MessageBoxOptions } from "electron"
 import { writeFile } from "node:fs/promises"
 import { IPC } from "../../preload/ipc.ts"
 import type { ConfirmDialogRequest, SaveFileRequest } from "../../renderer/src/types.ts"
+import { Guard } from "./guard.ts"
 
 export class Dialog {
   private static readonly MARKDOWN_FILTERS = [{ name: "Markdown", extensions: ["md", "markdown"] }]
 
   static register(): void {
-    ipcMain.handle(IPC.dialog.selectDirectory, (e) => Dialog.pickDirectory(e))
-    ipcMain.handle(IPC.dialog.saveFile, async (e, request: SaveFileRequest) => {
+    Guard.handle(IPC.dialog.selectDirectory, (e) => Dialog.pickDirectory(e))
+    Guard.handle(IPC.dialog.saveFile, async (e, request: SaveFileRequest) => {
       const win = BrowserWindow.fromWebContents(e.sender)
       const options = { defaultPath: request.defaultPath, filters: request.filters }
       const result = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options)
@@ -16,7 +17,7 @@ export class Dialog {
       await writeFile(result.filePath, request.content, "utf8")
       return result.filePath
     })
-    ipcMain.handle(IPC.dialog.confirm, (e, request: ConfirmDialogRequest) => Dialog.confirm(e, request))
+    Guard.handle(IPC.dialog.confirm, (e, request: ConfirmDialogRequest) => Dialog.confirm(e, request))
   }
 
   static async pickFiles(e: Electron.IpcMainInvokeEvent): Promise<string[] | null> {

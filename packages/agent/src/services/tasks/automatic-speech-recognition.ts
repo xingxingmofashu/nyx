@@ -34,10 +34,7 @@ export class AutomaticSpeechRecognition {
     if (samplingRate !== 16000) {
       throw new Error(`automatic-speech-recognition expects 16 kHz audio, got ${samplingRate} Hz`)
     }
-    const provider = this.cache.get(
-      modelId,
-      () => new LLM.OnnxAutomaticSpeechRecognitionProvider({ model: modelId }),
-    )
+    const provider = this.cache.get(() => new LLM.OnnxAutomaticSpeechRecognitionProvider({ model: modelId }))
     return provider.transcribe(samples, options)
   }
 }

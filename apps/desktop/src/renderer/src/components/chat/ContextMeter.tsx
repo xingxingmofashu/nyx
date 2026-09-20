@@ -2,22 +2,15 @@ import { cn } from "#lib/utils.ts"
 import { formatTokens } from "../../lib/format"
 
 interface ContextMeterProps {
-  /** Input tokens reported for the last assistant turn (0 before the first turn). */
+  
   used?: number
-  /** The active agent model's context window, in tokens; omitted when unknown. */
+  
   limit?: number
-  /** True when `used` is the post-compaction estimate, not provider-reported usage. */
+  
   estimated?: boolean
   className?: string
 }
 
-/**
- * How full the context window is, based on the provider-reported input tokens of
- * the most recent turn (the AI SDK's `finish` usage). Always rendered so the
- * budget is visible from the very first turn (at 0), and it drops visibly after a
- * compaction, which is the point of showing it. Without a known window
- * (no `limit.context`) only the count is shown.
- */
 export function ContextMeter({ used = 0, limit, estimated, className }: ContextMeterProps) {
   const count = Math.max(0, used)
   const ratio = limit ? Math.min(1, count / limit) : 0

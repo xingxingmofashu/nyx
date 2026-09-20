@@ -54,11 +54,11 @@ export const CompactResponseSchema = z.object({
   checkpoint: ContextCheckpointSchema.optional(),
   compacted: z.boolean(),
   skipped: z.literal("too-short").optional(),
+  error: z.string().optional(),
   estimatedTokens: z.number().optional(),
   baselineTokens: z.number().optional(),
 })
 export type CompactResponse = z.infer<typeof CompactResponseSchema>
-
 
 export class Agent {
   private static readonly NEEDS_APPROVAL = new Set([
@@ -71,6 +71,8 @@ export class Agent {
 
   static readonly approval: ToolApprovalConfiguration<ToolSet, unknown> = ({ toolCall }) =>
     Agent.NEEDS_APPROVAL.has(toolCall.toolName) ? "user-approval" : "not-applicable"
+
+  private readonly approvalSecret = crypto.getRandomValues(new Uint8Array(32))
 
   constructor(
     private readonly cache: Provider,
@@ -96,6 +98,7 @@ export class Agent {
       model,
       tools,
       toolApproval: Agent.approval,
+      toolApprovalSecret: this.approvalSecret,
       messages: Attachment.annotate(request.messages),
       systemPrompt: settings.systemPrompt,
       maxSteps: settings.maxSteps,
@@ -133,6 +136,7 @@ export class Agent {
       compacted: result.compacted,
       ...(result.compacted && result.checkpoint !== undefined ? { checkpoint: result.checkpoint } : {}),
       ...(result.skipped === undefined ? {} : { skipped: result.skipped }),
+      ...(result.error === undefined ? {} : { error: result.error }),
       estimatedTokens,
       baselineTokens,
     }

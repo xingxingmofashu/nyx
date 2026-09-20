@@ -86,8 +86,19 @@ export type KnowledgeIndexProgress = z.infer<typeof KnowledgeIndexProgressSchema
 
 export class Knowledge {
   private controller?: AbortController
+  private queue: Promise<unknown> = Promise.resolve()
 
   constructor(private readonly log: (message: string) => void) {}
+
+  private serialize<T>(operation: () => Promise<T>): Promise<T> {
+    const run = this.queue.then(operation, operation)
+    this.queue = run.catch(() => undefined)
+    return run
+  }
+
+  private assertIdle(): void {
+    if (this.controller) throw new Error("The knowledge index is being built; try again once it finishes.")
+  }
 
   async hasDocuments(): Promise<boolean> {
     return await (await this.open()).hasDocuments()
@@ -136,11 +147,19 @@ export class Knowledge {
     documents: KnowledgeBase.DocumentImport[],
     overwrite = false,
   ): Promise<KnowledgeBase.ImportResult> {
-    return await (await this.open()).writeDocuments(documents, { overwrite })
+    this.assertIdle()
+    return await this.serialize(async () => {
+      this.assertIdle()
+      return await (await this.open()).writeDocuments(documents, { overwrite })
+    })
   }
 
   async removeDocument(path: string): Promise<void> {
-    await (await this.open()).deleteDocument(path)
+    this.assertIdle()
+    await this.serialize(async () => {
+      this.assertIdle()
+      await (await this.open()).deleteDocument(path)
+    })
   }
 
   get indexing(): boolean {

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Eye, EyeOff, Plus, Trash2 } from "lucide-react"
 import type { AgentProviderEntry } from "../../types"
 import { Button } from "../ui/button"
@@ -12,7 +12,6 @@ import {
   SelectValue,
 } from "../ui/select"
 
-/** AI SDK provider packages the agent supports (see @nyx/agent providers). */
 const PROVIDER_PACKAGES = ["@ai-sdk/openai-compatible", "@ai-sdk/anthropic"] as const
 
 interface HeaderRow {
@@ -29,7 +28,6 @@ export interface ProviderEditorProps {
   onRemove: () => void
 }
 
-/** One `agent.provider[<id>]` entry: the AI SDK package plus its options. */
 export function ProviderEditor({
   providerId,
   entry,
@@ -39,7 +37,21 @@ export function ProviderEditor({
   onRemove,
 }: ProviderEditorProps) {
   const [revealed, setRevealed] = useState(false)
+  const [draftId, setDraftId] = useState(providerId)
   const options = entry.options ?? {}
+
+  useEffect(() => {
+    setDraftId(providerId)
+  }, [providerId])
+
+  const commitId = () => {
+    const next = draftId.trim()
+    if (!next || next === providerId) {
+      setDraftId(providerId)
+      return
+    }
+    onRename(next)
+  }
   const context = entry.limit?.context
   const output = entry.limit?.output
 
@@ -68,8 +80,12 @@ export function ProviderEditor({
           </Label>
           <Input
             id={`provider-id-${providerId}`}
-            value={providerId}
-            onChange={(e) => onRename(e.target.value)}
+            value={draftId}
+            onChange={(e) => setDraftId(e.target.value)}
+            onBlur={commitId}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur()
+            }}
             placeholder="deepseek"
             className="max-w-60"
           />
@@ -195,10 +211,6 @@ export function ProviderEditor({
   )
 }
 
-/**
- * Key/value rows for `options.headers`. Rows live in local state because a row
- * being typed may not have a key yet; committed records drop empty keys.
- */
 function HeadersEditor({
   value,
   onChange,

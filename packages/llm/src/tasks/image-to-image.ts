@@ -28,7 +28,9 @@ export class OnnxImageToImageProvider implements ImageProvider {
   async generate(input: ImageSource): Promise<RawImage> {
     const pipe = await this.load()
     const output = await pipe(input)
-    return Array.isArray(output) ? output[0]! : output
+    const image = Array.isArray(output) ? output[0] : output
+    if (!(image instanceof RawImage)) throw new Error("image-to-image did not return an image")
+    return image
   }
 
   private async load(): Promise<ImageToImagePipeline> {

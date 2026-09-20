@@ -7,20 +7,18 @@ import { useAgentStore } from "../../store/agent"
 interface ApprovalCardProps {
   name: string
   input: unknown
-  /** Set once the user decided; the buttons are then replaced by the outcome. */
+  
   decision?: "approved" | "denied"
   onApprove: () => void
   onDeny: () => void
 }
 
-/** The `command` string when a bash tool call is being approved. */
 function bashCommand(name: string, input: unknown): string | null {
   if (name !== "bash" || typeof input !== "object" || input === null) return null
   const command = (input as { command?: unknown }).command
   return typeof command === "string" ? command : null
 }
 
-/** Render `command`, marking any substrings that resolve outside the workspace. */
 function HighlightedCommand({ command, escapes }: { command: string; escapes: string[] }) {
   if (escapes.length === 0) return command
   const pattern = [...escapes]
@@ -43,7 +41,6 @@ function HighlightedCommand({ command, escapes }: { command: string; escapes: st
   )
 }
 
-/** Inline approval prompt for a tool call that needs user consent. */
 export function ApprovalCard({ name, input, decision, onApprove, onDeny }: ApprovalCardProps) {
   const workspaceDir = useAgentStore((s) => s.workspaceDir)
   const command = bashCommand(name, input)

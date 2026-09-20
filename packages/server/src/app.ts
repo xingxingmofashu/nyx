@@ -1,5 +1,6 @@
 import { serve } from "@hono/node-server"
 import { $, OpenAPIHono } from "@hono/zod-openapi"
+import { bodyLimit } from "hono/body-limit"
 import { HTTPException } from "hono/http-exception"
 import { Agent } from "@nyx/agent"
 import { Auth } from "./middleware/auth.ts"
@@ -41,6 +42,8 @@ export interface Handle {
 }
 
 export class App {
+  private static readonly MAX_BODY_BYTES = 32 * 1024 * 1024
+
   static create(options: AppOptions) {
     const cache = new Agent.Provider()
     const knowledge = new Agent.Services.Knowledge(options.onLog)
@@ -53,7 +56,22 @@ export class App {
       agent: new Agent.Services.Agent(cache, knowledge),
     }
 
-    const v1 = $(new OpenAPIHono({ defaultHook: Errors.hook }).use("*", Auth.middleware(options.token)))
+    const api = new OpenAPIHono({ defaultHook: Errors.hook })
+    api.openAPIRegistry.registerComponent("securitySchemes", "Bearer", {
+      type: "http",
+      scheme: "bearer",
+    })
+    const v1 = $(
+      api
+        .use("*", Auth.middleware(options.token))
+        .use(
+          "*",
+          bodyLimit({
+            maxSize: App.MAX_BODY_BYTES,
+            onError: (c) => c.json({ error: "Request body too large" }, 413),
+          }),
+        ),
+    )
       .onError((error, c) =>
         c.json({ error: Errors.message(error) }, error instanceof HTTPException ? error.status : 500),
       )

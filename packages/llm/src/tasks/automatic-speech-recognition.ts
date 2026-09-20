@@ -38,7 +38,10 @@ export class OnnxAutomaticSpeechRecognitionProvider implements TranscriptionProv
       ...(options.task !== undefined ? { task: options.task } : {}),
     })
     const result = Array.isArray(output) ? output[0] : output
-    return OnnxAutomaticSpeechRecognitionProvider.clean(result?.text ?? "")
+    if (!result || typeof result.text !== "string") {
+      throw new Error("automatic-speech-recognition did not return a transcript")
+    }
+    return OnnxAutomaticSpeechRecognitionProvider.clean(result.text)
   }
 
   private async load(): Promise<AutomaticSpeechRecognitionPipeline> {

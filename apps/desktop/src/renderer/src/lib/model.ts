@@ -1,9 +1,4 @@
-/**
- * Parse a context-window limit: a raw token count, or a `"128k"` / `"1m"` style
- * string. Returns `undefined` for anything unusable, so callers can tell "not
- * configured" apart from a real value (a made-up default would scale the meter
- * wrong).
- */
+
 export function parseContextLimit(value: number | string | undefined): number | undefined {
   if (typeof value === "number" && Number.isFinite(value) && value > 0) return Math.round(value)
   if (typeof value === "string") {

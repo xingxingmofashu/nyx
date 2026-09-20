@@ -9,7 +9,6 @@ import { Textarea } from "../components/ui/textarea"
 import { toast } from "../components/ui/toast"
 import { useRecorder } from "../hooks/use-recorder"
 
-/** Record from the mic and transcribe with the selected local ASR model. */
 export function AutomaticSpeechRecognitionPage() {
   const selectedModel = useModelsStore((s) => s.selected["automatic-speech-recognition"])
   const { recording, error, start, stop } = useRecorder()
@@ -21,8 +20,8 @@ export function AutomaticSpeechRecognitionPage() {
   }, [error])
 
   useEffect(() => {
-    // A model pulled on the Local models page since launch should be selectable
-    // here without a restart.
+    
+    
     void useModelsStore.getState().load()
   }, [])
 

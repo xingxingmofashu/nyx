@@ -28,7 +28,7 @@ export class Bash {
             .optional()
             .describe("Timeout in ms (default 30000, max 120000)"),
         }),
-        execute: async ({ command, timeoutMs }) => {
+        execute: async ({ command, timeoutMs }, { abortSignal }) => {
           const timeout = Math.min(timeoutMs ?? Bash.DEFAULT_TIMEOUT_MS, Bash.MAX_TIMEOUT_MS)
           try {
             const { stdout, stderr } = await Bash.exec(command, {
@@ -36,9 +36,11 @@ export class Bash {
               timeout,
               maxBuffer: Bash.MAX_BUFFER,
               windowsHide: true,
+              ...(abortSignal ? { signal: abortSignal } : {}),
             })
             return Bash.truncate(`exit 0\n${stdout}${stderr}`)
           } catch (error) {
+            if (abortSignal?.aborted) throw error
             const failure = error as {
               code?: number
               stdout?: string

@@ -6,7 +6,7 @@ import { Errors } from "../errors.ts"
 import { OkSchema } from "../responses.ts"
 
 export class Sessions {
-  private static readonly idParams = z.object({ id: z.string() })
+  private static readonly idParams = z.object({ id: Agent.SessionIdSchema })
 
   private static readonly listRoute = createRoute({
     method: "get",
@@ -117,19 +117,20 @@ export class Sessions {
       .openapi(Sessions.readRoute, async (c) => {
         const { workspaceDir } = c.req.valid("query")
         if (workspaceDir === undefined) return c.json(null, 200)
-        return c.json((await Global.Session.read(workspaceDir, c.req.param("id"))) ?? null, 200)
+        return c.json((await Global.Session.read(workspaceDir, c.req.valid("param").id)) ?? null, 200)
       })
       .openapi(Sessions.saveRoute, async (c) => c.json(await Global.Session.save(c.req.valid("json")), 200))
       .openapi(Sessions.patchRoute, async (c) => {
         const { workspaceDir, title, pinned } = c.req.valid("json")
-        const id = c.req.param("id")
+        const { id } = c.req.valid("param")
         const renamed = title === undefined ? undefined : await Global.Session.rename(workspaceDir, id, title)
         const pinnedMeta = pinned === undefined ? undefined : await Global.Session.setPinned(workspaceDir, id, pinned)
         return c.json(renamed ?? pinnedMeta ?? null, 200)
       })
       .openapi(Sessions.deleteRoute, async (c) => {
         const { workspaceDir } = c.req.valid("query")
-        if (workspaceDir !== undefined) await Global.Session.remove(workspaceDir, c.req.param("id"))
+        if (workspaceDir === undefined) throw Errors.status(400, "workspaceDir is required")
+        await Global.Session.remove(workspaceDir, c.req.valid("param").id)
         return c.json({ ok: true }, 200)
       })
   }

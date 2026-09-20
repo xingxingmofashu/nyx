@@ -30,7 +30,7 @@ function Shell() {
   const location = useLocation()
   const title = PAGE_TITLES[location.pathname] ?? "Nyx"
 
-  // Register model-pull progress once; refresh list when a pull finishes.
+  
   useEffect(() => {
     const unsubscribe = window.nyx.models.onProgress((p) => {
       useModelsStore.getState().updatePullProgress(p)
@@ -49,19 +49,19 @@ function Shell() {
     return unsubscribe
   }, [])
 
-  // Register knowledge index progress once; refresh when a run finishes.
+  
   useEffect(() => {
     return window.nyx.knowledge.onProgress((event) => {
       useKnowledgeStore.getState().updateProgress(event)
     })
   }, [])
 
-  // Persist the active chat session whenever a turn settles (module-level guard).
+  
   useEffect(() => {
     initSessionPersistence()
   }, [])
 
-  // Follow OS preference changes while the theme is set to "system".
+  
   useEffect(() => {
     const mql = window.matchMedia("(prefers-color-scheme: dark)")
     const onChange = () => {

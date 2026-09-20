@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session, shell, systemPreferences } from "electron"
+import { app, BrowserWindow, dialog, session, shell, systemPreferences } from "electron"
 import { join } from "node:path"
 import { IPC } from "../preload/ipc.ts"
 import { Ipc } from "./ipc/index.ts"
@@ -24,7 +24,13 @@ export class App {
     app.on("window-all-closed", () => {
       if (process.platform !== "darwin") app.quit()
     })
-    app.on("will-quit", () => void this.server.stop())
+    let quitting = false
+    app.on("before-quit", (event) => {
+      if (quitting) return
+      event.preventDefault()
+      quitting = true
+      void this.server.stop().finally(() => app.quit())
+    })
     void app.whenReady().then(() => this.ready())
   }
 
@@ -36,7 +42,9 @@ export class App {
     try {
       await this.server.start()
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
       console.error("failed to start nyx server:", error)
+      dialog.showErrorBox("Nyx could not start", `The local server failed to start.\n\n${message}`)
     }
     Ipc.register({
       chat: this.chat,
@@ -85,8 +93,14 @@ export class App {
       },
     })
 
+    win.webContents.on("will-navigate", (event) => {
+      event.preventDefault()
+    })
     win.webContents.setWindowOpenHandler(({ url }) => {
-      void shell.openExternal(url)
+      try {
+        const { protocol } = new URL(url)
+        if (protocol === "https:" || protocol === "http:") void shell.openExternal(url)
+      } catch {}
       return { action: "deny" }
     })
     win.webContents.on("console-message", (_e, level, message, line, sourceId) => {

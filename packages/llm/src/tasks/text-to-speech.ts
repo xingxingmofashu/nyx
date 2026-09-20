@@ -43,7 +43,11 @@ export class OnnxTextToSpeechProvider implements SpeechProvider {
       ...(options.speed !== undefined ? { speed: options.speed } : {}),
       ...(options.numInferenceSteps !== undefined ? { num_inference_steps: options.numInferenceSteps } : {}),
     })
-    return output instanceof RawAudio ? output : new RawAudio(output.audio, output.sampling_rate)
+    if (output instanceof RawAudio) return output
+    if (!output || !(output.audio instanceof Float32Array) || !output.sampling_rate) {
+      throw new Error("text-to-speech did not return audio")
+    }
+    return new RawAudio(output.audio, output.sampling_rate)
   }
 
   private async load(): Promise<TextToAudioPipeline> {

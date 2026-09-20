@@ -1,4 +1,4 @@
-import { mkdir, readFile, realpath, writeFile } from "node:fs/promises"
+import { mkdir, readFile, realpath, stat, writeFile } from "node:fs/promises"
 import { extname, isAbsolute, join, resolve } from "node:path"
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi"
 import { z } from "zod/v4"
@@ -48,8 +48,8 @@ export class Files {
   static create() {
     return new OpenAPIHono({ defaultHook: Errors.hook })
       .openapi(Files.dataUrlRoute, async (c) => {
-        const { path, workspaceDir } = c.req.valid("query")
-        return c.json({ dataUrl: await Files.readDataUrl(path, workspaceDir) }, 200)
+        const { path } = c.req.valid("query")
+        return c.json({ dataUrl: await Files.readDataUrl(path) }, 200)
       })
       .openapi(Files.attachmentRoute, async (c) => {
         try {
@@ -60,8 +60,8 @@ export class Files {
       })
   }
 
-  private static async readDataUrl(path: string, workspaceDir?: string): Promise<string | null> {
-    const configured = workspaceDir ?? (await Global.Settings.read()).agent?.workspaceDir
+  private static async readDataUrl(path: string): Promise<string | null> {
+    const configured = (await Global.Settings.read()).agent?.workspaceDir
     const workspaceRoot = configured ? resolve(configured) : undefined
     const target = isAbsolute(path) ? resolve(path) : resolve(workspaceRoot ?? Global.Path.sessions, path)
     try {
@@ -70,8 +70,10 @@ export class Files {
         const realRoot = await realpath(root).catch(() => root)
         const realTarget = await realpath(target)
         if (!Agent.Workspace.isWithin(realRoot, realTarget)) continue
+        const info = await stat(realTarget)
+        if (!info.isFile() || info.size > Files.MAX_BYTES) return null
         const bytes = await readFile(realTarget)
-        return `data:${Bun.file(path).type};base64,${bytes.toString("base64")}`
+        return `data:${Bun.file(realTarget).type};base64,${bytes.toString("base64")}`
       }
       return null
     } catch {
@@ -82,7 +84,8 @@ export class Files {
   private static async saveAttachment(input: Agent.AttachmentSaveRequest): Promise<Agent.SavedAttachment> {
     if (!input.workspaceDir) throw new Error("Choose a workspace before attaching files")
     if (!Global.Session.isValidId(input.sessionId)) throw new Error("Invalid session id")
-    if (!input.mimeType.startsWith("image/")) {
+    const extension = Files.IMAGE_EXT[input.mimeType]
+    if (!extension) {
       throw new Error(`Unsupported attachment type: ${input.mimeType || "unknown"}`)
     }
 
@@ -96,9 +99,8 @@ export class Files {
     await mkdir(dir, { recursive: true })
 
     const name = Files.safeName(input.name)
-    const ext = extname(name) || Files.IMAGE_EXT[input.mimeType] || ".png"
     const stem = name.slice(0, name.length - extname(name).length).slice(0, 60) || "image"
-    const target = join(dir, `${input.sessionId}-${stem}-${nanoid()}${ext}`)
+    const target = join(dir, `${input.sessionId}-${stem}-${nanoid()}${extension}`)
     await writeFile(target, data)
 
     return { path: target, name, mimeType: input.mimeType, size: data.byteLength }

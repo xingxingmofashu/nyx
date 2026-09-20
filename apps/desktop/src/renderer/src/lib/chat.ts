@@ -3,15 +3,10 @@ import { lastAssistantMessageIsCompleteWithApprovalResponses, type ChatTransport
 import { useAgentStore } from "../store/agent"
 import { useSessionsStore } from "../store/sessions"
 
-/** Unique-ish id without relying on a secure-context `crypto.randomUUID`. */
 function streamId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
 
-/**
- * Bridges the AI SDK's `ChatTransport` to Electron IPC: the renderer never
- * talks HTTP directly, `main` streams the agent's UI message chunks back.
- */
 class IpcChatTransport implements ChatTransport<UIMessage> {
   constructor(private readonly body: () => Record<string, unknown>) {}
 
@@ -66,20 +61,15 @@ class IpcChatTransport implements ChatTransport<UIMessage> {
   }
 }
 
-/**
- * One long-lived `Chat`, created at module scope so the conversation survives
- * route changes. Approvals auto-resubmit once the whole assistant message is
- * answered.
- */
 export const agentChat = new Chat<UIMessage>({
   transport: new IpcChatTransport(() => {
     const agent = useAgentStore.getState()
     return {
       workspaceDir: agent.workspaceDir || undefined,
-      // Names generated speech clips so a deleted session takes its audio with it.
+      
       sessionId: useSessionsStore.getState().ensureId(),
-      // The desktop can render audio inline, so speech tools return it instead of
-      // playing it on the server machine.
+      
+      
       inlineAudio: true,
     }
   }),

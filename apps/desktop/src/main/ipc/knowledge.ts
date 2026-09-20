@@ -1,4 +1,4 @@
-import { ipcMain } from "electron"
+import { Guard } from "./guard.ts"
 import { readdir, readFile, stat } from "node:fs/promises"
 import { basename, join, relative, sep } from "node:path"
 import type { Dirent } from "node:fs"
@@ -14,20 +14,20 @@ export class Knowledge {
   private static readonly MAX_PREVIEW_PATHS = 10
 
   static register(service: KnowledgeService): void {
-    ipcMain.handle(IPC.knowledge.status, () => service.status())
-    ipcMain.handle(IPC.knowledge.list, () => service.list())
-    ipcMain.handle(IPC.knowledge.read, (_e, path: string) => service.read(path))
-    ipcMain.handle(IPC.knowledge.importFiles, async (e, target: string) => {
+    Guard.handle(IPC.knowledge.status, () => service.status())
+    Guard.handle(IPC.knowledge.list, () => service.list())
+    Guard.handle(IPC.knowledge.read, (_e, path: string) => service.read(path))
+    Guard.handle(IPC.knowledge.importFiles, async (e, target: string) => {
       const paths = await Dialog.pickFiles(e)
       if (paths === null) return null
       return await Knowledge.importDocuments(e, service, await Knowledge.readPicked(paths, target))
     })
-    ipcMain.handle(IPC.knowledge.importFolder, async (e, target: string) => {
+    Guard.handle(IPC.knowledge.importFolder, async (e, target: string) => {
       const dir = await Dialog.pickDirectory(e)
       if (dir === null) return null
       return await Knowledge.importDocuments(e, service, await Knowledge.readFolder(dir, target))
     })
-    ipcMain.handle(IPC.knowledge.remove, async (e, path: string) => {
+    Guard.handle(IPC.knowledge.remove, async (e, path: string) => {
       const confirmed = await Dialog.confirm(e, {
         message: "Delete this document?",
         detail: `${path}\n\nThe file is removed from the knowledge base and its index entries are dropped.`,
@@ -37,9 +37,9 @@ export class Knowledge {
       await service.remove(path)
       return true
     })
-    ipcMain.handle(IPC.knowledge.index, (_e, rebuild: boolean) => service.index(rebuild))
-    ipcMain.handle(IPC.knowledge.cancelIndex, () => service.cancelIndex())
-    ipcMain.handle(IPC.knowledge.search, (_e, query: string, topK?: number) => service.search(query, topK))
+    Guard.handle(IPC.knowledge.index, (_e, rebuild: boolean) => service.index(rebuild))
+    Guard.handle(IPC.knowledge.cancelIndex, () => service.cancelIndex())
+    Guard.handle(IPC.knowledge.search, (_e, query: string, topK?: number) => service.search(query, topK))
   }
 
   private static async importDocuments(

@@ -11,14 +11,12 @@ import {
   ContextMenuTrigger,
 } from "../ui/context-menu"
 
-/** The status dot's tooltip, i.e. what the index says about one document. */
 const STATUS_LABEL: Record<KnowledgeDocumentStatus, string> = {
   indexed: "Indexed",
   stale: "Changed since the last index — run Update index",
   new: "Not indexed yet",
 }
 
-/** Tooltip and colour of the dot: green indexed, amber embedding, grey pending. */
 function statusDot(status: KnowledgeDocumentStatus, processing: boolean): { label: string; className: string } {
   if (processing) return { label: "Embedding this document…", className: "bg-amber-500 animate-pulse" }
   if (status === "indexed") return { label: STATUS_LABEL.indexed, className: "bg-emerald-500" }
@@ -28,24 +26,17 @@ function statusDot(status: KnowledgeDocumentStatus, processing: boolean): { labe
 interface KnowledgeTreeProps {
   documents: KnowledgeDocument[]
   selected: string | null
-  /** Path filter; while set, matching folders are forced open. */
+  
   filter: string
-  /** Folders the user collapsed, by path. */
+  
   collapsed: Record<string, boolean>
-  /** Path of the document being embedded right now, if a run is in flight. */
+  
   processing: string | null
   onSelect: (path: string) => void
   onDelete: (path: string) => void
   onToggleFolder: (path: string) => void
 }
 
-/**
- * The knowledge documents as a file tree: nested collapsibles built from the
- * flat document paths (shadcn's Collapsible "File Tree"). Clicking a document
- * previews it; right-clicking one offers Delete. The trailing dot is the index
- * status: green when it is in the vector store, grey while it still has to be
- * built, amber while it is being embedded.
- */
 export function KnowledgeTree({
   documents,
   selected,
@@ -114,7 +105,7 @@ function FolderRow({
     <Collapsible
       open={open}
       onOpenChange={() => {
-        // While filtering the tree stays open; only the user's own state counts.
+        
         if (!forceOpen) onToggleFolder(folder.path)
       }}
     >

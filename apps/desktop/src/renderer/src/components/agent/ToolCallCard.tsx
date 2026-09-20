@@ -5,7 +5,6 @@ import { Spinner } from "../ui/spinner"
 import { formatJson } from "../../lib/format"
 import { cn } from "#lib/utils.ts"
 
-/** AI SDK tool UI part states we render. */
 export type ToolPartState =
   | "input-streaming"
   | "input-available"
@@ -45,11 +44,6 @@ interface ToolCallCardProps {
   errorText?: string
 }
 
-/**
- * Shared tool-call card chrome: a collapsible header (tool name + status badge)
- * with a body slot that stays folded away until the header is clicked. Collapsed
- * by default so long transcripts read as a list of what ran, not a wall of I/O.
- */
 export function ToolCardShell({ name, state, children }: { name: string; state: ToolPartState; children: ReactNode }) {
   const [open, setOpen] = useState(false)
   return (
@@ -75,7 +69,6 @@ export function ToolCardShell({ name, state, children }: { name: string; state: 
   )
 }
 
-/** Compact card for one agent tool call: name, status, args and result. */
 export function ToolCallCard({ name, input, state, output, errorText }: ToolCallCardProps) {
   const result = errorText ?? (output === undefined ? "" : formatJson(output))
   return (

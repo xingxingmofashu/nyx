@@ -39,7 +39,7 @@ export class ImageToImage {
   constructor(private readonly cache: Provider = new Provider()) {}
 
   async generate(modelId: string, input: ImageBase64Input): Promise<GeneratedImage> {
-    const provider = this.cache.get(modelId, () => new LLM.OnnxImageToImageProvider({ model: modelId }))
+    const provider = this.cache.get(() => new LLM.OnnxImageToImageProvider({ model: modelId }))
     const bytes = Buffer.from(input.data, "base64")
     const source = await RawImage.fromBlob(new Blob([bytes], { type: input.mimeType }))
     const output = await provider.generate(source)

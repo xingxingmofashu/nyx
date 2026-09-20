@@ -1,7 +1,6 @@
 import { getToolName, isReasoningUIPart, isToolUIPart, type UIMessage } from "ai"
 import { formatJson } from "./format"
 
-/** Title from the first user text part (first line, truncated); `fallback` when empty. */
 export function sessionTitle(messages: UIMessage[], fallback = "New chat"): string {
   for (const message of messages) {
     if (message.role !== "user") continue
@@ -15,7 +14,6 @@ export function sessionTitle(messages: UIMessage[], fallback = "New chat"): stri
   return fallback
 }
 
-/** Render a transcript as Markdown (text, reasoning, and tool calls). */
 export function messagesToMarkdown(messages: UIMessage[]): string {
   const out: string[] = []
   for (const message of messages) {

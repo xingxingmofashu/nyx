@@ -18,6 +18,7 @@ export interface RunOptions {
   model: ResolvedModel | LanguageModel
   tools: ToolSet
   toolApproval?: ToolApprovalConfiguration<ToolSet, unknown>
+  toolApprovalSecret?: string | Uint8Array
   messages: UIMessage[]
   systemPrompt?: string
   maxSteps?: number
@@ -68,6 +69,7 @@ export class Loop {
       model,
       tools,
       toolApproval,
+      toolApprovalSecret,
       messages,
       systemPrompt,
       maxSteps,
@@ -100,6 +102,7 @@ export class Loop {
         instructions,
         tools,
         ...(toolApproval === undefined ? {} : { toolApproval }),
+        ...(toolApprovalSecret === undefined ? {} : { experimental_toolApprovalSecret: toolApprovalSecret }),
         ...(maxSteps === undefined ? {} : { stopWhen: isStepCount(maxSteps) }),
         ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
       })

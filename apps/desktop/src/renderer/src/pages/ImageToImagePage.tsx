@@ -25,23 +25,29 @@ export function ImageToImagePage() {
   const [error, setError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const sourceUrlRef = useRef<string | null>(null)
   const resultUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
     return () => {
+      if (sourceUrlRef.current) URL.revokeObjectURL(sourceUrlRef.current)
       if (resultUrlRef.current) URL.revokeObjectURL(resultUrlRef.current)
     }
   }, [])
 
   const onFile = useCallback((file: File) => {
     if (!file.type.startsWith("image/")) return
-    setSource({ file, url: URL.createObjectURL(file) })
+    if (sourceUrlRef.current) URL.revokeObjectURL(sourceUrlRef.current)
+    const url = URL.createObjectURL(file)
+    sourceUrlRef.current = url
+    setSource({ file, url })
     setResult(null)
     setError(null)
   }, [])
 
   const clearSource = () => {
-    if (source) URL.revokeObjectURL(source.url)
+    if (sourceUrlRef.current) URL.revokeObjectURL(sourceUrlRef.current)
+    sourceUrlRef.current = null
     setSource(null)
     setResult(null)
   }
@@ -67,7 +73,6 @@ export function ImageToImagePage() {
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-4 p-4">
-        {/* Drop zone / input */}
         <div
           onDragOver={(e) => {
             e.preventDefault()

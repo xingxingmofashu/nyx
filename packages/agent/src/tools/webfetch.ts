@@ -6,6 +6,12 @@ import TurndownService from "turndown"
 import { z } from "zod/v4"
 import DESCRIPTION from "./webfetch.txt"
 
+interface WebFetchTarget {
+  url: URL
+  host: string
+  serverName?: string
+}
+
 export class WebFetch {
   private static readonly MAX_FETCH_BYTES = 5 * 1024 * 1024
   private static readonly MAX_OUTPUT = 40_000
@@ -73,12 +79,12 @@ export class WebFetch {
     let url = WebFetch.parseHttpUrl(rawUrl)
 
     for (let hop = 0; ; hop++) {
-      await WebFetch.assertPublicHost(url)
+      const pinned = await WebFetch.resolvePublic(url)
 
-      let response = await WebFetch.request(url, format, WebFetch.BROWSER_UA, timeoutMs, signal)
+      let response = await WebFetch.request(pinned, format, WebFetch.BROWSER_UA, timeoutMs, signal)
       if (response.status === 403 && response.headers.get("cf-mitigated") === "challenge") {
         await response.body?.cancel().catch(() => undefined)
-        response = await WebFetch.request(url, format, WebFetch.USER_AGENT, timeoutMs, signal)
+        response = await WebFetch.request(pinned, format, WebFetch.USER_AGENT, timeoutMs, signal)
       }
 
       if (WebFetch.REDIRECT_STATUS.has(response.status)) {
@@ -86,14 +92,20 @@ export class WebFetch {
         await response.body?.cancel().catch(() => undefined)
         if (!location) throw new Error(`HTTP ${response.status} without a Location header`)
         if (hop >= WebFetch.MAX_REDIRECTS) throw new Error("too many redirects")
-        url = new URL(location, url)
+        url = WebFetch.parseHttpUrl(new URL(location, url).toString())
         continue
       }
 
-      if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`)
+      if (!response.ok) {
+        await response.body?.cancel().catch(() => undefined)
+        throw new Error(`HTTP ${response.status} ${response.statusText}`)
+      }
       const contentType = response.headers.get("content-type") ?? ""
       const mime = contentType.split(";", 1)[0]?.trim().toLowerCase() ?? ""
-      if (!WebFetch.isTextualMime(mime)) throw new Error(`unsupported content type: ${mime || "unknown"}`)
+      if (!WebFetch.isTextualMime(mime)) {
+        await response.body?.cancel().catch(() => undefined)
+        throw new Error(`unsupported content type: ${mime || "unknown"}`)
+      }
       return WebFetch.convert(
         await WebFetch.readBounded(response, WebFetch.MAX_FETCH_BYTES),
         contentType,
@@ -103,21 +115,23 @@ export class WebFetch {
   }
 
   private static request(
-    url: URL,
+    pinned: WebFetchTarget,
     format: WebFetchFormat,
     userAgent: string,
     timeoutMs: number,
     signal?: AbortSignal,
   ): Promise<Response> {
-    return fetch(url, {
+    return fetch(pinned.url, {
       redirect: "manual",
       headers: {
         "User-Agent": userAgent,
         Accept: WebFetch.acceptHeader(format),
         "Accept-Language": "en-US,en;q=0.9",
+        Host: pinned.host,
       },
+      ...(pinned.serverName ? { tls: { serverName: pinned.serverName } } : {}),
       signal: WebFetch.withTimeout(timeoutMs, signal),
-    })
+    } as RequestInit)
   }
 
   private static acceptHeader(format: WebFetchFormat): string {
@@ -145,21 +159,31 @@ export class WebFetch {
     return url
   }
 
-  private static async assertPublicHost(url: URL): Promise<void> {
+  private static async resolvePublic(url: URL): Promise<WebFetchTarget> {
     const host = url.hostname.replace(/^\[|\]$/g, "")
-    const addresses = isIP(host) ? [host] : (await lookup(host, { all: true })).map((entry) => entry.address)
+    if (isIP(host)) {
+      if (WebFetch.isPrivateAddress(host)) {
+        throw new Error(`refusing to fetch a private address (${host})`)
+      }
+      return { url, host: url.host }
+    }
+    const addresses = (await lookup(host, { all: true })).map((entry) => entry.address)
     if (addresses.length === 0) throw new Error(`could not resolve ${host}`)
     for (const address of addresses) {
       if (WebFetch.isPrivateAddress(address)) {
         throw new Error(`refusing to fetch a private address (${host} → ${address})`)
       }
     }
+    const pinnedUrl = new URL(url.toString())
+    pinnedUrl.hostname = addresses[0] ?? host
+    return { url: pinnedUrl, host: url.host, serverName: host }
   }
 
   private static isPrivateAddress(address: string): boolean {
     if (address.includes(":")) return WebFetch.isPrivateV6(address)
-    const [a, b] = address.split(".").map((part) => Number.parseInt(part, 10))
-    if (a === undefined || b === undefined) return true
+    const parts = address.split(".").map((part) => Number.parseInt(part, 10))
+    if (parts.length !== 4 || parts.some((part) => Number.isNaN(part) || part < 0 || part > 255)) return true
+    const [a, b, c] = parts as [number, number, number]
     return (
       a === 0 ||
       a === 10 ||
@@ -167,7 +191,12 @@ export class WebFetch {
       (a === 100 && b >= 64 && b <= 127) ||
       (a === 169 && b === 254) ||
       (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 0 && (c === 0 || c === 2)) ||
+      (a === 192 && b === 88 && c === 99) ||
       (a === 192 && b === 168) ||
+      (a === 198 && (b === 18 || b === 19)) ||
+      (a === 198 && b === 51 && c === 100) ||
+      (a === 203 && b === 0 && c === 113) ||
       a >= 224
     )
   }
@@ -181,8 +210,14 @@ export class WebFetch {
       value.startsWith("fc") ||
       value.startsWith("fd") ||
       /^fe[89ab]/.test(value) ||
+      value.startsWith("fec") ||
+      value.startsWith("fed") ||
+      value.startsWith("fee") ||
+      value.startsWith("fef") ||
       value.startsWith("ff") ||
-      value.startsWith("64:ff9b:")
+      value.startsWith("64:ff9b:") ||
+      value.startsWith("2002:") ||
+      value.startsWith("2001:db8")
     )
   }
 

@@ -40,9 +40,16 @@ export class OnnxFeatureExtractionProvider implements EmbeddingProvider {
       const batch = texts.slice(start, start + OnnxFeatureExtractionProvider.BATCH_SIZE)
       const input = prefix ? batch.map((text) => `${prefix}${text}`) : batch
       const tensor = (await pipe(input, { pooling: "mean", normalize: true })) as Tensor
-      const data = tensor.data as Float32Array
-      const dim = tensor.dims[tensor.dims.length - 1]!
-      for (let i = 0; i < batch.length; i++) output.push(data.slice(i * dim, (i + 1) * dim))
+      try {
+        const data = tensor.data as Float32Array
+        const dim = tensor.dims[tensor.dims.length - 1]
+        if (!dim || dim <= 0 || data.length < batch.length * dim) {
+          throw new Error("feature-extraction returned an unexpected tensor shape")
+        }
+        for (let i = 0; i < batch.length; i++) output.push(data.slice(i * dim, (i + 1) * dim))
+      } finally {
+        tensor.dispose()
+      }
     }
     return output
   }

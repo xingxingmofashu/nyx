@@ -7,6 +7,7 @@ import { Global } from "@nyx/global"
 import { tool, type ToolSet } from "ai"
 import { z } from "zod/v4"
 import { Provider } from "../provider.ts"
+import { Workspace } from "../workspace.ts"
 import DESCRIPTION from "./local-text-to-speech.txt"
 
 export interface TextToSpeechToolOptions {
@@ -45,8 +46,12 @@ export class LocalTextToSpeech {
               : `Wrote ${output.path} (${output.seconds}s @ ${output.samplingRate} Hz)`,
         }),
         execute: async ({ model, text, speaker }, { abortSignal }) => {
-          const provider = cache.get(model, () => new LLM.OnnxTextToSpeechProvider({ model }))
-          const audio = await provider.generate(text, speaker ? { speaker } : {})
+          const provider = cache.get(() => new LLM.OnnxTextToSpeechProvider({ model }))
+          const resolved = speaker ? LocalTextToSpeech.speaker(workspaceDir, speaker) : undefined
+          const audio = await LocalTextToSpeech.race(
+            provider.generate(text, resolved ? { speaker: resolved } : {}),
+            abortSignal,
+          )
           abortSignal?.throwIfAborted()
 
           const target = LocalTextToSpeech.unique(
@@ -67,6 +72,29 @@ export class LocalTextToSpeech {
         },
       }),
     }
+  }
+
+  private static race<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+    if (!signal) return promise
+    return Promise.race([
+      promise,
+      new Promise<never>((_resolve, reject) => {
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true })
+      }),
+    ])
+  }
+
+  private static speaker(workspaceDir: string, speaker: string): string {
+    let url: URL
+    try {
+      url = new URL(speaker)
+    } catch {
+      return Workspace.resolve(workspaceDir, speaker)
+    }
+    if (url.protocol !== "https:") {
+      throw new Error(`speaker must be an https URL or a workspace-relative path: ${speaker}`)
+    }
+    return url.toString()
   }
 
   private static fileName(sessionId: string | undefined, model: string): string {

@@ -1,4 +1,4 @@
-import { join } from "node:path"
+import { isAbsolute, join, relative, resolve } from "node:path"
 import { env, pipeline, type DataType, type ProgressInfo } from "@huggingface/transformers"
 import { Global } from "@nyx/global"
 import fs from "fs-extra"
@@ -38,17 +38,20 @@ export interface CachedModel {
   task: LLMTask
   dtype?: DataType
   createdAt: string
-  [key: string]: unknown
 }
 
 export class Model {
+  private static readonly ID_SEGMENT_RE = /^[A-Za-z0-9._-]+$/
+
   static async list(): Promise<CachedModel[]> {
     const config = await Global.Models.read()
     const cacheDir = await Runtime.cacheDir()
     const installed: CachedModel[] = []
     for (const [org, provider] of Object.entries(config.provider)) {
       for (const [name, info] of Object.entries(provider.models)) {
-        if (await fs.pathExists(join(cacheDir, org, name))) installed.push(Model.asCached(info))
+        if (!(await fs.pathExists(join(cacheDir, org, name)))) continue
+        const cached = Model.asCached(info)
+        if (cached) installed.push(cached)
       }
     }
     return installed.sort((a, b) => a.id.localeCompare(b.id))
@@ -61,9 +64,9 @@ export class Model {
     dtype?: DataType,
     signal?: AbortSignal,
   ): Promise<void> {
-    const [org, ...rest] = modelId.split("/")
-    const name = rest.join("/")
-    if (!org || !name) throw new Error(`Invalid model id: ${modelId}`)
+    const parsed = Model.parseId(modelId)
+    if (!parsed) throw new Error(`Invalid model id: ${modelId}`)
+    const { org, name } = parsed
 
     await Runtime.configure()
     const tree = await Model.tree(modelId)
@@ -80,10 +83,11 @@ export class Model {
           }
         : undefined
 
-    await pipeline(task, modelId, {
+    const warmed = await pipeline(task, modelId, {
       ...(dtype ? { dtype } : {}),
       ...(progress_callback ? { progress_callback } : {}),
     })
+    await Model.dispose(warmed)
 
     Model.throwIfAborted(modelId, signal)
 
@@ -108,14 +112,14 @@ export class Model {
   }
 
   static async remove(modelId: string): Promise<boolean> {
-    const [org, ...rest] = modelId.split("/")
-    const name = rest.join("/")
-    if (!org || !name) return false
+    const parsed = Model.parseId(modelId)
+    if (!parsed) return false
     const cacheDir = await Runtime.cacheDir()
-    const dir = join(cacheDir, org, name)
+    const dir = join(cacheDir, parsed.org, parsed.name)
+    if (!Model.isWithin(cacheDir, dir)) return false
     if (!(await fs.pathExists(dir))) return false
     await fs.remove(dir)
-    const orgDir = join(cacheDir, org)
+    const orgDir = join(cacheDir, parsed.org)
     if ((await fs.pathExists(orgDir)) && (await Model.readdir(orgDir)).length === 0) {
       await fs.remove(orgDir)
     }
@@ -123,8 +127,37 @@ export class Model {
     return true
   }
 
-  private static asCached(info: Global.ModelInfoSchemaType): CachedModel {
-    return info as CachedModel
+  private static asCached(info: Global.ModelInfoSchemaType): CachedModel | undefined {
+    if (!(LLM_TASKS as readonly string[]).includes(info.task)) return undefined
+    return {
+      id: info.id,
+      name: info.name,
+      task: info.task as LLMTask,
+      ...(info.dtype ? { dtype: info.dtype } : {}),
+      createdAt: info.createdAt,
+    }
+  }
+
+  private static async dispose(value: unknown): Promise<void> {
+    if (typeof value !== "object" || value === null) return
+    const dispose = (value as { dispose?: unknown }).dispose
+    if (typeof dispose === "function") await (dispose.call(value) as Promise<void>)
+  }
+
+  private static parseId(modelId: string): { org: string; name: string } | undefined {
+    const parts = modelId.split("/")
+    if (parts.length < 2) return undefined
+    for (const part of parts) {
+      if (part === "." || part === ".." || !Model.ID_SEGMENT_RE.test(part)) return undefined
+    }
+    const org = parts[0]
+    const name = parts.slice(1).join("/")
+    return org ? { org, name } : undefined
+  }
+
+  private static isWithin(root: string, target: string): boolean {
+    const rel = relative(resolve(root), resolve(target))
+    return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel)
   }
 
   private static throwIfAborted(modelId: string, signal?: AbortSignal): void {
@@ -133,8 +166,9 @@ export class Model {
 
   private static async tree(modelId: string): Promise<Map<string, number> | null> {
     const host = env.remoteHost.replace(/\/$/, "")
+    const encoded = modelId.split("/").map(encodeURIComponent).join("/")
     try {
-      const res = await fetch(`${host}/api/models/${modelId}/tree/main?recursive=true`)
+      const res = await fetch(`${host}/api/models/${encoded}/tree/main?recursive=true`)
       if (!res.ok) return null
       const entries = (await res.json()) as Array<{ path?: unknown; type?: unknown; size?: unknown }>
       if (!Array.isArray(entries)) return null
@@ -221,11 +255,14 @@ export class Model {
   }
 
   private static async prune(modelId: string, tree: Map<string, number> | null): Promise<void> {
-    const [org, ...rest] = modelId.split("/")
-    const name = rest.join("/")
-    if (!org || !name || !tree) return
+    const parsed = Model.parseId(modelId)
+    if (!parsed || !tree) return
 
-    const weightsDir = join(await Runtime.cacheDir(), org, name, "onnx")
+    const cacheDir = await Runtime.cacheDir()
+    const modelDir = join(cacheDir, parsed.org, parsed.name)
+    if (!Model.isWithin(cacheDir, modelDir)) return
+
+    const weightsDir = join(modelDir, "onnx")
     if (!(await fs.pathExists(weightsDir))) return
 
     const remote = new Map<string, number>()
