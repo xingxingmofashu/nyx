@@ -1,48 +1,54 @@
 # AGENTS.md
 
-Bun workspace monorepo (`bun@1.3.14`). `README.md` explains the product and architecture.
+Bun workspace monorepo (`bun@1.3.14`). The product and architecture are described in `README.md`.
 
 ## Commands
 
 - `bun install`
-- `bun run typecheck` — runs each `@nyx/*` package's `typecheck` (`tsc --noEmit`).
-- `bun run lint` — runs each `@nyx/*` package's `lint` (`oxlint`); shared config at `.oxlintrc.json`.
-- Single package: `bun run --cwd packages/<name> typecheck` (or `lint`, or `build`).
-- Library packages' `build` is `bun build src/index.ts --outdir dist --packages external` (deps kept external); entry points stay `src/`, so raw-TS consumption is unchanged and `dist/` is unused internally.
-- Server binary (required before desktop dev): `bun run --cwd packages/server build` → `packages/server/dist/nyx-server` (a `bun build --compile` executable).
-- Desktop dev: `bun run dev` (alias `bun run dev:desktop`). Package: `bun run desktop:make`.
+- `bun run typecheck` — each `@nyx/*` package runs `tsc --noEmit`.
+- `bun run lint` — each package runs `oxlint` (config: `.oxlintrc.json`).
+- One package: `bun run --cwd packages/<name> {typecheck,lint,build}`.
+- Server binary, required before desktop dev: `bun run --cwd packages/server build` → `packages/server/dist/nyx-server`.
+- Desktop dev: `bun run dev`; package: `bun run desktop:make`.
 
-## Workspace layout
+## Layout
 
-`packages/{global,llm,agent,knowledge,server}` and `apps/desktop`. Every package is consumed as raw TS (`"main"/"types": "src/index.ts"`); `@nyx/server` builds a compiled binary. Helpers needed by both the desktop and the server live as one copy per side (the desktop's own in `apps/desktop/src/{preload,renderer/src}`); there is no shared package. `@nyx/global` owns the on-disk layout and stores (`~/.nyx`: `Path`, `Workspace`, `Settings`, `Models`, `Session`), exported as a single `Global` namespace (`import { Global } from "@nyx/global"`); directory layout lives on `Path` (static getters) and `Workspace`, `Session`'s public shapes are schema-backed (`ChatSessionMetaSchema`/`ChatSessionSchema`, the types inferred) except the hand-written `SessionSaveInput`; it is Bun-only and self-contained (`defu`, `fs-extra`, `zod`; no ONNX/transformers/LanceDB) and must never be imported at runtime by the desktop — the desktop reaches it only over the server HTTP API. `@nyx/agent` owns the agent and exposes a single `Agent` namespace: `loop.ts` is the provider-agnostic loop (`Agent.Loop.stream`), `provider.ts` the `Provider` layer (agent model resolution + the local ONNX provider cache), `compaction.ts`/`workspace.ts`/`attachment.ts`/`session.ts` the supporting pieces and wire types, and `tools/` one class per tool under the nested `Agent.Tools` namespace (`Agent.Tools.Read`, …); the concrete services (agent, knowledge, models, and the image/speech tasks) and their wire schemas/types sit under the nested `Agent.Services` namespace (`Agent.Services.KnowledgeImportRequestSchema`, …). The wire types re-alias the `Global.*SchemaType` values they surface (`Agent.Services.ModelInfo`, `Agent.ChatSession`, …), while settings schemas/types are used straight from `Global` (`Global.SettingsSchema`). The `Agent` namespace is imported at runtime only by `@nyx/server`; the desktop imports it type-only. `@nyx/server` is the HTTP transport layer over `@nyx/agent`, exposing a single `Server` namespace (`Server.App.create`/`Server.App.serve`, with the Hono sub-apps under `Server.Routes.*`). `@nyx/knowledge` (LanceDB + ONNX embeddings; Markdown is chunked with `@langchain/textsplitters`'s `MarkdownTextSplitter`, sized by `knowledge.chunkSize`/`knowledge.chunkOverlap`) is imported only through `@nyx/agent` — never by the desktop main/renderer.
+`packages/{global,llm,agent,knowledge,server}` + `apps/desktop`. Everything is consumed as raw TS (`"main"/"types": "src/index.ts"`); only `@nyx/server` builds (`bun build src/index.ts --outdir dist --packages external`, deps external, `dist/` unused internally).
+
+- `@nyx/global` — on-disk layout and stores (`~/.nyx`), one `Global` namespace. Directory layout lives on `Path` (static getters) and `Workspace`; `Settings`/`Models`/`Session` are schema-backed. Bun-only, self-contained (`defu`, `fs-extra`, `zod`); never imported at runtime by the desktop.
+- `@nyx/agent` — the agent, one `Agent` namespace: `loop.ts` (`Agent.Loop.stream`), `provider.ts`, supporting `compaction`/`workspace`/`attachment`/`session`, one class per tool under `Agent.Tools`, and services + wire schemas under `Agent.Services`. Imported at runtime only by `@nyx/server`; the desktop imports it type-only.
+- `@nyx/knowledge` — LanceDB + ONNX embeddings (Markdown chunked via `MarkdownTextSplitter`, sized by `knowledge.chunkSize`/`chunkOverlap`); reachable only through `@nyx/agent`.
+- `@nyx/server` — Hono HTTP layer over `@nyx/agent`, one `Server` namespace (`Server.App.create`/`serve`, sub-apps under `Server.Routes.*`).
+- `apps/desktop` — Electron (forge + vite + React), talking to the spawned server over authenticated HTTP.
+
+Helpers shared by the desktop and the server are duplicated per side (`apps/desktop/src/{preload,renderer/src}`); there is no shared package.
 
 ## Conventions
 
-These apply to every package and the desktop.
+Apply to every package and the desktop.
 
-- TypeScript with **no semicolons and no comments** in source. Relative imports carry explicit `.ts` extensions; Zod is always imported as `zod/v4`.
-- One concept per file; the filename matches the module's primary export: `path.ts` → `Path`, `workspace.ts` → `Workspace`, `settings.ts` → `Settings`, `models.ts` → `Models`, `session.ts` → `Session` (note the singular `session.ts`).
-- `src/index.ts` is a package's only public entry and exports exactly one `export namespace <Name>`, named after the package/domain (`Global`, `LLM`, `Knowledge`). Each `src/<concept>.ts` is pulled in as `import * as xModule from "./x.ts"` and re-exported as `export import X = xModule.X` (values: classes, schemas) or `export type T = xModule.T` (types). Consumers write `import { X } from "@nyx/<pkg>"`, never `import * as`.
-- Stores/services are **classes**. Stateless sets of operations expose **static** methods and hold no instance state (no loose module-level functions); per-directory behaviour is an instance class (`new Workspace(dir)`). Fixed file paths are `private static get`ters on the owning class (`Settings.file`, `Models.file`); helpers used by one class are `private static` methods.
-- Literal constants (numbers, strings, arrays, `Set`s) live on their owning class as `private static readonly`, referenced as `ClassName.CONST`; module-level `const`s are reserved for exported zod schemas.
-- Zod is the single source of truth: export the schema as the value `XSchema` and its inferred type as `type XSchemaType = z.infer<typeof XSchema>` (`SettingsSchema`/`SettingsSchemaType`, `ModelsSchema`/`ModelsSchemaType`). No hand-written duplicate types for schema-backed data. A schema whose inferred type is the public type is exported through the namespace (`export import XSchema = xModule.XSchema` + `export type XSchemaType`); an internal persisted shape whose public type is hand-written may keep its schema private (`Knowledge`'s module-level `ManifestSchema`, `Session`'s private static `StoredMetaSchema`).
-- IO via Bun built-ins (`Bun.file`, `Bun.write`, `Bun.JSONL`, `Bun.CryptoHasher`, `Bun.env`) and `fs-extra` for directory ops (`ensureDir`, `outputJson`, `readdir`, `remove`, `appendFile`); `node:path` for joins. Non-atomic writes are acceptable.
+- TypeScript with no semicolons and no comments. Relative imports carry `.ts`; Zod is always `zod/v4`.
+- One concept per file; filename matches the primary export (`path.ts` → `Path`, `session.ts` → `Session`).
+- `src/index.ts` is the only public entry and exports exactly one `export namespace <Name>`. Re-export each module as `export import X = xModule.X` / `export type T = xModule.T`; consumers use `import { X } from "@nyx/<pkg>"`, never `import * as`.
+- Stores/services are classes; stateless operations are `static`, per-directory behaviour is an instance (`new Workspace(dir)`). Fixed paths are `private static get`ters; single-class helpers are `private static`.
+- Literal constants live on the owning class as `private static readonly`; module-level `const` is reserved for exported zod schemas.
+- Zod is the source of truth: `XSchema` value plus `type XSchemaType = z.infer<...>`. No duplicate hand-written types; internal persisted shapes may keep their schema private.
+- IO via Bun built-ins (`Bun.file`, `Bun.write`, `Bun.JSONL`, `Bun.CryptoHasher`) and `fs-extra` (`ensureDir`, `outputJson`, `readdir`, `remove`, `appendFile`); `node:path` for joins. Non-atomic writes are fine.
 
 ## Dependencies
 
-Versions are exact-pinned (`bunfig.toml` `install.exact = true`). The root `package.json` `catalog` holds only dependencies shared by two or more packages, referenced as `"catalog:"`; a dependency used by a single package is pinned to its exact version in that package's `package.json`. Never use a range.
+Versions are exact-pinned (`bunfig.toml` `install.exact = true`). The root `catalog` holds only deps shared by two or more packages (`"catalog:"`); single-package deps are pinned in that package. Never use a range.
 
 ## Architecture gotchas
 
-- The server is a self-contained Bun executable (`bun build --compile` → `dist/nyx-server`: server code + Bun runtime). The desktop spawns it as a child process (`NyxServer`) and captures its stderr behind the app, so server output never reaches the user. Native modules (`onnxruntime-node`, `sharp`, `@lancedb/lancedb`) cannot be embedded — their `.node` addons `dlopen` sibling shared libraries — so they stay `--external` and resolve from `node_modules` at runtime; `--compile-autoload-package-json` is required for that resolution. The desktop talks to it over authenticated HTTP (`Authorization: Bearer <token>`, random per launch).
-- Only `@nyx/llm` and `@nyx/agent` (the ONNX-backed tools/services) touch onnxruntime/transformers. The desktop main/renderer Vite builds bundle pure TS (`@nyx/*`) and keep `onnxruntime-node`, `sharp`, `@huggingface/transformers`, `electron` external. Neither `@nyx/agent` nor `@nyx/knowledge` may be imported at runtime by the desktop (it imports the `Agent` namespace type-only for the wire types).
-- `packages/server` is a single `Server` namespace (`Server.App`, `Server.Errors`, the middleware under `Server.Middleware.Auth`, and the Hono sub-app classes under `Server.Routes.*`); `Server.App.create({ token, onLog })` builds the services from `@nyx/agent` and mounts each `Server.Routes.*` under `/v1`, while `Server.App.serve` starts the node server (`src/bin.ts` is the `nyx-server` binary entry, which reads the env and dynamically imports `src/index.ts` after setting `HF_ENDPOINT`). Routes are declared with `@hono/zod-openapi` (`OpenAPIHono` + `createRoute` with per-route request/response schemas) so `hc` infers both request and response types; `Server.Errors.hook` is the app's `defaultHook` that renders validation failures, routes throw `Server.Errors.status(...)`/`HTTPException`, and a single `App` `onError` renders `{ error }` with the exception's status (500 otherwise). SSE and binary routes declare a content-less `200` so their handlers stay raw `Response`s. `Server.AppType` is exposed for `hc<Server.AppType>` on the desktop side; the wire schemas/types live in the `Agent` namespace (`Agent.SessionSaveRequestSchema`, `Agent.KnowledgeStatus`, …) and the desktop imports them type-only from `@nyx/agent`.
-- Relative imports inside TS source use explicit `.ts` extensions (`allowImportingTsExtensions`). Zod is imported as `zod/v4` everywhere in this repo.
-- `apps/desktop` uses `#components/*`, `#lib/*`, `#hooks/*` import aliases; a single `tsconfig.json` covers renderer, main, preload and the forge/vite configs (`vite/client` + `node` + `bun` types — `bun` is needed because the desktop type-only imports the Bun-only `@nyx/global` through the `Agent` wire types). The desktop speaks to `@nyx/global` exclusively over the server HTTP API (`/v1/settings`, `/v1/sessions`, `/v1/files`).
-- Forge `packageAfterCopy` stages `nyx-server` + its external native closure (transformers, onnxruntime-node, sharp, LanceDB) into `Resources/runtime/`; the packaged asar ships no `node_modules`.
+- The server is a self-contained `bun build --compile` executable (`dist/nyx-server`). The desktop spawns it (`NyxServer`) and hides its stderr. Native modules (`onnxruntime-node`, `sharp`, `@lancedb/lancedb`) stay `--external` and resolve from `node_modules` (`--compile-autoload-package-json` is required). The desktop talks to it over authenticated HTTP (`Authorization: Bearer <token>`, random per launch).
+- Only `@nyx/llm` and `@nyx/agent` touch onnxruntime/transformers. Desktop Vite builds keep `onnxruntime-node`, `sharp`, `@huggingface/transformers`, `electron` external. `@nyx/agent`/`@nyx/knowledge` are never imported at runtime by the desktop.
+- `@nyx/server` routes use `@hono/zod-openapi` (`OpenAPIHono` + `createRoute`) so `hc` infers request/response types. `Server.Errors.hook` renders validation failures; the `App` `onError` renders `{ error }`. SSE/binary routes declare a content-less `200`. `Server.AppType` backs `hc<Server.AppType>`; wire types live in `Agent` and are type-imported by the desktop.
+- `apps/desktop` uses `#components/*`, `#lib/*`, `#hooks/*`; one `tsconfig.json` covers renderer/main/preload/configs (`vite/client` + `node` + `bun`). It reaches `@nyx/global` only over the HTTP API (`/v1/settings`, `/v1/sessions`, `/v1/files`).
+- Forge `packageAfterCopy` stages `nyx-server` + its native closure into `Resources/runtime/`; the packaged asar ships no `node_modules`.
 
 ## On-disk state (`~/.nyx`)
 
-- `models/` (weights, default; override with `settings.huggingface.cacheDir`), `models.json` (registry), `settings.json` (user/agent settings), `sessions/<workspaceKey>/{<id>.json, <id>.jsonl, active, audio/, images/, attachments/}` (metadata sidecar, transcript, last-opened id, generated clips and image transforms, user-uploaded chat attachments), `knowledge/**/*.md` (user-supplied documents; the desktop Knowledge page imports/previews/deletes them and drives the index) with the index under `knowledge/.index/{config.json, manifest.json, lancedb/}`.
-- Agent settings live only in `settings.json` (no env overrides). Remaining env vars: `NYX_WEB_SEARCH_PROVIDER/API_KEY`, `NYX_PARALLEL_API_KEY`, `HF_ENDPOINT` (HF mirror), `NYX_SERVER_TOKEN/PORT/HOST`.
-- The agent model is a remote model: `agent.model` is `<providerId>/<modelId>` resolved against `agent.provider`; only `@ai-sdk/openai-compatible` and `@ai-sdk/anthropic` are supported (`packages/agent/src/provider.ts`).
+- `models/` (default; override via `settings.huggingface.cacheDir`), `models.json`, `settings.json`, `sessions/<workspaceKey>/{<id>.json, <id>.jsonl, active, audio/, images/, attachments/}`, `knowledge/**/*.md` with its index under `knowledge/.index/{config.json, manifest.json, lancedb/}`.
+- Agent settings live only in `settings.json` (no env overrides). Remaining env vars: `NYX_WEB_SEARCH_PROVIDER/API_KEY`, `NYX_PARALLEL_API_KEY`, `HF_ENDPOINT`, `NYX_SERVER_TOKEN/PORT/HOST`.
+- The agent model is remote: `agent.model` is `<providerId>/<modelId>` against `agent.provider`; only `@ai-sdk/openai-compatible` and `@ai-sdk/anthropic` are supported (`packages/agent/src/provider.ts`).
