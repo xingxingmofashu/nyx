@@ -190,13 +190,15 @@ export class Knowledge {
       signal?: AbortSignal
     } = {},
   ): Promise<KnowledgeBase.IndexStats> {
-    await this.requireModel()
-    const kb = await this.open()
-    const stats = options.rebuild === true ? await kb.rebuild(options) : await kb.index(options)
-    this.log(
-      `${options.rebuild === true ? "rebuilt" : "indexed"} ${stats.chunks} chunks from ${stats.files} files (${stats.skipped} unchanged)`,
-    )
-    return stats
+    return await this.serialize(async () => {
+      await this.requireModel()
+      const kb = await this.open()
+      const stats = options.rebuild === true ? await kb.rebuild(options) : await kb.index(options)
+      this.log(
+        `${options.rebuild === true ? "rebuilt" : "indexed"} ${stats.chunks} chunks from ${stats.files} files (${stats.skipped} unchanged)`,
+      )
+      return stats
+    })
   }
 
   private open(): Promise<KnowledgeBase.Base> {

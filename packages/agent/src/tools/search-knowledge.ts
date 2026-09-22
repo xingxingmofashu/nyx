@@ -7,8 +7,8 @@ import DESCRIPTION from "./search-knowledge.txt"
 export class SearchKnowledge {
   private static readonly MAX_OUTPUT = 40_000
 
-  static async create(service: Knowledge): Promise<ToolSet> {
-    if (!(await service.hasDocuments())) return {}
+  static create(service: Knowledge, present: boolean): ToolSet {
+    if (!present) return {}
 
     return {
       search_knowledge: tool({

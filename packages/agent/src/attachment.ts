@@ -13,12 +13,12 @@ export type SavedAttachment = z.infer<typeof SavedAttachmentSchema>
 
 export const GeneratedFileQuerySchema = z.object({
   path: z.string().min(1),
-  workspaceDir: z.string().optional(),
+  workspaceDir: z.string().min(1).optional(),
 })
 export type GeneratedFileQuery = z.infer<typeof GeneratedFileQuerySchema>
 
 export const AttachmentSaveRequestSchema = z.object({
-  workspaceDir: z.string(),
+  workspaceDir: z.string().min(1),
   sessionId: SessionIdSchema,
   name: z.string(),
   mimeType: z.string(),

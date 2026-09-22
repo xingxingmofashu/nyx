@@ -7,11 +7,11 @@ export type ChatSessionMeta = Global.ChatSessionMeta
 export const SessionIdSchema = z.string().regex(/^[A-Za-z0-9_-]+$/)
 
 export const WorkspaceQuerySchema = z.object({
-  workspaceDir: z.string().optional(),
+  workspaceDir: z.string().min(1).optional(),
 })
 
 export const SessionSaveRequestSchema = z.object({
-  workspaceDir: z.string(),
+  workspaceDir: z.string().min(1),
   id: SessionIdSchema,
   title: z.string(),
   messages: z.array(z.unknown()),
@@ -19,14 +19,14 @@ export const SessionSaveRequestSchema = z.object({
 export type SessionSaveRequest = z.infer<typeof SessionSaveRequestSchema>
 
 export const SessionPatchRequestSchema = z.object({
-  workspaceDir: z.string(),
+  workspaceDir: z.string().min(1),
   title: z.string().optional(),
   pinned: z.boolean().optional(),
 })
 export type SessionPatchRequest = z.infer<typeof SessionPatchRequestSchema>
 
 export const ActiveSessionRequestSchema = z.object({
-  workspaceDir: z.string(),
+  workspaceDir: z.string().min(1),
   id: SessionIdSchema.nullable(),
 })
 export type ActiveSessionRequest = z.infer<typeof ActiveSessionRequestSchema>

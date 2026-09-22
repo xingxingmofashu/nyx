@@ -14,13 +14,14 @@ export interface ImageToImageToolOptions {
   cache: Provider
   workspaceDir: string
   sessionId?: string
+  models?: LLM.CachedModel[]
 }
 
 export class LocalImageToImage {
   static async create(options: ImageToImageToolOptions): Promise<ToolSet> {
     const { cache, workspaceDir, sessionId } = options
     const root = resolve(workspaceDir)
-    const imageModels = (await LLM.Model.list())
+    const imageModels = (options.models ?? (await LLM.Model.list()))
       .filter((model) => model.task === "image-to-image")
       .map((model) => model.id)
     if (imageModels.length === 0) return {}
@@ -70,14 +71,19 @@ export class LocalImageToImage {
     }
   }
 
-  private static race<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  private static async race<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
     if (!signal) return promise
-    return Promise.race([
-      promise,
-      new Promise<never>((_resolve, reject) => {
-        signal.addEventListener("abort", () => reject(signal.reason), { once: true })
-      }),
-    ])
+    if (signal.aborted) throw signal.reason
+    let onAbort: (() => void) | undefined
+    const aborted = new Promise<never>((_resolve, reject) => {
+      onAbort = () => reject(signal.reason)
+      signal.addEventListener("abort", onAbort, { once: true })
+    })
+    try {
+      return await Promise.race([promise, aborted])
+    } finally {
+      if (onAbort) signal.removeEventListener("abort", onAbort)
+    }
   }
 
   private static fileName(sessionId: string | undefined, model: string, inputPath: string): string {
@@ -91,7 +97,7 @@ export class LocalImageToImage {
   }
 
   private static prefix(sessionId: string | undefined): string {
-    return sessionId !== undefined && Global.Session.isValidId(sessionId) ? `${sessionId}-` : ""
+    return sessionId !== undefined && Global.Session.isValidId(sessionId) ? `${sessionId}.` : ""
   }
 
   private static slug(model: string): string {

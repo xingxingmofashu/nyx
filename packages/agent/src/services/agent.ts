@@ -2,11 +2,13 @@ import { resolve } from "node:path"
 import type { ToolApprovalStatus, ToolSet, UIMessage } from "ai"
 import { z } from "zod/v4"
 import { Global } from "@nyx/global"
+import { LLM } from "@nyx/llm"
 import { Provider, type ResolvedModel } from "../provider.ts"
 import { Loop } from "../loop.ts"
 import { Permission, type PermissionRuleset } from "../permission.ts"
 import { Compaction, ContextCheckpointSchema } from "../compaction.ts"
 import { Attachment } from "../attachment.ts"
+import { SessionIdSchema } from "../session.ts"
 import { Bash } from "../tools/bash.ts"
 import { Edit } from "../tools/edit.ts"
 import { Glob } from "../tools/glob.ts"
@@ -23,7 +25,7 @@ import DEFAULT_SYSTEM_PROMPT from "../system-prompt.txt"
 
 export const AgentOptionsSchema = z.object({
   workspaceDir: z.string().min(1),
-  sessionId: z.string().optional(),
+  sessionId: SessionIdSchema.optional(),
   inlineAudio: z.boolean().optional(),
   forceCompact: z.boolean().optional(),
   allowAll: z.boolean().optional(),
@@ -114,7 +116,7 @@ export class Agent {
     })
   }
 
-  async compact(request: CompactRequest): Promise<CompactResponse> {
+  async compact(request: CompactRequest, signal?: AbortSignal): Promise<CompactResponse> {
     const settings = (await Global.Settings.read()).agent ?? {}
     const model = Provider.resolveModelConfig(settings)
     const workspaceDir = resolve(request.workspaceDir)
@@ -131,6 +133,7 @@ export class Agent {
       ...(model.maxOutputTokens === undefined ? {} : { maxOutputTokens: model.maxOutputTokens }),
       ...(settings.compaction === undefined ? {} : { policy: settings.compaction }),
       force: true,
+      ...(signal ? { signal } : {}),
     })
     const estimatedTokens = await Compaction.estimate({ systemPrompt, tools, messages: result.messages })
     const baselineTokens = await Compaction.estimate({
@@ -183,6 +186,8 @@ export class Agent {
     inlineAudio?: boolean,
   ): Promise<ToolSet> {
     const modelTools = { cache: this.cache, workspaceDir, sessionId, inlineAudio }
+    const models = settings.tools?.localModels === false ? undefined : await LLM.Model.list()
+    const knowledge = settings.tools?.knowledge === false ? false : await this.knowledge.hasDocuments()
     return {
       ...Read.create(workspaceDir),
       ...Write.create(workspaceDir),
@@ -190,13 +195,13 @@ export class Agent {
       ...Bash.create(workspaceDir),
       ...Grep.create(workspaceDir),
       ...Glob.create(workspaceDir),
-      ...(settings.tools?.localModels === false
+      ...(models === undefined
         ? {}
         : {
-            ...(await LocalImageToImage.create(modelTools)),
-            ...(await LocalTextToSpeech.create(modelTools)),
+            ...(await LocalImageToImage.create({ ...modelTools, models })),
+            ...(await LocalTextToSpeech.create({ ...modelTools, models })),
           }),
-      ...(settings.tools?.knowledge === false ? {} : await SearchKnowledge.create(this.knowledge)),
+      ...SearchKnowledge.create(this.knowledge, knowledge),
       ...(settings.tools?.webSearch === false
         ? {}
         : { ...WebSearch.create({ sessionId }), ...WebFetch.create() }),

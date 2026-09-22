@@ -15,12 +15,13 @@ export interface TextToSpeechToolOptions {
   workspaceDir: string
   sessionId?: string
   inlineAudio?: boolean
+  models?: LLM.CachedModel[]
 }
 
 export class LocalTextToSpeech {
   static async create(options: TextToSpeechToolOptions): Promise<ToolSet> {
     const { cache, workspaceDir, sessionId, inlineAudio = false } = options
-    const speechModels = (await LLM.Model.list())
+    const speechModels = (options.models ?? (await LLM.Model.list()))
       .filter((model) => model.task === "text-to-speech")
       .map((model) => model.id)
     if (speechModels.length === 0) return {}
@@ -74,14 +75,19 @@ export class LocalTextToSpeech {
     }
   }
 
-  private static race<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  private static async race<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
     if (!signal) return promise
-    return Promise.race([
-      promise,
-      new Promise<never>((_resolve, reject) => {
-        signal.addEventListener("abort", () => reject(signal.reason), { once: true })
-      }),
-    ])
+    if (signal.aborted) throw signal.reason
+    let onAbort: (() => void) | undefined
+    const aborted = new Promise<never>((_resolve, reject) => {
+      onAbort = () => reject(signal.reason)
+      signal.addEventListener("abort", onAbort, { once: true })
+    })
+    try {
+      return await Promise.race([promise, aborted])
+    } finally {
+      if (onAbort) signal.removeEventListener("abort", onAbort)
+    }
   }
 
   private static speaker(workspaceDir: string, speaker: string): string {
@@ -102,7 +108,7 @@ export class LocalTextToSpeech {
   }
 
   private static prefix(sessionId: string | undefined): string {
-    return sessionId !== undefined && Global.Session.isValidId(sessionId) ? `${sessionId}-` : ""
+    return sessionId !== undefined && Global.Session.isValidId(sessionId) ? `${sessionId}.` : ""
   }
 
   private static slug(model: string): string {
