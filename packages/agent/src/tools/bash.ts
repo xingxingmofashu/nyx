@@ -39,6 +39,7 @@ export class Bash {
           try {
             const { stdout, stderr } = await Bash.exec(command, {
               cwd: root,
+              env: Bash.env(),
               timeout,
               maxBuffer: Bash.MAX_BUFFER,
               windowsHide: true,
@@ -65,6 +66,15 @@ export class Bash {
         },
       }),
     }
+  }
+
+  private static env(): Record<string, string> {
+    const env: Record<string, string> = {}
+    for (const [key, value] of Object.entries(process.env)) {
+      if (value === undefined || key.startsWith("NYX_")) continue
+      env[key] = value
+    }
+    return env
   }
 
   private static render(): string {

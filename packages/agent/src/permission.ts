@@ -29,6 +29,7 @@ export interface PermissionDecision {
 
 export class Permission {
   private static readonly APPROVALS = new Map<string, PermissionRuleset>()
+  private static readonly MAX_APPROVALS = 100
 
   static match(value: string, pattern: string): boolean {
     const target = value.replaceAll("\\", "/")
@@ -143,6 +144,10 @@ export class Permission {
         ),
     )
     if (added.length === 0) return
+    if (!Permission.APPROVALS.has(sessionId) && Permission.APPROVALS.size >= Permission.MAX_APPROVALS) {
+      const oldest = Permission.APPROVALS.keys().next().value
+      if (oldest !== undefined) Permission.APPROVALS.delete(oldest)
+    }
     Permission.APPROVALS.set(sessionId, [...current, ...added])
   }
 
@@ -155,9 +160,11 @@ export class Permission {
   }
 
   private static hidden(toolName: string, ruleset: PermissionRuleset): boolean {
-    return ruleset.some(
-      (rule) => rule.pattern === "*" && rule.action === "deny" && Permission.match(toolName, rule.permission),
-    )
+    const matching = ruleset.filter((rule) => Permission.match(toolName, rule.permission))
+    const broad = Permission.last(matching, (rule) => rule.pattern === "*")
+    if (broad?.action !== "deny") return false
+    const specific = Permission.last(matching, (rule) => rule.pattern !== "*")
+    return specific === undefined
   }
 
   private static escapes(command: string, workspaceDir: string): string[] {
@@ -171,8 +178,13 @@ export class Permission {
       }
       const absolute = value.startsWith("/") || /^[A-Za-z]:[\\/]/.test(value)
       const traversal = /(^|[/\\])\.\.([/\\]|$)/.test(value)
-      if (absolute && !Permission.inside(value, workspaceDir)) found.add(Permission.normalize(Permission.path(value)))
-      else if (!absolute && traversal) found.add(Permission.absolute(value, workspaceDir))
+      if (absolute) {
+        if (!Permission.inside(value, workspaceDir)) found.add(Permission.normalize(Permission.path(value)))
+        continue
+      }
+      if (!traversal) continue
+      const resolved = Permission.absolute(value, workspaceDir)
+      if (!Permission.inside(resolved, workspaceDir)) found.add(resolved)
     }
     return [...found]
   }
@@ -202,9 +214,10 @@ export class Permission {
   }
 
   private static normalize(path: string): string {
-    const absolute = path.startsWith("/")
+    const slashed = path.replaceAll("\\", "/")
+    const absolute = slashed.startsWith("/") || /^[A-Za-z]:\//.test(slashed)
     const parts: string[] = []
-    for (const part of path.split("/")) {
+    for (const part of slashed.split("/")) {
       if (part === "" || part === ".") continue
       if (part === "..") {
         if (parts.length > 0 && parts[parts.length - 1] !== "..") parts.pop()

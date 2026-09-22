@@ -174,8 +174,11 @@ export class WebFetch {
         throw new Error(`refusing to fetch a private address (${host} → ${address})`)
       }
     }
+    const address = addresses[0]
+    if (address === undefined) throw new Error(`could not resolve ${host}`)
     const pinnedUrl = new URL(url.toString())
-    pinnedUrl.hostname = addresses[0] ?? host
+    pinnedUrl.hostname = address.includes(":") ? `[${address}]` : address
+    if (pinnedUrl.hostname === url.hostname) throw new Error(`could not pin ${host} to a resolved address`)
     return { url: pinnedUrl, host: url.host, serverName: host }
   }
 
