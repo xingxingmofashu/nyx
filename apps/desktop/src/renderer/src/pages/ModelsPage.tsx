@@ -28,7 +28,9 @@ const TASK_LABEL: Record<string, string> = Object.fromEntries(TASK_OPTIONS.map((
 export function ModelsPage() {
   const models = useModelsStore((s) => s.models)
   const pulling = useModelsStore((s) => s.pulling)
-  const { startPull, cancelPull, remove } = useModelsStore()
+  const startPull = useModelsStore((s) => s.startPull)
+  const cancelPull = useModelsStore((s) => s.cancelPull)
+  const remove = useModelsStore((s) => s.remove)
 
   const [modelId, setModelId] = useState("")
   const [task, setTask] = useState<LLMTask>("image-to-image")

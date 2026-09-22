@@ -147,6 +147,7 @@ export function ChatComposer({
               }
             }}
             placeholder={placeholder}
+            aria-label="Message the agent"
             disabled={disabled}
             rows={5}
             className="max-h-48"

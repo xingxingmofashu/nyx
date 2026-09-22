@@ -27,8 +27,11 @@ const CUSTOM_MODEL = "__custom__"
 
 export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
   const [models, setModels] = useState<Record<string, ProviderModels>>({})
+  const [modelErrors, setModelErrors] = useState<Record<string, string>>({})
   const [loadingModels, setLoadingModels] = useState(false)
   const [customModel, setCustomModel] = useState(false)
+  const [renameError, setRenameError] = useState<string | null>(null)
+  const [editorReset, setEditorReset] = useState<Record<string, number>>({})
   const inFlight = useRef(new Set<string>())
   const providers = agent.provider ?? {}
   const ids = Object.keys(providers)
@@ -53,13 +56,18 @@ export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
     if (inFlight.current.has(providerId)) return
     inFlight.current.add(providerId)
     setLoadingModels(true)
+    setModelErrors((prev) => {
+      if (!(providerId in prev)) return prev
+      const { [providerId]: _cleared, ...rest } = prev
+      return rest
+    })
     try {
       const result = await window.nyx.config.listModels(entry)
       setModels((prev) => ({ ...prev, [providerId]: result }))
     } catch (error) {
-      setModels((prev) => ({
+      setModelErrors((prev) => ({
         ...prev,
-        [providerId]: { ids: [], error: error instanceof Error ? error.message : String(error) },
+        [providerId]: error instanceof Error ? error.message : String(error),
       }))
     } finally {
       inFlight.current.delete(providerId)
@@ -92,7 +100,13 @@ export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
     const id = nextId.trim()
     
     
-    if (!id || id === oldId || providers[id]) return
+    if (!id || id === oldId) return
+    if (providers[id]) {
+      setRenameError(`A provider named “${id}” already exists.`)
+      setEditorReset((prev) => ({ ...prev, [oldId]: (prev[oldId] ?? 0) + 1 }))
+      return
+    }
+    setRenameError(null)
     const next: Record<string, AgentProviderEntry> = {}
     for (const [key, entry] of Object.entries(providers)) {
       next[key === oldId ? id : key] = entry
@@ -113,7 +127,13 @@ export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
       const { [id]: _removed, ...rest } = prev
       return rest
     })
-    onChange({ ...agent, provider: Object.keys(next).length > 0 ? next : undefined })
+    setModelErrors((prev) => {
+      if (!(id in prev)) return prev
+      const { [id]: _removed, ...rest } = prev
+      return rest
+    })
+    const model = agent.model?.startsWith(`${id}/`) ? undefined : agent.model
+    onChange({ ...agent, provider: Object.keys(next).length > 0 ? next : undefined, model })
   }
 
   const addProvider = () => {
@@ -204,8 +224,8 @@ export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
             <FieldError>
               No provider named “{modelProviderId}” — add one below or fix the reference.
             </FieldError>
-          ) : currentModels?.error ? (
-            <FieldDescription>Couldn't list models: {currentModels.error}</FieldDescription>
+          ) : modelErrors[modelProviderId] ? (
+            <FieldDescription>Couldn't list models: {modelErrors[modelProviderId]}</FieldDescription>
           ) : modelList.length > 0 && !canPick ? (
             <button
               type="button"
@@ -232,12 +252,13 @@ export function AgentSettingsCard({ agent, onChange }: AgentSettingsCardProps) {
               Add provider
             </Button>
           </div>
+          {renameError !== null && <FieldError>{renameError}</FieldError>}
           {ids.length === 0 ? (
             <p className="text-sm text-muted-foreground">No providers yet.</p>
           ) : (
             ids.map((id) => (
               <ProviderEditor
-                key={id}
+                key={`${id}:${editorReset[id] ?? 0}`}
                 providerId={id}
                 entry={providers[id]!}
                 active={id === modelProviderId}

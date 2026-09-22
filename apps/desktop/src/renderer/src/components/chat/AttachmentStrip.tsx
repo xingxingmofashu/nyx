@@ -25,22 +25,25 @@ function useAttachmentUrl(path: string): string | null {
 
 function AttachmentThumb({ attachment }: { attachment: SavedAttachment }) {
   const url = useAttachmentUrl(attachment.path)
+  const className = "block overflow-hidden rounded-lg border bg-card/60"
+  const content = url ? (
+    <img src={url} alt={attachment.name} className="max-h-40 max-w-40 object-cover" />
+  ) : (
+    <div className="flex size-20 items-center justify-center px-2 text-center text-[10px] text-muted-foreground">
+      {attachment.name}
+    </div>
+  )
+  if (url && /^https?:\/\//i.test(url)) {
+    return (
+      <a href={url} target="_blank" rel="noreferrer" title={attachment.name} className={className}>
+        {content}
+      </a>
+    )
+  }
   return (
-    <a
-      href={url ?? undefined}
-      target="_blank"
-      rel="noreferrer"
-      title={attachment.name}
-      className="block overflow-hidden rounded-lg border bg-card/60"
-    >
-      {url ? (
-        <img src={url} alt={attachment.name} className="max-h-40 max-w-40 object-cover" />
-      ) : (
-        <div className="flex size-20 items-center justify-center px-2 text-center text-[10px] text-muted-foreground">
-          {attachment.name}
-        </div>
-      )}
-    </a>
+    <div title={attachment.name} className={className}>
+      {content}
+    </div>
   )
 }
 

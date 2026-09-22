@@ -61,6 +61,7 @@ export function AgentPage() {
   const workspaceDir = useAgentStore((s) => s.workspaceDir)
   const contextLimit = useAgentStore((s) => s.contextLimit)
   const init = useAgentStore((s) => s.init)
+  const initError = useAgentStore((s) => s.initError)
   const setWorkspace = useAgentStore((s) => s.setWorkspace)
   const voiceModel = useModelsStore((s) => s.selected["automatic-speech-recognition"])
   const activeId = useSessionsStore((s) => s.activeId)
@@ -78,20 +79,23 @@ export function AgentPage() {
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
   const [attachError, setAttachError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
-  const restored = useRef(false)
+  const [initAttempt, setInitAttempt] = useState(0)
+  const attempted = useRef(-1)
+  const approvalSent = useRef<Set<string>>(new Set())
   const navigate = useNavigate()
 
   useEffect(() => {
-    
-    if (restored.current) return
-    restored.current = true
+    if (attempted.current >= initAttempt) return
+    attempted.current = initAttempt
     void (async () => {
       await init()
+      if (useAgentStore.getState().initError) return
       const store = useSessionsStore.getState()
       await store.load()
       await store.restoreLast(useAgentStore.getState().workspaceDir)
+      useSessionsStore.setState({ contextOverride: undefined })
     })()
-  }, [init])
+  }, [init, initAttempt])
 
   const title = (activeId ? sessions.find((s) => s.id === activeId)?.title : undefined) ?? "New chat"
 
@@ -109,8 +113,16 @@ export function AgentPage() {
   const contextWindow = usage?.contextLimit ?? contextLimit
   
   
-  const estimated =
-    contextOverride && contextOverride.forId === messages[messages.length - 1]?.id ? contextOverride.tokens : undefined
+  const estimated = (() => {
+    if (!contextOverride) return undefined
+    const index = messages.findIndex((message) => message.id === contextOverride.forId)
+    if (index < 0) return undefined
+    for (let i = index + 1; i < messages.length; i++) {
+      const meta = messages[i]?.metadata as ChatMessageMetadata | undefined
+      if (messages[i]?.role === "assistant" && meta?.usage?.inputTokens) return undefined
+    }
+    return contextOverride.tokens
+  })()
 
   
   const folded = (() => {
@@ -215,6 +227,12 @@ export function AgentPage() {
   const reset = () => {
     void createSession()
     clearError()
+  }
+
+  const respondToApproval = (id: string, approved: boolean, reason?: string) => {
+    if (approvalSent.current.has(id)) return
+    approvalSent.current.add(id)
+    addToolApprovalResponse({ id, approved, ...(reason === undefined ? {} : { reason }) })
   }
 
   const placeholder = !workspaceDir
@@ -376,18 +394,14 @@ export function AgentPage() {
                                       input={part.input}
                                       reason={part.approval.requestReason}
                                       onApprove={() =>
-                                        addToolApprovalResponse({ id: part.approval.id, approved: true })
+                                        respondToApproval(part.approval.id, true)
                                       }
                                       onDeny={() =>
-                                        addToolApprovalResponse({
-                                          id: part.approval.id,
-                                          approved: false,
-                                          reason: "user denied",
-                                        })
+                                        respondToApproval(part.approval.id, false, "user denied")
                                       }
                                       onAlwaysAllow={() => {
                                         if (activeId) allowAll(activeId)
-                                        addToolApprovalResponse({ id: part.approval.id, approved: true })
+                                        respondToApproval(part.approval.id, true)
                                       }}
                                     />
                                   )
@@ -397,7 +411,6 @@ export function AgentPage() {
                                   return (
                                     <SpeechCard
                                       key={part.toolCallId}
-                                      toolCallId={part.toolCallId}
                                       name={name}
                                       state={part.state as ToolPartState}
                                       output={part.state === "output-available" ? part.output : undefined}
@@ -457,6 +470,18 @@ export function AgentPage() {
           ) : null}
           {!compacting && compactNotice && !busy && (
             <p className="border-t px-4 py-2 text-xs text-muted-foreground">{compactNotice}</p>
+          )}
+          {initError && (
+            <div className="flex items-center justify-between gap-2 border-t px-4 py-2 text-xs text-destructive">
+              <span>{initError}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setInitAttempt((value) => value + 1)}
+              >
+                Retry
+              </Button>
+            </div>
           )}
           {(error || attachError) && (
             <p className="border-t px-4 py-2 text-xs text-destructive">

@@ -38,6 +38,7 @@ export function SessionNav() {
   const sessions = useSessionsStore((s) => s.sessions)
   const activeId = useSessionsStore((s) => s.activeId)
   const busy = useSessionsStore((s) => s.busy)
+  const compacting = useSessionsStore((s) => s.compacting)
   const open = useSessionsStore((s) => s.open)
   const rename = useSessionsStore((s) => s.rename)
   const setPinned = useSessionsStore((s) => s.setPinned)
@@ -69,6 +70,7 @@ export function SessionNav() {
   }
 
   const openSession = (id: string) => {
+    if (busy || compacting) return
     void open(id)
     navigate("/agent")
   }
@@ -133,7 +135,7 @@ export function SessionNav() {
                         <SidebarMenuButton
                           isActive={session.id === activeId}
                           onClick={() => openSession(session.id)}
-                          disabled={busy}
+                          disabled={busy || compacting}
                           tooltip={session.title}
                         >
                           {session.pinned ? <Pin /> : <MessageSquare />}

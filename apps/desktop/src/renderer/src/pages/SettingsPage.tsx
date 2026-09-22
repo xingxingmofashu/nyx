@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Save } from "lucide-react"
 import type { Settings } from "../types"
 import { Button } from "../components/ui/button"
@@ -34,20 +34,58 @@ function normalizeSettings(settings: Settings): string {
   return JSON.stringify(normalized)
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function settingsEqual(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
+function mergeSettings(base: Settings, page: Settings, latest: Settings): Settings {
+  const merged: Settings = { ...latest }
+  const baseRecord = base as Record<string, unknown>
+  const pageRecord = page as Record<string, unknown>
+  const mergedRecord = merged as Record<string, unknown>
+  for (const key of new Set([...Object.keys(baseRecord), ...Object.keys(pageRecord)])) {
+    const baseValue = baseRecord[key]
+    const pageValue = pageRecord[key]
+    if (isRecord(baseValue) && isRecord(pageValue)) {
+      const latestValue = mergedRecord[key]
+      const section: Record<string, unknown> = isRecord(latestValue) ? { ...latestValue } : {}
+      for (const field of new Set([...Object.keys(baseValue), ...Object.keys(pageValue)])) {
+        if (!settingsEqual(pageValue[field], baseValue[field])) section[field] = pageValue[field]
+      }
+      mergedRecord[key] = section
+    } else if (!settingsEqual(pageValue, baseValue)) {
+      mergedRecord[key] = pageValue
+    }
+  }
+  return merged
+}
+
 export function SettingsPage() {
   const [theme, setThemeState] = useState<Theme>(getTheme)
   const [settings, setSettings] = useState<Settings | null>(null)
-  const [snapshot, setSnapshot] = useState("")
+  const [base, setBase] = useState<Settings | null>(null)
   const [saving, setSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    void (async () => {
+  const load = useCallback(async () => {
+    setLoadError(null)
+    try {
       const loaded = await window.nyx.config.getSettings()
       setSettings(loaded)
-      setSnapshot(normalizeSettings(loaded))
-    })()
+      setBase(loaded)
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : String(e))
+    }
   }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
 
   const changeTheme = (t: Theme) => {
     setTheme(t)
@@ -64,16 +102,19 @@ export function SettingsPage() {
       return next
     })
 
+  const snapshot = base ? normalizeSettings(base) : ""
   const dirty = settings !== null && normalizeSettings(settings) !== snapshot
 
   const save = async (): Promise<boolean> => {
-    if (!settings) return false
+    if (!settings || !base) return false
     setSaving(true)
     setError(null)
     try {
-      const saved = await window.nyx.config.writeSettings(settings)
+      const latest = await window.nyx.config.getSettings()
+      const merged = mergeSettings(base, settings, latest)
+      const saved = await window.nyx.config.writeSettings(merged)
       setSettings(saved)
-      setSnapshot(normalizeSettings(saved))
+      setBase(saved)
       await useAgentStore.getState().refresh()
       toast.add({ title: "Settings saved" })
       return true
@@ -101,7 +142,14 @@ export function SettingsPage() {
         </Button>
       </div>
 
-      {!settings ? (
+      {loadError !== null ? (
+        <div className="flex flex-col items-start gap-2">
+          <p className="text-sm text-destructive">{loadError}</p>
+          <Button variant="outline" size="sm" onClick={() => void load()}>
+            Retry
+          </Button>
+        </div>
+      ) : !settings ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
         <>

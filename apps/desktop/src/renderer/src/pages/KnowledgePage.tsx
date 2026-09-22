@@ -33,22 +33,20 @@ export function KnowledgePage() {
   const results = useKnowledgeStore((s) => s.results)
   const searchError = useKnowledgeStore((s) => s.searchError)
   const searching = useKnowledgeStore((s) => s.searching)
-  const {
-    load,
-    select,
-    toggleFolder,
-    setFilter,
-    setTarget,
-    importFiles,
-    importFolder,
-    remove,
-    setEmbeddingModel,
-    updateIndex,
-    cancelIndex,
-    dismissNotice,
-    search,
-    clearResults,
-  } = useKnowledgeStore()
+  const load = useKnowledgeStore((s) => s.load)
+  const select = useKnowledgeStore((s) => s.select)
+  const toggleFolder = useKnowledgeStore((s) => s.toggleFolder)
+  const setFilter = useKnowledgeStore((s) => s.setFilter)
+  const setTarget = useKnowledgeStore((s) => s.setTarget)
+  const importFiles = useKnowledgeStore((s) => s.importFiles)
+  const importFolder = useKnowledgeStore((s) => s.importFolder)
+  const remove = useKnowledgeStore((s) => s.remove)
+  const setEmbeddingModel = useKnowledgeStore((s) => s.setEmbeddingModel)
+  const updateIndex = useKnowledgeStore((s) => s.updateIndex)
+  const cancelIndex = useKnowledgeStore((s) => s.cancelIndex)
+  const dismissNotice = useKnowledgeStore((s) => s.dismissNotice)
+  const search = useKnowledgeStore((s) => s.search)
+  const clearResults = useKnowledgeStore((s) => s.clearResults)
 
   const [query, setQuery] = useState("")
   const navigate = useNavigate()

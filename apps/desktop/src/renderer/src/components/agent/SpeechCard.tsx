@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { baseName } from "../../lib/format"
 import { ToolCardShell, type ToolPartState } from "./ToolCallCard"
 
@@ -60,20 +60,18 @@ function useObjectUrl(dataUrl: string | undefined): string | undefined {
   return url
 }
 
-const played = new Set<string>()
-
 interface SpeechCardProps {
-  toolCallId: string
   name: string
   state: ToolPartState
   output?: unknown
   errorText?: string
 }
 
-export function SpeechCard({ toolCallId, name, state, output, errorText }: SpeechCardProps) {
+export function SpeechCard({ name, state, output, errorText }: SpeechCardProps) {
   const data = (output ?? undefined) as SpeechOutput | undefined
   const { url: dataUrl, missing } = useSpeechDataUrl(data)
   const url = useObjectUrl(dataUrl)
+  const played = useRef(false)
   const detail = data?.path
     ? `${baseName(data.path)}${data.seconds ? ` · ${data.seconds}s` : ""}${data.samplingRate ? ` @ ${data.samplingRate} Hz` : ""}`
     : undefined
@@ -84,8 +82,10 @@ export function SpeechCard({ toolCallId, name, state, output, errorText }: Speec
         <audio
           src={url}
           controls
-          autoPlay={!played.has(toolCallId)}
-          onPlay={() => played.add(toolCallId)}
+          autoPlay={!played.current}
+          onPlay={() => {
+            played.current = true
+          }}
           className="w-full"
         />
       )}

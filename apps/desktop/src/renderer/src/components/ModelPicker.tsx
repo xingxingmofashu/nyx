@@ -10,7 +10,7 @@ import { cn } from "../lib/utils"
 export function ModelPicker({ task, className }: { task: LLMTask; className?: string }) {
   const models = useModelsStore((s) => s.models)
   const selected = useModelsStore((s) => s.selected[task])
-  const { select } = useModelsStore()
+  const select = useModelsStore((s) => s.select)
   const navigate = useNavigate()
 
   const taskModels = models.filter((m) => m.task === task)
