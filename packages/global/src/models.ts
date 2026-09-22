@@ -54,7 +54,7 @@ export class Models {
   static register(entry: ModelsSchemaType): Promise<void> {
     return Models.serialize(async () => {
       const merged = defu(entry, await Models.read())
-      await fs.outputJson(Models.file, merged, { spaces: 2 })
+      await Models.writeJson(merged)
     })
   }
 
@@ -72,7 +72,13 @@ export class Models {
         if (Object.keys(provider.models).length === 0) delete data.provider[org]
         if (changed) break
       }
-      if (changed) await fs.outputJson(Models.file, data, { spaces: 2 })
+      if (changed) await Models.writeJson(data)
     })
+  }
+
+  private static async writeJson(value: ModelsSchemaType): Promise<void> {
+    const temporary = `${Models.file}.tmp`
+    await fs.outputJson(temporary, value, { spaces: 2 })
+    await fs.rename(temporary, Models.file)
   }
 }

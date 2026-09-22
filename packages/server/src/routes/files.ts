@@ -48,8 +48,8 @@ export class Files {
   static create() {
     return new OpenAPIHono({ defaultHook: Errors.hook })
       .openapi(Files.dataUrlRoute, async (c) => {
-        const { path } = c.req.valid("query")
-        return c.json({ dataUrl: await Files.readDataUrl(path) }, 200)
+        const { path, workspaceDir } = c.req.valid("query")
+        return c.json({ dataUrl: await Files.readDataUrl(path, workspaceDir) }, 200)
       })
       .openapi(Files.attachmentRoute, async (c) => {
         try {
@@ -60,8 +60,8 @@ export class Files {
       })
   }
 
-  private static async readDataUrl(path: string): Promise<string | null> {
-    const configured = (await Global.Settings.read()).agent?.workspaceDir
+  private static async readDataUrl(path: string, requestWorkspaceDir?: string): Promise<string | null> {
+    const configured = requestWorkspaceDir ?? (await Global.Settings.read()).agent?.workspaceDir
     const workspaceRoot = configured ? resolve(configured) : undefined
     const target = isAbsolute(path) ? resolve(path) : resolve(workspaceRoot ?? Global.Path.sessions, path)
     try {
@@ -100,7 +100,7 @@ export class Files {
 
     const name = Files.safeName(input.name)
     const stem = name.slice(0, name.length - extname(name).length).slice(0, 60) || "image"
-    const target = join(dir, `${input.sessionId}-${stem}-${nanoid()}${extension}`)
+    const target = join(dir, `${input.sessionId}.${stem}-${nanoid()}${extension}`)
     await writeFile(target, data)
 
     return { path: target, name, mimeType: input.mimeType, size: data.byteLength }

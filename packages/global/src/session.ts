@@ -83,7 +83,7 @@ export class Session {
         ...(existing?.pinned ? { pinned: true } : {}),
       }
       await Session.writeTranscript(Session.transcriptPath(workspace, input.id), input.messages)
-      await fs.outputJson(Session.metaPath(workspace, input.id), meta, { spaces: 2 })
+      await Session.writeJson(Session.metaPath(workspace, input.id), meta)
       return meta
     })
   }
@@ -95,7 +95,7 @@ export class Session {
       const meta = await Session.readMeta(Session.metaPath(workspace, id), workspace.canonical)
       if (!meta) return undefined
       const next: ChatSessionMeta = { ...meta, title }
-      await fs.outputJson(Session.metaPath(workspace, id), next, { spaces: 2 })
+      await Session.writeJson(Session.metaPath(workspace, id), next)
       return next
     })
   }
@@ -109,7 +109,7 @@ export class Session {
       const next: ChatSessionMeta = { ...meta }
       if (pinned) next.pinned = true
       else delete next.pinned
-      await fs.outputJson(Session.metaPath(workspace, id), next, { spaces: 2 })
+      await Session.writeJson(Session.metaPath(workspace, id), next)
       return next
     })
   }
@@ -210,26 +210,33 @@ export class Session {
       await fs.appendFile(path, serialized.slice(common).map((line) => `${line}\n`).join(""))
       return
     }
-    await Bun.write(path, serialized.map((line) => `${line}\n`).join(""))
+    const temporary = `${path}.tmp`
+    await Bun.write(temporary, serialized.map((line) => `${line}\n`).join(""))
+    await fs.rename(temporary, path)
   }
 
   private static parseTranscript(text: string): unknown[] {
     const messages: unknown[] = []
-    const lines = text.split("\n")
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]?.trim()
-      if (!line) continue
+    for (const line of text.split("\n")) {
+      const trimmed = line.trim()
+      if (!trimmed) continue
       try {
-        messages.push(JSON.parse(line))
+        messages.push(JSON.parse(trimmed))
       } catch {
-        throw new Error(`corrupt transcript line ${i + 1}`)
+        continue
       }
     }
     return messages
   }
 
+  private static async writeJson(path: string, value: ChatSessionMeta): Promise<void> {
+    const temporary = `${path}.tmp`
+    await fs.outputJson(temporary, value, { spaces: 2 })
+    await fs.rename(temporary, path)
+  }
+
   private static async removeFiles(dir: string, id: string): Promise<void> {
     const names = await fs.readdir(dir).catch(() => [] as string[])
-    await Promise.all(names.filter((name) => name.startsWith(`${id}-`)).map((name) => fs.remove(join(dir, name))))
+    await Promise.all(names.filter((name) => name.startsWith(`${id}.`)).map((name) => fs.remove(join(dir, name))))
   }
 }

@@ -140,7 +140,7 @@ export class Settings {
   static update(patch: SettingsSchemaType): Promise<SettingsSchemaType> {
     return Settings.serialize(async () => {
       const merged = defu(patch, await Settings.read())
-      await fs.outputJson(Settings.file, merged, { spaces: 2 })
+      await Settings.writeJson(merged)
       return merged
     })
   }
@@ -149,8 +149,14 @@ export class Settings {
     return Settings.serialize(async () => {
       const parsed = SettingsSchema.safeParse(settings)
       const next = parsed.success ? parsed.data : settings
-      await fs.outputJson(Settings.file, next, { spaces: 2 })
+      await Settings.writeJson(next)
       return next
     })
+  }
+
+  private static async writeJson(value: SettingsSchemaType): Promise<void> {
+    const temporary = `${Settings.file}.tmp`
+    await fs.outputJson(temporary, value, { spaces: 2 })
+    await fs.rename(temporary, Settings.file)
   }
 }
