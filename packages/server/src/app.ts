@@ -108,6 +108,8 @@ export class App {
             stop: () =>
               new Promise<void>((res) => {
                 server.close(() => res())
+                const closing = server as { closeAllConnections?: () => void }
+                closing.closeAllConnections?.()
               }),
           })
         },

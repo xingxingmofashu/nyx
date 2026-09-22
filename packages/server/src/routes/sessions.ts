@@ -123,14 +123,18 @@ export class Sessions {
       .openapi(Sessions.patchRoute, async (c) => {
         const { workspaceDir, title, pinned } = c.req.valid("json")
         const { id } = c.req.valid("param")
-        const renamed = title === undefined ? undefined : await Global.Session.rename(workspaceDir, id, title)
-        const pinnedMeta = pinned === undefined ? undefined : await Global.Session.setPinned(workspaceDir, id, pinned)
-        return c.json(renamed ?? pinnedMeta ?? null, 200)
+        if (title === undefined && pinned === undefined) return c.json(null, 200)
+        let meta = title === undefined ? undefined : await Global.Session.rename(workspaceDir, id, title)
+        if (pinned !== undefined) meta = await Global.Session.setPinned(workspaceDir, id, pinned)
+        if (meta === undefined) throw Errors.status(404, new Error(`session not found: ${id}`))
+        return c.json(meta, 200)
       })
       .openapi(Sessions.deleteRoute, async (c) => {
         const { workspaceDir } = c.req.valid("query")
         if (workspaceDir === undefined) throw Errors.status(400, "workspaceDir is required")
-        await Global.Session.remove(workspaceDir, c.req.valid("param").id)
+        const { id } = c.req.valid("param")
+        await Global.Session.remove(workspaceDir, id)
+        Agent.Permission.revoke(id)
         return c.json({ ok: true }, 200)
       })
   }

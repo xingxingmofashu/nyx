@@ -58,7 +58,7 @@ export class Agent {
           workspaceDir,
           ...(sessionId !== undefined ? { sessionId } : {}),
         }
-        return c.json(await service.compact(request), 200)
+        return c.json(await service.compact(request, c.req.raw.signal), 200)
       })
   }
 

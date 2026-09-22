@@ -17,10 +17,15 @@ export class TextToSpeech {
   static create(service: Agent.Services.TextToSpeech) {
     return new OpenAPIHono({ defaultHook: Errors.hook }).openapi(TextToSpeech.route, async (c) => {
       const { model, text, speaker, speed } = c.req.valid("json")
-      const result = await service.generate(model, text, {
-        ...(speaker ? { speaker } : {}),
-        ...(speed !== undefined ? { speed } : {}),
-      })
+      const result = await service.generate(
+        model,
+        text,
+        {
+          ...(speaker ? { speaker } : {}),
+          ...(speed !== undefined ? { speed } : {}),
+        },
+        c.req.raw.signal,
+      )
       return c.body(new Uint8Array(result.data), 200, {
         "Content-Type": result.mimeType,
         "X-Audio-Sampling-Rate": String(result.samplingRate),

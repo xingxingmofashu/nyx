@@ -17,7 +17,7 @@ export class ImageToImage {
   static create(service: Agent.Services.ImageToImage) {
     return new OpenAPIHono({ defaultHook: Errors.hook }).openapi(ImageToImage.route, async (c) => {
       const { model, image } = c.req.valid("json")
-      const result = await service.generate(model, image)
+      const result = await service.generate(model, image, c.req.raw.signal)
       return c.body(new Uint8Array(result.data), 200, {
         "Content-Type": result.mimeType,
         "X-Image-Width": String(result.width),

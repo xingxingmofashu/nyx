@@ -30,10 +30,16 @@ export class AutomaticSpeechRecognition {
         const samples = new Float32Array(
           bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + byteLength),
         )
-        const text = await service.transcribe(model, samples, audio.samplingRate, {
-          ...(language ? { language } : {}),
-          ...(task ? { task } : {}),
-        })
+        const text = await service.transcribe(
+          model,
+          samples,
+          audio.samplingRate,
+          {
+            ...(language ? { language } : {}),
+            ...(task ? { task } : {}),
+          },
+          c.req.raw.signal,
+        )
         return c.json({ text }, 200)
       },
     )

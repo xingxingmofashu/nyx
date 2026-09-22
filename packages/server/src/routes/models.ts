@@ -74,6 +74,7 @@ export class Models {
           }
 
           const controller = store.beginPull(model)
+          stream.onAbort(() => controller.abort())
 
           const onProgress = (info: LLM.ProgressInfo) => {
             if (info.status === "progress" && info.total > 0) {
@@ -115,6 +116,7 @@ export class Models {
       })
       .openapi(Models.deleteRoute, async (c) => {
         const { model } = c.req.valid("json")
+        if (store.isPulling(model)) throw Errors.status(409, new Error(`model is being downloaded: ${model}`))
         if (!(await store.removeModel(model))) {
           throw Errors.status(404, new Error(`model not cached: ${model}`))
         }
