@@ -11,6 +11,7 @@ interface AgentSettingsState {
   
   contextLimit?: number
   initialized: boolean
+  initError?: string
   init: () => Promise<void>
   
   refresh: () => Promise<void>
@@ -23,11 +24,16 @@ export const useAgentStore = create<AgentSettingsState>((set, get) => ({
   workspaceDir: "",
   contextLimit: undefined,
   initialized: false,
+  initError: undefined,
 
   init: async () => {
     if (get().initialized) return
-    set({ initialized: true })
-    set(await readAgentState())
+    try {
+      const state = await readAgentState()
+      set({ ...state, initialized: true, initError: undefined })
+    } catch (error) {
+      set({ initialized: false, initError: error instanceof Error ? error.message : String(error) })
+    }
   },
 
   refresh: async () => {

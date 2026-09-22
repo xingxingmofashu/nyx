@@ -343,6 +343,7 @@ export class NyxServer {
         yield value.value as UIMessageChunk
       }
     } finally {
+      await reader.cancel().catch(() => undefined)
       reader.releaseLock()
     }
   }

@@ -12,13 +12,26 @@ class IpcChatTransport implements ChatTransport<UIMessage> {
   constructor(private readonly body: () => Record<string, unknown>) {}
 
   async sendMessages({ messages, abortSignal }: Parameters<ChatTransport<UIMessage>["sendMessages"]>[0]): Promise<ReadableStream<UIMessageChunk>> {
+    if (abortSignal?.aborted) {
+      return new ReadableStream<UIMessageChunk>({
+        start(controller) {
+          controller.close()
+        },
+      })
+    }
     const id = streamId()
     let controller: ReadableStreamDefaultController<UIMessageChunk> | null = null
     let unsubscribe: (() => void) | null = null
 
+    const abortHandler = () => {
+      close()
+      void window.nyx.chat.abort(id)
+    }
+
     const close = () => {
       unsubscribe?.()
       unsubscribe = null
+      abortSignal?.removeEventListener("abort", abortHandler)
     }
 
     const stream = new ReadableStream<UIMessageChunk>({
@@ -42,10 +55,7 @@ class IpcChatTransport implements ChatTransport<UIMessage> {
       }
     })
 
-    abortSignal?.addEventListener("abort", () => {
-      close()
-      void window.nyx.chat.abort(id)
-    })
+    abortSignal?.addEventListener("abort", abortHandler)
 
     void window.nyx.chat
       .send({ streamId: id, body: { messages, ...this.body() } })

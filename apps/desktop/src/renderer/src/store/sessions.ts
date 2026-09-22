@@ -63,16 +63,16 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
   },
 
   create: () => {
-    if (get().busy) return
+    if (get().busy || get().compacting) return
     agentChat.messages = []
     
     
     agentChat.clearError()
-    set({ activeId: nanoid() })
+    set({ activeId: nanoid(), contextOverride: undefined })
   },
 
   open: async (id) => {
-    if (get().busy) return
+    if (get().busy || get().compacting) return
     const meta = get().sessions.find((session) => session.id === id)
     if (!meta) {
       await get().load()
@@ -84,7 +84,7 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
       return
     }
     agentChat.messages = session.messages
-    set({ activeId: id })
+    set({ activeId: id, contextOverride: undefined })
     await window.nyx.sessions.setActive(meta.workspaceDir, id)
   },
 
@@ -128,6 +128,7 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
     const meta = get().sessions.find((session) => session.id === id)
     if (!meta) return
     await window.nyx.sessions.remove(meta.workspaceDir, id)
+    persistedSnapshots.delete(id)
     if (get().activeId === id) {
       agentChat.messages = []
       set({ activeId: null })
@@ -160,41 +161,57 @@ export const useSessionsStore = create<SessionsState>((set, get) => ({
     if (!workspaceDir) return
     const id = get().activeId ?? nanoid()
     const existing = get().sessions.find((session) => session.id === id)
+    const title = existing?.title ?? sessionTitle(messages)
     const request: ChatSessionSaveRequest = {
       id,
-      title: existing?.title ?? sessionTitle(messages),
+      title,
       workspaceDir,
       messages,
     }
-    await window.nyx.sessions.save(request)
+    const serialized = JSON.stringify(messages)
+    if (persistedSnapshots.get(id) !== serialized) {
+      await window.nyx.sessions.save(request)
+      persistedSnapshots.set(id, serialized)
+    }
     set({ activeId: id })
     await window.nyx.sessions.setActive(workspaceDir, id)
-    await get().load()
+    if (!existing || existing.title !== title) await get().load()
   },
 
   compact: async () => {
     const empty: CompactionResult = { compacted: false }
     if (get().busy || get().compacting) return empty
     const messages = agentChat.messages
-    if (messages.length === 0) return empty
+    const targetId = messages[messages.length - 1]?.id
+    if (messages.length === 0 || !targetId) return empty
 
+    const sessionId = get().ensureId()
     set({ compacting: true, compactNotice: undefined })
     try {
       const workspaceDir = useAgentStore.getState().workspaceDir
       const result = await window.nyx.chat.compact({
         messages,
         ...(workspaceDir ? { workspaceDir } : {}),
-        sessionId: get().ensureId(),
+        sessionId,
       })
-      const last = agentChat.messages[agentChat.messages.length - 1]
-      if (result.compacted && result.checkpoint && last) {
+      if (get().activeId !== sessionId) {
+        set({ compactNotice: "Compaction skipped — the active chat changed." })
+        return result
+      }
+      const current = agentChat.messages
+      const last = current[current.length - 1]
+      if (!last || last.id !== targetId) {
+        set({ compactNotice: "Compaction skipped — the transcript changed." })
+        return result
+      }
+      if (result.compacted && result.checkpoint) {
         
         
         const patched = {
           ...last,
           metadata: { ...(last.metadata as Record<string, unknown> | undefined), compaction: result.checkpoint },
         }
-        agentChat.messages = [...agentChat.messages.slice(0, -1), patched]
+        agentChat.messages = [...current.slice(0, -1), patched]
         const tokens = scaleEstimate(result, messages)
         set({
           contextOverride: tokens === undefined ? undefined : { tokens, forId: patched.id },
@@ -239,6 +256,8 @@ function lastReportedTokens(messages: UIMessage[]): number | undefined {
   }
   return undefined
 }
+
+const persistedSnapshots = new Map<string, string>()
 
 let persistenceInitialized = false
 
